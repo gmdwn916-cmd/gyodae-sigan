@@ -688,8 +688,23 @@
       padding: 6px 0 4px;
     }
 
-    .grid-header-cell:nth-child(6) { color: #007aff; }
-    .grid-header-cell:nth-child(7) { color: #ff3b30; }
+    .grid-header-cell.sat { color: #007aff; }
+    .grid-header-cell.sun { color: #ff3b30; }
+
+    .form-group select {
+      width: 100%;
+      padding: 13px 14px;
+      border: 1.5px solid #e5e5ea;
+      border-radius: 10px;
+      font-size: 16px;
+      background: #fff;
+      color: #1c1c1e;
+      font-family: inherit;
+      outline: none;
+      -webkit-appearance: none;
+      transition: border-color 0.15s;
+    }
+    .form-group select:focus { border-color: #007aff; }
 
     .day-grid {
       display: grid;
@@ -1530,15 +1545,7 @@
       <span id="cal-title"></span>
       <button class="btn-cal-nav" id="btn-cal-next">›</button>
     </div>
-    <div class="grid-header">
-      <div class="grid-header-cell">월</div>
-      <div class="grid-header-cell">화</div>
-      <div class="grid-header-cell">수</div>
-      <div class="grid-header-cell">목</div>
-      <div class="grid-header-cell">금</div>
-      <div class="grid-header-cell">토</div>
-      <div class="grid-header-cell">일</div>
-    </div>
+    <div class="grid-header" id="grid-header"></div>
     <div class="day-grid" id="day-grid"></div>
   </div>
 
@@ -1564,6 +1571,16 @@
     <p class="settings-section-title">근무유형 색 설정</p>
     <div class="card" id="shift-color-card"></div>
     <p class="shift-color-hint">색은 배경에 옅게(약 15%) 적용됩니다. 너무 어두운 색은 글씨와 구분이 어려울 수 있어요.</p>
+    <p class="settings-section-title">달력 설정</p>
+    <div class="card">
+      <div class="form-group" style="margin-bottom:0">
+        <label for="input-week-start">주 시작 요일</label>
+        <select id="input-week-start">
+          <option value="0">월요일 (월~일)</option>
+          <option value="1">일요일 (일~토)</option>
+        </select>
+      </div>
+    </div>
   </div>
 
   <!-- ── 하단 내비게이션 ── -->
@@ -1850,7 +1867,7 @@
 
   function applyShiftPattern(n, pattern, baseDate) {
     const cycleDays = n * 7;
-    if (!state) { state = { cycleDays: 0, baseDate: '', days: [], events: [], shiftColors: {}, shiftOverrides: [], dayOverrides: [] }; }
+    if (!state) { state = { cycleDays: 0, baseDate: '', days: [], events: [], shiftColors: {}, shiftOverrides: [], dayOverrides: [], weekStart: 0 }; }
     if (!Array.isArray(state.events)) { state.events = []; }
     if (!state.shiftColors) { state.shiftColors = {}; }
     state.days = resizeDays(state.days, cycleDays);
@@ -1879,6 +1896,10 @@
     }
     if (!Array.isArray(s.dayOverrides)) {
       s.dayOverrides = [];
+      changed = true;
+    }
+    if (s.weekStart === undefined) {
+      s.weekStart = 0;
       changed = true;
     }
     s.days.forEach(day => {
@@ -2051,6 +2072,26 @@
   function renderGrid() {
     document.getElementById('cal-title').textContent = calYear + '년 ' + (calMonth + 1) + '월';
 
+    // 주 시작 요일 (0=월요일 기준, 1=일요일 기준)
+    const weekStart = (state && state.weekStart === 1) ? 1 : 0;
+
+    // 헤더 렌더
+    const headerEl = document.getElementById('grid-header');
+    headerEl.innerHTML = '';
+    const HEADERS = weekStart === 1
+      ? ['일','월','화','수','목','금','토']
+      : ['월','화','수','목','금','토','일'];
+    HEADERS.forEach(function(h, i) {
+      const cell = document.createElement('div');
+      cell.className = 'grid-header-cell';
+      if (weekStart === 0 && i === 5) cell.classList.add('sat');
+      else if (weekStart === 0 && i === 6) cell.classList.add('sun');
+      else if (weekStart === 1 && i === 0) cell.classList.add('sun');
+      else if (weekStart === 1 && i === 6) cell.classList.add('sat');
+      cell.textContent = h;
+      headerEl.appendChild(cell);
+    });
+
     const grid = document.getElementById('day-grid');
     grid.innerHTML = '';
 
@@ -2067,7 +2108,10 @@
 
     const firstOfMonth = new Date(calYear, calMonth, 1);
     const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
-    const startWd = (firstOfMonth.getDay() + 6) % 7; // 월=0 … 일=6
+    // weekStart=0(월): 월=0…일=6 / weekStart=1(일): 일=0…토=6
+    const startWd = weekStart === 1
+      ? firstOfMonth.getDay()
+      : (firstOfMonth.getDay() + 6) % 7;
 
     const cells = [];
     for (let d = 1 - startWd; d <= 0; d++) {
@@ -2153,6 +2197,7 @@
         document.getElementById('input-pattern').value = '';
       }
       document.getElementById('input-base').value = state.baseDate || '';
+      document.getElementById('input-week-start').value = state.weekStart !== undefined ? String(state.weekStart) : '0';
     }
     document.getElementById('warn-settings').textContent = '';
     renderShiftColorSettings();
@@ -2263,6 +2308,13 @@
     renderToday();
     renderGrid();
     switchTab('today');
+  });
+
+  document.getElementById('input-week-start').addEventListener('change', function () {
+    if (!state) return;
+    state.weekStart = parseInt(this.value, 10);
+    saveState();
+    renderGrid();
   });
 
   // ── Day 편집 바텀시트 ─────────────────────────────────────
