@@ -2779,7 +2779,7 @@
         cell.style.background = 'rgba(' + hexToRgb(shiftColor) + ',0.10)';
       }
 
-      // 날짜 + D번호 행
+      // 날짜 + 근무유형 이름 행 (일반 달력과 동일)
       const topRow = document.createElement('div');
       topRow.className = 'cell-top-row';
 
@@ -2788,15 +2788,18 @@
       dateEl.textContent = date.getDate();
       topRow.appendChild(dateEl);
 
-      const dnumEl = document.createElement('div');
-      dnumEl.className = 'cell-shift-name';
-      dnumEl.textContent = 'D' + dayObj.dayIndex;
-      topRow.appendChild(dnumEl);
+      if (shiftName) {
+        const shiftEl = document.createElement('div');
+        shiftEl.className = 'cell-shift-name';
+        shiftEl.textContent = shiftName;
+        topRow.appendChild(shiftEl);
+      }
 
       cell.appendChild(topRow);
 
-      // 루틴 dots
+      // 루틴 dots + 이벤트 바 (일반 달력과 동일)
       const items = dayObj.items || [];
+      const cellEvents = getEventsForDate(cellDateStr);
       if (items.length > 0) {
         const dotsRow = document.createElement('div');
         dotsRow.className = 'cell-dots-row';
@@ -2808,6 +2811,11 @@
           dotsRow.appendChild(dot);
         });
         cell.appendChild(dotsRow);
+      }
+      if (cellEvents.length > 0) {
+        const evBar = document.createElement('div');
+        evBar.className = 'cell-event-bar';
+        cell.appendChild(evBar);
       }
 
       cell.addEventListener('click', function () {
