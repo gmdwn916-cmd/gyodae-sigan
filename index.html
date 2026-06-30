@@ -1420,6 +1420,65 @@
       min-height: 18px;
       margin-bottom: 4px;
     }
+
+    /* ── 근무 예외 표식 ── */
+    .cell-shift-override {
+      font-size: 7px;
+      color: #ff9500;
+      font-weight: 800;
+      margin-left: 1px;
+    }
+
+    .dd-shift-view {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+    }
+
+    .dd-shift-name-text {
+      font-size: 15px;
+      font-weight: 600;
+      color: #1c1c1e;
+      flex: 1;
+    }
+
+    .dd-shift-override-badge {
+      font-size: 10px;
+      font-weight: 700;
+      color: #ff9500;
+      background: rgba(255,149,0,0.12);
+      border-radius: 5px;
+      padding: 2px 6px;
+    }
+
+    .dd-shift-edit-row input {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1.5px solid #e5e5ea;
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: #f5f5f7;
+      color: #1c1c1e;
+      outline: none;
+      margin-bottom: 8px;
+      box-sizing: border-box;
+    }
+
+    .dd-shift-edit-row input:focus { border-color: #007aff; }
+
+    .dd-shift-cancel-btn {
+      width: 100%;
+      padding: 9px;
+      background: none;
+      border: none;
+      font-size: 13px;
+      color: #8e8e93;
+      cursor: pointer;
+      font-family: inherit;
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -1564,6 +1623,22 @@
     <div class="dd-header">
       <div id="dd-date-title" class="dd-date-title"></div>
       <div id="dd-day-info" class="dd-day-info"></div>
+    </div>
+    <div class="dd-section" id="dd-shift-section">
+      <div class="dd-section-label">근무유형</div>
+      <div class="dd-shift-view" id="dd-shift-view">
+        <span class="dd-shift-name-text" id="dd-shift-name-text"></span>
+        <span class="dd-shift-override-badge" id="dd-shift-override-badge" style="display:none">이번만</span>
+        <button class="btn-dd-edit" id="btn-dd-change-shift">변경 →</button>
+      </div>
+      <div class="dd-shift-edit-row" id="dd-shift-edit-row" style="display:none">
+        <input type="text" id="dd-shift-new-input" placeholder="새 근무명…" maxlength="20">
+        <div class="btn-row">
+          <button class="btn btn-secondary" id="btn-dd-shift-once">이번만 변경</button>
+          <button class="btn btn-primary" id="btn-dd-shift-pattern">D번호 자체 변경</button>
+        </div>
+        <button class="dd-shift-cancel-btn" id="btn-dd-shift-cancel">취소</button>
+      </div>
     </div>
     <div class="dd-section">
       <div class="dd-section-label">루틴</div>
@@ -1767,7 +1842,7 @@
 
   function applyShiftPattern(n, pattern, baseDate) {
     const cycleDays = n * 7;
-    if (!state) { state = { cycleDays: 0, baseDate: '', days: [], events: [], shiftColors: {} }; }
+    if (!state) { state = { cycleDays: 0, baseDate: '', days: [], events: [], shiftColors: {}, shiftOverrides: [] }; }
     if (!Array.isArray(state.events)) { state.events = []; }
     if (!state.shiftColors) { state.shiftColors = {}; }
     state.days = resizeDays(state.days, cycleDays);
@@ -1788,6 +1863,10 @@
     }
     if (!Array.isArray(s.events)) {
       s.events = [];
+      changed = true;
+    }
+    if (!Array.isArray(s.shiftOverrides)) {
+      s.shiftOverrides = [];
       changed = true;
     }
     s.days.forEach(day => {
@@ -1816,6 +1895,15 @@
 
   function getEventsForDate(dateStr) {
     return (state.events || []).filter(function (e) { return e.date === dateStr; });
+  }
+
+  function getEffectiveShiftName(dateStr, dayIdx0) {
+    if (state && Array.isArray(state.shiftOverrides)) {
+      const ov = state.shiftOverrides.find(function(o) { return o.date === dateStr; });
+      if (ov !== undefined) return { name: ov.shiftName, isOverride: true };
+    }
+    const day = state && state.days && state.days[dayIdx0];
+    return { name: day ? day.shiftType.name : '', isOverride: false };
   }
 
   // ── 날짜 처리 (로컬 자정 기준) ───────────────────────────
@@ -1875,7 +1963,7 @@
     document.getElementById('td-dnum').textContent = 'D' + day.dayIndex;
 
     const shiftEl = document.getElementById('td-shift');
-    const todayShiftName = day.shiftType.name;
+    const { name: todayShiftName } = getEffectiveShiftName(formatDateStr(tdMid), idx);
     if (todayShiftName) {
       shiftEl.textContent = todayShiftName;
       shiftEl.className = 'today-shift';
@@ -1980,10 +2068,11 @@
       const diff = Math.round((dateMid - baseMid) / 86400000);
       const dayIdx0 = ((diff % state.cycleDays) + state.cycleDays) % state.cycleDays;
       const dayObj = state.days[dayIdx0];
+      const cellDateStr = formatDateStr(dateMid);
 
       const cell = document.createElement('div');
       cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '');
-      const shiftName = dayObj.shiftType.name;
+      const { name: shiftName, isOverride: shiftIsOverride } = getEffectiveShiftName(cellDateStr, dayIdx0);
       const shiftColor = getShiftColor(shiftName);
       if (shiftColor) {
         cell.style.background = 'rgba(' + hexToRgb(shiftColor) + ',0.10)';
@@ -2002,12 +2091,17 @@
         const shiftEl = document.createElement('div');
         shiftEl.className = 'cell-shift-name';
         shiftEl.textContent = shiftName;
+        if (shiftIsOverride) {
+          const mark = document.createElement('span');
+          mark.className = 'cell-shift-override';
+          mark.textContent = '✎';
+          shiftEl.appendChild(mark);
+        }
         topRow.appendChild(shiftEl);
       }
       cell.appendChild(topRow);
 
       // 점 표시 행: 루틴 카테고리 점 + 일정 점
-      const cellDateStr = formatDateStr(dateMid);
       const items = dayObj.items || [];
       const cellEvents = getEventsForDate(cellDateStr);
       if (items.length > 0) {
@@ -2260,6 +2354,7 @@
     detailDayIdx0 = dayIdx0;
     detailDateStr = dateStr;
     const day = state.days[dayIdx0];
+    const { name: effShiftName, isOverride: effIsOverride } = getEffectiveShiftName(dateStr, dayIdx0);
 
     // 날짜 제목
     const d = parseLocalDate(dateStr);
@@ -2267,7 +2362,8 @@
     document.getElementById('dd-date-title').textContent =
       (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + DOW_KR[d.getDay()] + ')';
     document.getElementById('dd-day-info').textContent =
-      'D' + day.dayIndex + (day.shiftType.name ? ' · ' + day.shiftType.name : '');
+      'D' + day.dayIndex + (effShiftName ? ' · ' + effShiftName : '');
+    renderDDShift(effShiftName, effIsOverride);
 
     // 루틴 목록 (읽기 전용)
     renderDDRoutines(day);
@@ -2362,6 +2458,14 @@
     });
   }
 
+  function renderDDShift(shiftName, isOverride) {
+    document.getElementById('dd-shift-name-text').textContent = shiftName || '(미설정)';
+    const badge = document.getElementById('dd-shift-override-badge');
+    badge.style.display = isOverride ? '' : 'none';
+    document.getElementById('dd-shift-edit-row').style.display = 'none';
+    document.getElementById('dd-shift-view').style.display = '';
+  }
+
   function closeDayDetail() {
     document.getElementById('day-detail-overlay').classList.remove('open');
     detailDayIdx0 = null;
@@ -2372,6 +2476,52 @@
     if (e.target === this) closeDayDetail();
   });
   document.getElementById('btn-dd-close').addEventListener('click', closeDayDetail);
+
+  document.getElementById('btn-dd-change-shift').addEventListener('click', function () {
+    const { name } = getEffectiveShiftName(detailDateStr, detailDayIdx0);
+    document.getElementById('dd-shift-new-input').value = name || '';
+    document.getElementById('dd-shift-view').style.display = 'none';
+    document.getElementById('dd-shift-edit-row').style.display = '';
+    document.getElementById('dd-shift-new-input').focus();
+  });
+
+  document.getElementById('btn-dd-shift-cancel').addEventListener('click', function () {
+    document.getElementById('dd-shift-edit-row').style.display = 'none';
+    document.getElementById('dd-shift-view').style.display = '';
+  });
+
+  document.getElementById('btn-dd-shift-once').addEventListener('click', function () {
+    const newShift = document.getElementById('dd-shift-new-input').value.trim();
+    if (!Array.isArray(state.shiftOverrides)) state.shiftOverrides = [];
+    state.shiftOverrides = state.shiftOverrides.filter(function(o) { return o.date !== detailDateStr; });
+    if (newShift) {
+      state.shiftOverrides.push({ date: detailDateStr, shiftName: newShift });
+    }
+    saveState();
+    const day = state.days[detailDayIdx0];
+    const { name: newName, isOverride: newIsOverride } = getEffectiveShiftName(detailDateStr, detailDayIdx0);
+    document.getElementById('dd-day-info').textContent =
+      'D' + day.dayIndex + (newName ? ' · ' + newName : '');
+    renderDDShift(newName, newIsOverride);
+    renderGrid();
+    renderToday();
+  });
+
+  document.getElementById('btn-dd-shift-pattern').addEventListener('click', function () {
+    const newShift = document.getElementById('dd-shift-new-input').value.trim();
+    const day = state.days[detailDayIdx0];
+    day.shiftType.name = newShift;
+    saveState();
+    const { name: newName, isOverride: newIsOverride } = getEffectiveShiftName(detailDateStr, detailDayIdx0);
+    document.getElementById('dd-day-info').textContent =
+      'D' + day.dayIndex + (newName ? ' · ' + newName : '');
+    renderDDShift(newName, newIsOverride);
+    renderGrid();
+    renderToday();
+    if (document.getElementById('tab-settings').classList.contains('active')) {
+      renderSettings();
+    }
+  });
 
   document.getElementById('btn-dd-edit-routine').addEventListener('click', function () {
     const idx = detailDayIdx0;
