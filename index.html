@@ -165,7 +165,7 @@
 
     .today-items li {
       display: flex;
-      align-items: baseline;
+      align-items: center;
       gap: 10px;
       font-size: 15px;
       line-height: 1.55;
@@ -1542,8 +1542,37 @@
       transition: border-color 0.12s, color 0.12s;
     }
     .skip-btn:active { color: #8e8e93; border-color: #c7c7cc; }
-    .today-items li.skipped .item-icon { opacity: 0.4; }
-    .today-items li.skipped .item-text { opacity: 0.4; text-decoration: line-through; }
+    .today-item--done .item-icon,
+    .today-item--done .item-text { opacity: 0.4; }
+    .today-item--done .item-text { text-decoration: line-through; }
+    .today-item--skip .item-icon,
+    .today-item--skip .item-text { opacity: 0.4; }
+    .item-check-btn {
+      width: 26px;
+      height: 26px;
+      min-width: 26px;
+      border-radius: 50%;
+      border: 2px solid #d1d1d6;
+      background: none;
+      cursor: pointer;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
+      transition: border-color 0.15s, background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .item-check-btn:active:not(:disabled) { opacity: 0.7; }
+    .today-item--done .item-check-btn {
+      background: #34c759;
+      border-color: #34c759;
+    }
+    .today-item--skip .item-check-btn {
+      background: #d1d1d6;
+      border-color: #d1d1d6;
+      cursor: default;
+    }
     .unskip-btn {
       margin-left: auto;
       flex-shrink: 0;
@@ -1970,6 +1999,7 @@
   let bulkCalYear = _now.getFullYear();
   let bulkCalMonth = _now.getMonth();
   let bulkSelectedDates = new Set();
+  let _skipMoveRowTarget = null;
 
   // ── 스토리지 ──────────────────────────────────────────────
   function loadState() {
@@ -2031,6 +2061,10 @@
     }
     if (!Array.isArray(s.skips)) {
       s.skips = [];
+      changed = true;
+    }
+    if (!Array.isArray(s.done_log)) {
+      s.done_log = [];
       changed = true;
     }
     s.days.forEach(day => {
@@ -2154,41 +2188,74 @@
     const todaySkips = new Set(
       (state.skips || []).filter(function(s) { return s.date === todayDateStr; }).map(function(s) { return s.text; })
     );
+    const todayDones = new Set(
+      (state.done_log || []).filter(function(d) { return d.date === todayDateStr; }).map(function(d) { return d.text; })
+    );
     if (items.length > 0) {
       const ul = document.createElement('ul');
       ul.className = 'today-items';
       items.forEach(function(item) {
         const cat = getCat(item.category);
         const isSkipped = todaySkips.has(item.text);
+        const isDone = todayDones.has(item.text);
         const li = document.createElement('li');
-        if (isSkipped) li.classList.add('skipped');
+        li.className = 'today-item' +
+          (isDone ? ' today-item--done' : '') +
+          (isSkipped ? ' today-item--skip' : '');
+        // 체크 원 버튼
+        const checkBtn = document.createElement('button');
+        checkBtn.className = 'item-check-btn';
+        checkBtn.setAttribute('aria-label', isDone ? '완료 취소' : '완료');
+        if (isDone) {
+          checkBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+        } else if (isSkipped) {
+          checkBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="3" y1="7" x2="11" y2="7" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>';
+          checkBtn.disabled = true;
+        }
+        if (!isSkipped) {
+          checkBtn.addEventListener('click', function() { toggleDone(item.text, todayDateStr); });
+        }
+        li.appendChild(checkBtn);
+        // 카테고리 아이콘
         const iconEl = document.createElement('span');
         iconEl.className = 'item-icon';
         iconEl.textContent = cat.icon || '●';
         if (!cat.icon) iconEl.style.color = cat.color;
+        li.appendChild(iconEl);
+        // 루틴 텍스트
         const textEl = document.createElement('span');
         textEl.className = 'item-text';
         textEl.textContent = item.text;
         textEl.style.color = cat.color;
-        li.appendChild(iconEl);
         li.appendChild(textEl);
-        if (isSkipped) {
-          const unskipBtn = document.createElement('button');
-          unskipBtn.className = 'unskip-btn';
-          unskipBtn.textContent = '스킵 취소';
-          unskipBtn.addEventListener('click', function() { unskipItem(item.text); });
-          li.appendChild(unskipBtn);
-        } else {
-          const skipBtn = document.createElement('button');
-          skipBtn.className = 'skip-btn';
-          skipBtn.textContent = '스킵';
-          skipBtn.addEventListener('click', function() { skipItemAndPrompt(li, ul, item.text, todayDateStr); });
-          li.appendChild(skipBtn);
+        // 오른쪽 버튼 (완료 시 없음, 스킵 시 스킵 취소, 미처리 시 스킵)
+        if (!isDone) {
+          if (isSkipped) {
+            const unskipBtn = document.createElement('button');
+            unskipBtn.className = 'unskip-btn';
+            unskipBtn.textContent = '스킵 취소';
+            unskipBtn.addEventListener('click', function() { unskipItem(item.text); });
+            li.appendChild(unskipBtn);
+          } else {
+            const skipBtn = document.createElement('button');
+            skipBtn.className = 'skip-btn';
+            skipBtn.textContent = '스킵';
+            skipBtn.addEventListener('click', function() { skipItem(item.text, todayDateStr); });
+            li.appendChild(skipBtn);
+          }
         }
         ul.appendChild(li);
       });
       itemsEl.innerHTML = '';
       itemsEl.appendChild(ul);
+      if (_skipMoveRowTarget !== null) {
+        var tgt = _skipMoveRowTarget;
+        _skipMoveRowTarget = null;
+        ul.querySelectorAll('li.today-item--skip').forEach(function(skipLi) {
+          var tEl = skipLi.querySelector('.item-text');
+          if (tEl && tEl.textContent === tgt) { showMoveRow(skipLi, ul, tgt); }
+        });
+      }
     } else {
       itemsEl.innerHTML =
         '<div class="today-items-empty">아직 루틴이 없어요.<br>달력 탭에서 이 날을 탭해 편집할 수 있어요.</div>';
@@ -3315,22 +3382,8 @@
     openBulk();
   });
 
-  // ── 스킵 ──────────────────────────────────────────────────
-  function skipItemAndPrompt(li, ul, text, todayDateStr) {
-    if (!Array.isArray(state.skips)) state.skips = [];
-    if (!state.skips.some(function(s) { return s.date === todayDateStr && s.text === text; })) {
-      state.skips.push({ date: todayDateStr, text: text });
-      saveState();
-    }
-    li.classList.add('skipped');
-    const skipBtn = li.querySelector('.skip-btn');
-    if (skipBtn) {
-      const unskipBtn = document.createElement('button');
-      unskipBtn.className = 'unskip-btn';
-      unskipBtn.textContent = '스킵 취소';
-      unskipBtn.addEventListener('click', function() { unskipItem(text); });
-      li.replaceChild(unskipBtn, skipBtn);
-    }
+  // ── 스킵 / 완료 ──────────────────────────────────────────
+  function showMoveRow(li, ul, text) {
     const existing = ul.querySelector('.skip-move-row');
     if (existing) existing.remove();
     const tomorrow = new Date();
@@ -3372,11 +3425,35 @@
     li.after(moveRow);
   }
 
+  function skipItem(text, todayDateStr) {
+    if (!Array.isArray(state.skips)) state.skips = [];
+    if (!state.skips.some(function(s) { return s.date === todayDateStr && s.text === text; })) {
+      state.skips.push({ date: todayDateStr, text: text });
+    }
+    state.done_log = (state.done_log || []).filter(function(d) { return !(d.date === todayDateStr && d.text === text); });
+    saveState();
+    _skipMoveRowTarget = text;
+    renderToday();
+  }
+
   function unskipItem(text) {
     const todayStr = formatDateStr(todayMidnight());
     state.skips = (state.skips || []).filter(function(s) {
       return !(s.date === todayStr && s.text === text);
     });
+    saveState();
+    renderToday();
+  }
+
+  function toggleDone(text, todayDateStr) {
+    if (!Array.isArray(state.done_log)) state.done_log = [];
+    const idx = state.done_log.findIndex(function(d) { return d.date === todayDateStr && d.text === text; });
+    if (idx === -1) {
+      state.done_log.push({ date: todayDateStr, text: text });
+      state.skips = (state.skips || []).filter(function(s) { return !(s.date === todayDateStr && s.text === text); });
+    } else {
+      state.done_log.splice(idx, 1);
+    }
     saveState();
     renderToday();
   }
