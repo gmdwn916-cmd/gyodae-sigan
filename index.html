@@ -1749,21 +1749,27 @@
 
     /* ── 팀 달력 ── */
     .btn-team-cal {
-      display: block;
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 6px 12px;
       background: #fff;
       border: 1.5px solid #5e5ce6;
-      border-radius: 10px;
-      font-size: 14px;
+      border-radius: 20px;
+      font-size: 12px;
       font-weight: 600;
       color: #5e5ce6;
       cursor: pointer;
       font-family: inherit;
       transition: background 0.12s;
+      box-shadow: 0 1px 4px rgba(94,92,230,0.10);
     }
     .btn-team-cal:active { background: #f0f0ff; }
+    .btn-team-cal-wrap {
+      display: flex;
+      justify-content: flex-end;
+      margin-top: 8px;
+    }
 
     #team-cal-overlay {
       display: none;
@@ -1874,7 +1880,6 @@
 
   <!-- ── 전체 보기 탭 ── -->
   <div class="tab-content" id="tab-grid">
-    <button class="btn-team-cal" id="btn-team-cal">👥 다른 팀 근무 확인</button>
     <div class="cal-nav">
       <button class="btn-cal-nav" id="btn-cal-prev">‹</button>
       <span id="cal-title"></span>
@@ -1882,6 +1887,9 @@
     </div>
     <div class="grid-header" id="grid-header"></div>
     <div class="day-grid" id="day-grid"></div>
+    <div class="btn-team-cal-wrap">
+      <button class="btn-team-cal" id="btn-team-cal">👥 다른 팀 근무 확인</button>
+    </div>
   </div>
 
   <!-- ── 설정 탭 ── -->
