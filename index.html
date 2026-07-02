@@ -1774,7 +1774,6 @@
           <div class="today-dnum" id="td-dnum"></div>
         </div>
         <div class="today-shift" id="td-shift"></div>
-        <div id="td-teams" style="display:none; margin-top:6px;"></div>
       </div>
       <div class="card">
         <div class="section-label">루틴 항목</div>
@@ -1949,10 +1948,6 @@
         <div class="dd-shift-note">설정탭의 기본 근무 패턴은 바뀌지 않아요.</div>
         <button class="dd-shift-cancel-btn" id="btn-dd-shift-cancel">취소</button>
       </div>
-    </div>
-    <div class="dd-section" id="dd-teams-section" style="display:none">
-      <div class="dd-section-label">다른 팀 근무</div>
-      <div id="dd-teams-list"></div>
     </div>
     <div class="dd-section">
       <div class="dd-section-label">루틴</div>
@@ -2479,21 +2474,6 @@
     } else {
       shiftEl.textContent = '근무유형 미설정';
       shiftEl.className = 'today-shift empty';
-    }
-
-    const teamsEl = document.getElementById('td-teams');
-    const teams = state.teams || [];
-    if (teams.length > 0) {
-      teamsEl.style.display = '';
-      teamsEl.innerHTML = '';
-      teams.forEach(function(team) {
-        const chip = document.createElement('span');
-        chip.className = 'team-chip';
-        chip.textContent = team.name + ': ' + (getTeamShift(team, todayDateStr) || '—');
-        teamsEl.appendChild(chip);
-      });
-    } else {
-      teamsEl.style.display = 'none';
     }
 
     const todayCard = document.querySelector('#today-content .card');
@@ -3040,7 +3020,6 @@
     document.getElementById('dd-day-info').textContent =
       'D' + day.dayIndex + (effShiftName ? ' · ' + effShiftName : '');
     renderDDShift(effShiftName, effIsOverride, effOverrideType);
-    renderDDTeams(dateStr);
 
     // 루틴 목록 (읽기 전용)
     renderDDRoutines(day);
@@ -3596,37 +3575,6 @@
     const adjustedDiff = diff - team.offsetDays;
     const idx0 = ((adjustedDiff % state.cycleDays) + state.cycleDays) % state.cycleDays;
     return state.days[idx0] ? (state.days[idx0].shiftType.name || null) : null;
-  }
-
-  function renderDDTeams(dateStr) {
-    const section = document.getElementById('dd-teams-section');
-    const el = document.getElementById('dd-teams-list');
-    if (!el) return;
-    const teams = state.teams || [];
-    const hasMyTeam = !!(state.myTeamName);
-    if (teams.length === 0 && !hasMyTeam) { section.style.display = 'none'; return; }
-    section.style.display = '';
-    el.innerHTML = '';
-
-    function addRow(name, shift, isMyTeam) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;color:#1c1c1e;';
-      const nameEl = document.createElement('span');
-      nameEl.style.color = '#8e8e93';
-      nameEl.textContent = name + (isMyTeam ? ' (내팀)' : '');
-      const shiftEl = document.createElement('span');
-      shiftEl.textContent = shift || '—';
-      row.appendChild(nameEl);
-      row.appendChild(shiftEl);
-      el.appendChild(row);
-    }
-
-    if (hasMyTeam) {
-      addRow(state.myTeamName, getTeamShift({ offsetDays: 0 }, dateStr), true);
-    }
-    teams.forEach(function(team) {
-      addRow(team.name, getTeamShift(team, dateStr), false);
-    });
   }
 
   function renderReminderList() {
