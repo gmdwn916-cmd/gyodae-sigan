@@ -1746,6 +1746,88 @@
       cursor: pointer;
       flex-shrink: 0;
     }
+
+    /* ── 팀 달력 ── */
+    .btn-team-cal {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      background: #fff;
+      border: 1.5px solid #5e5ce6;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #5e5ce6;
+      cursor: pointer;
+      font-family: inherit;
+      transition: background 0.12s;
+    }
+    .btn-team-cal:active { background: #f0f0ff; }
+
+    #team-cal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: #f5f5f7;
+      z-index: 50;
+      flex-direction: column;
+    }
+    #team-cal-overlay.open { display: flex; }
+
+    .tcal-header {
+      background: #fff;
+      padding: 52px 20px 0;
+      border-bottom: 1px solid #e5e5ea;
+      flex-shrink: 0;
+    }
+    .tcal-header-row1 {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .tcal-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px 6px 32px;
+    }
+    .tcal-cell {
+      background: #fff;
+      border-radius: 6px;
+      padding: 4px 2px;
+      min-height: 58px;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    .tcal-cell.today {
+      background: #eff6ff;
+      border: 1.5px solid #007aff;
+    }
+    .tcal-cell.other-month { opacity: 0.35; }
+    .tcal-cell-date {
+      font-size: 11px;
+      font-weight: 700;
+      color: #1c1c1e;
+      line-height: 1.2;
+      margin-bottom: 2px;
+      padding: 0 1px;
+    }
+    .tcal-cell.today .tcal-cell-date { color: #007aff; }
+    .tcal-team-row {
+      font-size: 6.5px;
+      line-height: 1.4;
+      border-radius: 3px;
+      padding: 1px 2px;
+      margin-bottom: 1px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 100%;
+      box-sizing: border-box;
+    }
   </style>
 </head>
 <body>
@@ -1792,6 +1874,7 @@
 
   <!-- ── 전체 보기 탭 ── -->
   <div class="tab-content" id="tab-grid">
+    <button class="btn-team-cal" id="btn-team-cal">👥 다른 팀 근무 확인</button>
     <div class="cal-nav">
       <button class="btn-cal-nav" id="btn-cal-prev">‹</button>
       <span id="cal-title"></span>
@@ -2055,6 +2138,25 @@
   </div>
 </div>
 
+<!-- ── 팀 달력 오버레이 ── -->
+<div id="team-cal-overlay">
+  <div class="tcal-header">
+    <div class="tcal-header-row1">
+      <button class="btn-settings-back" id="btn-tcal-close">‹ 뒤로</button>
+      <span class="settings-detail-title">다른 팀 근무 확인</span>
+    </div>
+    <div class="cal-nav" style="padding:0 4px 8px">
+      <button class="btn-cal-nav" id="btn-tcal-prev">‹</button>
+      <span id="tcal-month-label" style="font-size:16px;font-weight:700;color:#1c1c1e;"></span>
+      <button class="btn-cal-nav" id="btn-tcal-next">›</button>
+    </div>
+    <div class="grid-header" id="tcal-grid-header"></div>
+  </div>
+  <div class="tcal-body">
+    <div class="day-grid" id="tcal-day-grid"></div>
+  </div>
+</div>
+
 <!-- ── 온보딩 ── -->
 <div id="onboard-overlay">
   <div class="onboard-inner">
@@ -2162,6 +2264,8 @@
   let bulkSelectedDates = new Set();
   let _skipMoveRowTarget = null;
   let routinePeriod = 'cycle';
+  let teamCalYear = _now.getFullYear();
+  let teamCalMonth = _now.getMonth();
 
   // ── 스토리지 ──────────────────────────────────────────────
   function loadState() {
@@ -3850,6 +3954,145 @@
     });
     card.appendChild(changeBtn);
   }
+
+  // ── 팀 달력 ──────────────────────────────────────────────
+  function openTeamCal() {
+    if (!state || !state.cycleDays || !state.baseDate) return;
+    const now = new Date();
+    teamCalYear = now.getFullYear();
+    teamCalMonth = now.getMonth();
+    renderTeamCal();
+    document.getElementById('team-cal-overlay').classList.add('open');
+  }
+
+  function closeTeamCal() {
+    document.getElementById('team-cal-overlay').classList.remove('open');
+  }
+
+  function renderTeamCal() {
+    document.getElementById('tcal-month-label').textContent = teamCalYear + '년 ' + (teamCalMonth + 1) + '월';
+
+    const weekStart = (state && state.weekStart === 1) ? 1 : 0;
+    const headerEl = document.getElementById('tcal-grid-header');
+    headerEl.innerHTML = '';
+    const HEADERS = weekStart === 1
+      ? ['일','월','화','수','목','금','토']
+      : ['월','화','수','목','금','토','일'];
+    HEADERS.forEach(function(h, i) {
+      const cell = document.createElement('div');
+      cell.className = 'grid-header-cell';
+      if (weekStart === 0 && i === 5) cell.classList.add('sat');
+      else if (weekStart === 0 && i === 6) cell.classList.add('sun');
+      else if (weekStart === 1 && i === 0) cell.classList.add('sun');
+      else if (weekStart === 1 && i === 6) cell.classList.add('sat');
+      cell.textContent = h;
+      headerEl.appendChild(cell);
+    });
+
+    const grid = document.getElementById('tcal-day-grid');
+    grid.innerHTML = '';
+
+    // 팀 목록: 내 팀(offset=0) 우선, 이후 설정 순서
+    const allTeams = [];
+    if (state.myTeamName) {
+      allTeams.push({ name: state.myTeamName, offsetDays: 0 });
+    }
+    (state.teams || []).forEach(function(t) {
+      if (t.name && t.name !== state.myTeamName) {
+        allTeams.push({ name: t.name, offsetDays: t.offsetDays });
+      }
+    });
+
+    if (allTeams.length === 0) {
+      const msg = document.createElement('div');
+      msg.className = 'grid-empty-msg';
+      msg.textContent = '설정 탭 → 팀 근무에서 팀을 먼저 설정해 주세요.';
+      grid.appendChild(msg);
+      return;
+    }
+
+    const todayMid = todayMidnight();
+    const firstOfMonth = new Date(teamCalYear, teamCalMonth, 1);
+    const daysInMonth = new Date(teamCalYear, teamCalMonth + 1, 0).getDate();
+    const startWd = weekStart === 1
+      ? firstOfMonth.getDay()
+      : (firstOfMonth.getDay() + 6) % 7;
+
+    const cells = [];
+    for (let d = 1 - startWd; d <= 0; d++) {
+      cells.push({ date: new Date(teamCalYear, teamCalMonth, d), inMonth: false });
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+      cells.push({ date: new Date(teamCalYear, teamCalMonth, d), inMonth: true });
+    }
+    const trailing = (7 - (cells.length % 7)) % 7;
+    for (let d = 1; d <= trailing; d++) {
+      cells.push({ date: new Date(teamCalYear, teamCalMonth + 1, d), inMonth: false });
+    }
+
+    cells.forEach(function({ date, inMonth }) {
+      const dateMid = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const isToday = dateMid.getTime() === todayMid.getTime();
+      const cellDateStr = formatDateStr(dateMid);
+
+      const cell = document.createElement('div');
+      cell.className = 'tcal-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '');
+
+      const dateEl = document.createElement('div');
+      dateEl.className = 'tcal-cell-date';
+      dateEl.textContent = date.getDate();
+      cell.appendChild(dateEl);
+
+      allTeams.forEach(function(team) {
+        const shiftName = getTeamShift(team, cellDateStr);
+        const row = document.createElement('div');
+        row.className = 'tcal-team-row';
+        row.textContent = team.name + ' ' + (shiftName || '—');
+        const color = getShiftColor(shiftName);
+        if (color) {
+          row.style.background = 'rgba(' + hexToRgb(color) + ',0.15)';
+          row.style.color = color;
+        } else {
+          row.style.color = '#6c6c70';
+        }
+        cell.appendChild(row);
+      });
+
+      grid.appendChild(cell);
+    });
+  }
+
+  document.getElementById('btn-team-cal').addEventListener('click', openTeamCal);
+  document.getElementById('btn-tcal-close').addEventListener('click', closeTeamCal);
+  document.getElementById('btn-tcal-prev').addEventListener('click', function() {
+    teamCalMonth--;
+    if (teamCalMonth < 0) { teamCalMonth = 11; teamCalYear--; }
+    renderTeamCal();
+  });
+  document.getElementById('btn-tcal-next').addEventListener('click', function() {
+    teamCalMonth++;
+    if (teamCalMonth > 11) { teamCalMonth = 0; teamCalYear++; }
+    renderTeamCal();
+  });
+
+  // 팀 달력 스와이프
+  (function() {
+    var sx = 0, sy = 0;
+    var overlay = document.getElementById('team-cal-overlay');
+    overlay.addEventListener('touchstart', function(e) {
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+    }, { passive: true });
+    overlay.addEventListener('touchend', function(e) {
+      var dx = e.changedTouches[0].clientX - sx;
+      var dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) { teamCalMonth++; if (teamCalMonth > 11) { teamCalMonth = 0; teamCalYear++; } }
+        else        { teamCalMonth--; if (teamCalMonth < 0)  { teamCalMonth = 11; teamCalYear--; } }
+        renderTeamCal();
+      }
+    }, { passive: true });
+  })();
 
   // ── 루틴 탭 ──────────────────────────────────────────────
   function renderRoutine() {
