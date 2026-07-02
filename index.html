@@ -1863,19 +1863,7 @@
 
       <!-- 팀 근무 -->
       <div id="sd-teams" style="display:none">
-        <div class="card">
-          <div id="team-list"></div>
-          <div style="display:flex; gap:8px; margin-top:10px; align-items:center; flex-wrap:wrap;">
-            <input type="text" id="team-name-input" placeholder="팀 이름" maxlength="10" style="flex:1; min-width:80px; padding:9px 12px; border:1.5px solid #e5e5ea; border-radius:10px; font-size:14px; font-family:inherit; background:#f5f5f7; color:#1c1c1e; outline:none;">
-            <div style="display:flex; align-items:center; gap:4px;">
-              <button id="btn-team-offset-dec" style="width:28px;height:28px;border-radius:50%;border:1.5px solid #d1d1d6;background:none;font-size:14px;cursor:pointer;font-family:inherit;">◀</button>
-              <span id="team-offset-preview" style="font-size:11px;color:#8e8e93;min-width:50px;text-align:center;">오늘: —</span>
-              <button id="btn-team-offset-inc" style="width:28px;height:28px;border-radius:50%;border:1.5px solid #d1d1d6;background:none;font-size:14px;cursor:pointer;font-family:inherit;">▶</button>
-            </div>
-            <button id="btn-team-add" style="padding:9px 14px;background:#007aff;color:#fff;border:none;border-radius:10px;font-size:14px;font-family:inherit;cursor:pointer;font-weight:600;">추가</button>
-          </div>
-          <div style="color:#ff3b30;font-size:12px;min-height:18px;margin-top:4px;" id="team-warn"></div>
-        </div>
+        <div id="team-settings-card" class="card"></div>
       </div>
     </div>
   </div>
@@ -2179,7 +2167,6 @@
   let bulkSelectedDates = new Set();
   let _skipMoveRowTarget = null;
   let routinePeriod = 'cycle';
-  let teamAddOffset = 0;
 
   // ── 스토리지 ──────────────────────────────────────────────
   function loadState() {
@@ -2253,6 +2240,10 @@
     }
     if (!Array.isArray(s.teams)) {
       s.teams = [];
+      changed = true;
+    }
+    if (s.myTeamName === undefined) {
+      s.myTeamName = '';
       changed = true;
     }
     // shiftType.color(Day별)이 있고 shiftColors(이름별)에 없으면 이름 기준으로 복원
@@ -2743,8 +2734,10 @@
         return n ? n + '개' : '없음';
       }},
       { key: 'teams', icon: '👥', label: '팀 근무', getValue: function() {
+        var myName = state && state.myTeamName;
         var n = (state && state.teams || []).length;
-        return n ? n + '개 팀' : '없음';
+        if (!myName) return '미설정';
+        return myName + (n ? ' 외 ' + n + '팀' : '');
       }},
     ];
 
@@ -2815,8 +2808,7 @@
     } else if (key === 'reminders') {
       renderReminderList();
     } else if (key === 'teams') {
-      renderTeamList();
-      updateTeamOffsetPreview();
+      renderTeamSettings();
     }
   }
 
@@ -3611,21 +3603,29 @@
     const el = document.getElementById('dd-teams-list');
     if (!el) return;
     const teams = state.teams || [];
-    if (teams.length === 0) { section.style.display = 'none'; return; }
+    const hasMyTeam = !!(state.myTeamName);
+    if (teams.length === 0 && !hasMyTeam) { section.style.display = 'none'; return; }
     section.style.display = '';
     el.innerHTML = '';
-    teams.forEach(function(team) {
-      const shiftName = getTeamShift(team, dateStr);
+
+    function addRow(name, shift, isMyTeam) {
       const row = document.createElement('div');
       row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:4px 0;font-size:14px;color:#1c1c1e;';
       const nameEl = document.createElement('span');
       nameEl.style.color = '#8e8e93';
-      nameEl.textContent = team.name;
+      nameEl.textContent = name + (isMyTeam ? ' (내팀)' : '');
       const shiftEl = document.createElement('span');
-      shiftEl.textContent = shiftName || '—';
+      shiftEl.textContent = shift || '—';
       row.appendChild(nameEl);
       row.appendChild(shiftEl);
       el.appendChild(row);
+    }
+
+    if (hasMyTeam) {
+      addRow(state.myTeamName, getTeamShift({ offsetDays: 0 }, dateStr), true);
+    }
+    teams.forEach(function(team) {
+      addRow(team.name, getTeamShift(team, dateStr), false);
     });
   }
 
@@ -3661,44 +3661,212 @@
     });
   }
 
-  function renderTeamList() {
-    const el = document.getElementById('team-list');
-    if (!el) return;
-    el.innerHTML = '';
-    const teams = state.teams || [];
-    if (teams.length === 0) {
-      el.innerHTML = '<div style="font-size:13px;color:#c7c7cc;padding:4px 0;">등록된 팀 없음</div>';
+  function renderTeamSettings() {
+    const card = document.getElementById('team-settings-card');
+    if (!card) return;
+    card.innerHTML = '';
+
+    if (!state || !state.cycleDays || !state.baseDate) {
+      card.innerHTML = '<div style="font-size:14px;color:#8e8e93;padding:4px 0;">교대 주기 설정을 먼저 완료해 주세요.</div>';
       return;
     }
-    const todayStr = formatDateStr(todayMidnight());
-    teams.forEach(function(team, i) {
-      const todayShift = getTeamShift(team, todayStr);
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;padding:8px 0;border-bottom:1px solid #f2f2f7;font-size:14px;gap:8px;';
-      const info = document.createElement('span');
-      info.style.flex = '1';
-      info.textContent = team.name + ' — 오늘: ' + (todayShift || '—');
-      const del = document.createElement('button');
-      del.textContent = '×';
-      del.style.cssText = 'background:none;border:none;font-size:18px;color:#c7c7cc;cursor:pointer;padding:0 4px;font-family:inherit;';
-      del.addEventListener('click', function() {
-        state.teams.splice(i, 1);
-        saveState();
-        renderTeamList();
-        renderToday();
-      });
-      row.appendChild(info);
-      row.appendChild(del);
-      el.appendChild(row);
-    });
-  }
 
-  function updateTeamOffsetPreview() {
-    const el = document.getElementById('team-offset-preview');
-    if (!el || !state || !state.cycleDays) return;
-    const todayStr = formatDateStr(todayMidnight());
-    const shift = getTeamShift({ offsetDays: teamAddOffset }, todayStr);
-    el.textContent = '오늘: ' + (shift || '—');
+    // 내 팀 이름 미설정 → 입력 화면
+    if (!state.myTeamName) {
+      const label = document.createElement('div');
+      label.style.cssText = 'font-size:15px;font-weight:600;color:#1c1c1e;margin-bottom:12px;';
+      label.textContent = '내 팀 이름을 알려주세요';
+      card.appendChild(label);
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:8px;';
+      const input = document.createElement('input');
+      input.type = 'text'; input.maxLength = 10; input.placeholder = '예: 2팀, A조';
+      input.style.cssText = 'flex:1;padding:10px 12px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:14px;font-family:inherit;background:#f5f5f7;color:#1c1c1e;outline:none;';
+      const btn = document.createElement('button');
+      btn.textContent = '설정';
+      btn.style.cssText = 'padding:10px 16px;background:#007aff;color:#fff;border:none;border-radius:10px;font-size:14px;font-family:inherit;cursor:pointer;font-weight:600;';
+      btn.addEventListener('click', function() {
+        const v = input.value.trim();
+        if (!v) return;
+        state.myTeamName = v;
+        saveState();
+        renderTeamSettings();
+      });
+      row.appendChild(input);
+      row.appendChild(btn);
+      card.appendChild(row);
+      return;
+    }
+
+    // 오늘부터 (cycleDays/7)일 날짜 배열
+    const todayMid = todayMidnight();
+    const baseMid = parseLocalDate(state.baseDate);
+    const displayDays = Math.max(1, Math.ceil(state.cycleDays / 7));
+    const dates = [];
+    for (var d = 0; d < displayDays; d++) {
+      var dm = new Date(todayMid.getFullYear(), todayMid.getMonth(), todayMid.getDate() + d);
+      dates.push({ dateStr: formatDateStr(dm), label: (dm.getMonth() + 1) + '/' + dm.getDate(), isToday: d === 0 });
+    }
+
+    function shiftAt(offsetDays, dateStr) {
+      var diff = Math.round((parseLocalDate(dateStr) - baseMid) / 86400000);
+      var adj = ((diff - offsetDays) % state.cycleDays + state.cycleDays) % state.cycleDays;
+      return state.days[adj] ? (state.days[adj].shiftType.name || '—') : '—';
+    }
+
+    var colTemplate = 'minmax(90px,auto) repeat(' + displayDays + ',minmax(42px,1fr))';
+
+    // 헤더 행
+    var wrap = document.createElement('div');
+    wrap.style.cssText = 'overflow-x:auto;margin:0 -4px;';
+
+    var hdr = document.createElement('div');
+    hdr.style.cssText = 'display:grid;grid-template-columns:' + colTemplate + ';min-width:max-content;border-bottom:1.5px solid #e5e5ea;padding-bottom:6px;margin-bottom:2px;';
+    var hdrTeamCell = document.createElement('div');
+    hdrTeamCell.style.cssText = 'padding:4px 8px;font-size:11px;color:#8e8e93;font-weight:500;';
+    hdrTeamCell.textContent = '팀';
+    hdr.appendChild(hdrTeamCell);
+    dates.forEach(function(d) {
+      var th = document.createElement('div');
+      th.style.cssText = 'padding:4px 2px;font-size:11px;color:' + (d.isToday ? '#007aff' : '#8e8e93') + ';font-weight:' + (d.isToday ? '700' : '500') + ';text-align:center;min-width:42px;white-space:nowrap;';
+      th.textContent = d.label + (d.isToday ? ' 오늘' : '');
+      hdr.appendChild(th);
+    });
+    wrap.appendChild(hdr);
+
+    // 팀 행 생성 함수
+    function makeTeamRow(teamName, offsetDays, isMyTeam, teamIdx) {
+      var tr = document.createElement('div');
+      tr.style.cssText = 'display:grid;grid-template-columns:' + colTemplate + ';min-width:max-content;border-top:1px solid #f2f2f7;align-items:center;';
+
+      var nameCell = document.createElement('div');
+      nameCell.style.cssText = 'padding:8px 8px;display:flex;align-items:center;gap:3px;min-width:90px;overflow:hidden;';
+
+      var shiftCells = [];
+
+      if (isMyTeam) {
+        var nameEl = document.createElement('span');
+        nameEl.style.cssText = 'font-size:13px;color:#1c1c1e;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        nameEl.textContent = teamName;
+        var meTag = document.createElement('span');
+        meTag.style.cssText = 'font-size:10px;color:#007aff;background:rgba(0,122,255,0.10);border-radius:4px;padding:1px 4px;margin-left:3px;white-space:nowrap;flex-shrink:0;';
+        meTag.textContent = '내팀';
+        nameCell.appendChild(nameEl);
+        nameCell.appendChild(meTag);
+      } else {
+        var decBtn = document.createElement('button');
+        decBtn.textContent = '◀';
+        decBtn.style.cssText = 'width:20px;height:20px;border-radius:50%;border:1px solid #d1d1d6;background:none;font-size:10px;cursor:pointer;font-family:inherit;padding:0;flex-shrink:0;';
+        var tNameEl = document.createElement('span');
+        tNameEl.style.cssText = 'font-size:13px;color:#1c1c1e;font-weight:500;flex:1;text-align:center;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;';
+        tNameEl.textContent = teamName;
+        var incBtn = document.createElement('button');
+        incBtn.textContent = '▶';
+        incBtn.style.cssText = 'width:20px;height:20px;border-radius:50%;border:1px solid #d1d1d6;background:none;font-size:10px;cursor:pointer;font-family:inherit;padding:0;flex-shrink:0;';
+        var delBtn = document.createElement('button');
+        delBtn.textContent = '×';
+        delBtn.style.cssText = 'background:none;border:none;font-size:15px;color:#c7c7cc;cursor:pointer;padding:0 2px;font-family:inherit;flex-shrink:0;';
+        nameCell.appendChild(decBtn);
+        nameCell.appendChild(tNameEl);
+        nameCell.appendChild(incBtn);
+        nameCell.appendChild(delBtn);
+
+        var curOffset = offsetDays;
+        function refreshCells() {
+          shiftCells.forEach(function(sc, ci) { sc.textContent = shiftAt(curOffset, dates[ci].dateStr); });
+        }
+        decBtn.addEventListener('click', function() {
+          curOffset = ((curOffset - 1) % state.cycleDays + state.cycleDays) % state.cycleDays;
+          state.teams[teamIdx].offsetDays = curOffset;
+          saveState();
+          refreshCells();
+          renderToday();
+        });
+        incBtn.addEventListener('click', function() {
+          curOffset = (curOffset + 1) % state.cycleDays;
+          state.teams[teamIdx].offsetDays = curOffset;
+          saveState();
+          refreshCells();
+          renderToday();
+        });
+        delBtn.addEventListener('click', function() {
+          state.teams.splice(teamIdx, 1);
+          saveState();
+          renderTeamSettings();
+          renderToday();
+        });
+      }
+
+      tr.appendChild(nameCell);
+      dates.forEach(function(d) {
+        var sc = document.createElement('div');
+        sc.style.cssText = 'padding:8px 4px;text-align:center;font-size:13px;' + (d.isToday ? 'color:#007aff;font-weight:700;' : 'color:#1c1c1e;');
+        sc.textContent = shiftAt(isMyTeam ? 0 : offsetDays, d.dateStr);
+        shiftCells.push(sc);
+        tr.appendChild(sc);
+      });
+      return tr;
+    }
+
+    // 내 팀 행
+    wrap.appendChild(makeTeamRow(state.myTeamName, 0, true, -1));
+    // 다른 팀 행
+    (state.teams || []).forEach(function(team, i) {
+      wrap.appendChild(makeTeamRow(team.name, team.offsetDays, false, i));
+    });
+    card.appendChild(wrap);
+
+    // 팀 추가 버튼
+    var addSection = document.createElement('div');
+    addSection.style.cssText = 'margin-top:12px;';
+    var addToggleBtn = document.createElement('button');
+    addToggleBtn.textContent = '+ 팀 추가';
+    addToggleBtn.style.cssText = 'background:none;border:1.5px dashed #d1d1d6;border-radius:10px;padding:8px 16px;font-size:14px;color:#8e8e93;cursor:pointer;font-family:inherit;width:100%;';
+    var addForm = document.createElement('div');
+    addForm.style.display = 'none';
+    addForm.style.marginTop = '8px';
+    var addInput = document.createElement('input');
+    addInput.type = 'text'; addInput.maxLength = 10; addInput.placeholder = '팀 이름';
+    addInput.style.cssText = 'padding:10px 12px;border:1.5px solid #e5e5ea;border-radius:10px;font-size:14px;font-family:inherit;background:#f5f5f7;color:#1c1c1e;outline:none;width:100%;box-sizing:border-box;';
+    var addConfirmBtn = document.createElement('button');
+    addConfirmBtn.textContent = '추가';
+    addConfirmBtn.style.cssText = 'margin-top:6px;padding:10px 0;background:#007aff;color:#fff;border:none;border-radius:10px;font-size:14px;font-family:inherit;cursor:pointer;font-weight:600;width:100%;';
+    var addWarn = document.createElement('div');
+    addWarn.style.cssText = 'color:#ff3b30;font-size:12px;min-height:16px;margin-top:4px;';
+    addToggleBtn.addEventListener('click', function() {
+      addForm.style.display = addForm.style.display === 'none' ? 'block' : 'none';
+    });
+    addConfirmBtn.addEventListener('click', function() {
+      var name = addInput.value.trim();
+      if (!name) { addWarn.textContent = '팀 이름을 입력해 주세요.'; return; }
+      if (name === state.myTeamName) { addWarn.textContent = '내 팀과 같은 이름은 쓸 수 없어요.'; return; }
+      if ((state.teams || []).some(function(t) { return t.name === name; })) {
+        addWarn.textContent = '같은 이름의 팀이 이미 있어요.'; return;
+      }
+      addWarn.textContent = '';
+      if (!Array.isArray(state.teams)) state.teams = [];
+      state.teams.push({ name: name, offsetDays: 0 });
+      saveState();
+      renderTeamSettings();
+      renderToday();
+    });
+    addForm.appendChild(addInput);
+    addForm.appendChild(addConfirmBtn);
+    addForm.appendChild(addWarn);
+    addSection.appendChild(addToggleBtn);
+    addSection.appendChild(addForm);
+    card.appendChild(addSection);
+
+    // 내 팀 이름 변경
+    var changeBtn = document.createElement('button');
+    changeBtn.textContent = '내 팀 이름 변경';
+    changeBtn.style.cssText = 'margin-top:8px;background:none;border:none;font-size:12px;color:#c7c7cc;cursor:pointer;font-family:inherit;padding:4px 0;display:block;';
+    changeBtn.addEventListener('click', function() {
+      state.myTeamName = '';
+      saveState();
+      renderTeamSettings();
+    });
+    card.appendChild(changeBtn);
   }
 
   // ── 루틴 탭 ──────────────────────────────────────────────
@@ -4040,36 +4208,6 @@
     renderToday();
   });
 
-  // ── 팀 이벤트 ────────────────────────────────────────────
-  document.getElementById('btn-team-offset-dec').addEventListener('click', function() {
-    if (!state || !state.cycleDays) return;
-    teamAddOffset = ((teamAddOffset - 1) % state.cycleDays + state.cycleDays) % state.cycleDays;
-    updateTeamOffsetPreview();
-  });
-
-  document.getElementById('btn-team-offset-inc').addEventListener('click', function() {
-    if (!state || !state.cycleDays) return;
-    teamAddOffset = (teamAddOffset + 1) % state.cycleDays;
-    updateTeamOffsetPreview();
-  });
-
-  document.getElementById('btn-team-add').addEventListener('click', function() {
-    const name = document.getElementById('team-name-input').value.trim();
-    const warn = document.getElementById('team-warn');
-    if (!name) { warn.textContent = '팀 이름을 입력해 주세요.'; return; }
-    if ((state.teams || []).some(function(t) { return t.name === name; })) {
-      warn.textContent = '같은 이름의 팀이 이미 있어요.'; return;
-    }
-    warn.textContent = '';
-    if (!Array.isArray(state.teams)) state.teams = [];
-    state.teams.push({ name: name, offsetDays: teamAddOffset });
-    saveState();
-    document.getElementById('team-name-input').value = '';
-    teamAddOffset = 0;
-    updateTeamOffsetPreview();
-    renderTeamList();
-    renderToday();
-  });
 
   // ── 초기화 ───────────────────────────────────────────────
   state = loadState();
