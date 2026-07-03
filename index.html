@@ -1019,34 +1019,28 @@
 
     .grid-cell.other-month { opacity: 0.38; }
 
-    .cell-top-row {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      width: 100%;
-      gap: 2px;
-    }
-
     .cell-date {
       font-size: 13px;
       font-weight: 700;
       color: var(--text-1);
       line-height: 1.2;
       flex-shrink: 0;
+      margin-bottom: 2px;
+      width: 100%;
     }
 
     .grid-cell.today .cell-date { color: #007aff; }
 
-    .cell-shift-name {
-      font-size: 8px;
+    .cell-shift-badge {
+      font-size: 10px;
       font-weight: 600;
-      color: #5e5ce6;
+      border-radius: 4px;
+      padding: 1px 5px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
-      max-width: 60%;
-      text-align: right;
-      flex: 1;
+      width: 100%;
+      box-sizing: border-box;
     }
 
     .cell-dots-row {
@@ -2653,6 +2647,17 @@
     return e ? e.color : null;
   }
 
+  // 근무명 배지(달력 탭 칸 / 팀 달력 칸 공용) 배경·글자색 적용
+  function applyShiftBadgeColor(el, shiftName) {
+    const color = getShiftColor(shiftName);
+    if (color) {
+      el.style.background = 'rgba(' + hexToRgb(color) + ',0.15)';
+      el.style.color = color;
+    } else {
+      el.style.color = 'var(--text-2)';
+    }
+  }
+
   const STORAGE_KEY = 'shiftRoutine';
   let state = null;
 
@@ -3298,27 +3303,19 @@
       const cell = document.createElement('div');
       cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '');
       const { name: shiftName } = getEffectiveShiftName(cellDateStr, dayIdx0);
-      const shiftColor = getShiftColor(shiftName);
-      if (shiftColor) {
-        cell.style.background = 'rgba(' + hexToRgb(shiftColor) + ',0.10)';
-      }
-
-      // 상단 행: 날짜 + 근무유형 이름
-      const topRow = document.createElement('div');
-      topRow.className = 'cell-top-row';
 
       const dateEl = document.createElement('div');
       dateEl.className = 'cell-date';
       dateEl.textContent = date.getDate();
-      topRow.appendChild(dateEl);
+      cell.appendChild(dateEl);
 
       if (shiftName) {
         const shiftEl = document.createElement('div');
-        shiftEl.className = 'cell-shift-name';
+        shiftEl.className = 'cell-shift-badge';
         shiftEl.textContent = shiftName;
-        topRow.appendChild(shiftEl);
+        applyShiftBadgeColor(shiftEl, shiftName);
+        cell.appendChild(shiftEl);
       }
-      cell.appendChild(topRow);
 
       // 점 표시 행: 루틴 카테고리 점 + 일정 점
       const items = dayObj.items || [];
@@ -3971,28 +3968,20 @@
         (isSelected ? ' selected' : '');
 
       const { name: shiftName } = getEffectiveShiftName(cellDateStr, dayIdx0);
-      const shiftColor = getShiftColor(shiftName);
-      if (shiftColor && !isSelected) {
-        cell.style.background = 'rgba(' + hexToRgb(shiftColor) + ',0.10)';
-      }
 
-      // 날짜 + 근무유형 이름 행 (일반 달력과 동일)
-      const topRow = document.createElement('div');
-      topRow.className = 'cell-top-row';
-
+      // 날짜 + 근무명 배지 (일반 달력과 동일)
       const dateEl = document.createElement('div');
       dateEl.className = 'cell-date';
       dateEl.textContent = date.getDate();
-      topRow.appendChild(dateEl);
+      cell.appendChild(dateEl);
 
       if (shiftName) {
         const shiftEl = document.createElement('div');
-        shiftEl.className = 'cell-shift-name';
+        shiftEl.className = 'cell-shift-badge';
         shiftEl.textContent = shiftName;
-        topRow.appendChild(shiftEl);
+        applyShiftBadgeColor(shiftEl, shiftName);
+        cell.appendChild(shiftEl);
       }
-
-      cell.appendChild(topRow);
 
       // 루틴 dots + 이벤트 바 (일반 달력과 동일)
       const items = dayObj.items || [];
@@ -4019,15 +4008,9 @@
         if (bulkSelectedDates.has(cellDateStr)) {
           bulkSelectedDates.delete(cellDateStr);
           cell.classList.remove('selected');
-          if (shiftColor) {
-            cell.style.background = 'rgba(' + hexToRgb(shiftColor) + ',0.10)';
-          } else {
-            cell.style.background = '';
-          }
         } else {
           bulkSelectedDates.add(cellDateStr);
           cell.classList.add('selected');
-          cell.style.background = '';
         }
         updateBulkCount();
       });
@@ -4614,13 +4597,7 @@
         const row = document.createElement('div');
         row.className = 'tcal-team-row';
         row.textContent = team.name + ' ' + (shiftName || '—');
-        const color = getShiftColor(shiftName);
-        if (color) {
-          row.style.background = 'rgba(' + hexToRgb(color) + ',0.15)';
-          row.style.color = color;
-        } else {
-          row.style.color = 'var(--text-2)';
-        }
+        applyShiftBadgeColor(row, shiftName);
         cell.appendChild(row);
       });
 
