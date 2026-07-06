@@ -683,6 +683,29 @@
       flex-shrink: 0;
     }
 
+    .dd-period-toggle-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-2);
+      margin-top: 6px;
+    }
+
+    .dd-period-end-input {
+      width: 100%;
+      margin-top: 6px;
+      padding: 9px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--surface-2);
+      color: var(--text-1);
+      outline: none;
+      box-sizing: border-box;
+    }
+
     .btn-dd-add {
       padding: 9px 14px;
       background: #007aff;
@@ -1109,6 +1132,8 @@
 
     .grid-cell.other-month { opacity: 0.38; }
 
+    .grid-cell.range-pick { box-shadow: inset 0 0 0 2px #007aff; }
+
     .cell-date {
       font-size: 13px;
       font-weight: 700;
@@ -1179,6 +1204,25 @@
       line-height: 1.3;
       color: var(--text-3);
     }
+
+    .cell-period-band {
+      width: 100%;
+      margin-top: 3px;
+      height: 15px;
+      line-height: 15px;
+      background: #5e5ce6;
+      color: #fff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 0 3px;
+      box-sizing: border-box;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+
+    .cell-period-band.band-start { border-radius: 5px 0 0 5px; }
+    .cell-period-band.band-end { border-radius: 0 5px 5px 0; }
 
     .grid-empty-msg {
       grid-column: 1 / -1;
@@ -1929,8 +1973,8 @@
       margin-bottom: 4px;
     }
 
-    /* ── 인박스 / 배치 / 반복 승격 오버레이(공통 바텀시트 패턴) ── */
-    #inbox-overlay, #place-overlay, #promote-overlay {
+    /* ── 인박스 / 배치 / 반복 승격 / 기간 수정 오버레이(공통 바텀시트 패턴) ── */
+    #inbox-overlay, #place-overlay, #promote-overlay, #period-edit-overlay {
       display: none;
       position: fixed;
       inset: 0;
@@ -1940,9 +1984,9 @@
       justify-content: center;
     }
 
-    #inbox-overlay.open, #place-overlay.open, #promote-overlay.open { display: flex; }
+    #inbox-overlay.open, #place-overlay.open, #promote-overlay.open, #period-edit-overlay.open { display: flex; }
 
-    #inbox-panel, #place-panel, #promote-panel {
+    #inbox-panel, #place-panel, #promote-panel, #period-edit-panel {
       background: var(--bg);
       width: 100%;
       max-width: 480px;
@@ -1952,7 +1996,7 @@
       padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0));
     }
 
-    #inbox-panel h2, #place-panel h2, #promote-panel h2 {
+    #inbox-panel h2, #place-panel h2, #promote-panel h2, #period-edit-panel h2 {
       font-size: 16px;
       font-weight: 700;
       color: var(--text-1);
@@ -1993,7 +2037,7 @@
       text-align: center;
     }
 
-    #promote-panel .btn.active {
+    #promote-panel .btn.active, #place-panel .btn.active {
       background: #007aff;
       color: #fff;
       border-color: #007aff;
@@ -2598,6 +2642,11 @@
 <div id="place-overlay">
   <div id="place-panel">
     <h2 id="place-title">언제로 배치할까요?</h2>
+    <div class="btn-row" id="place-mode-row" style="margin-bottom:8px">
+      <button class="btn btn-secondary" id="btn-place-mode-single">하루</button>
+      <button class="btn btn-secondary" id="btn-place-mode-range">기간</button>
+    </div>
+    <div class="onboard-warn" id="place-range-hint" style="display:none;color:var(--text-2);"></div>
     <div class="cal-nav" style="padding:0 0 8px">
       <button class="btn-cal-nav" id="btn-place-cal-prev">‹</button>
       <span id="place-cal-title"></span>
@@ -2653,6 +2702,31 @@
       <button class="btn btn-secondary" id="btn-promote-cancel">취소</button>
       <button class="btn btn-primary" id="btn-promote-confirm" style="display:none">확인</button>
     </div>
+  </div>
+</div>
+
+<!-- ── 기간 할 일 수정 오버레이 ── -->
+<div id="period-edit-overlay">
+  <div id="period-edit-panel">
+    <h2>기간 할 일 수정</h2>
+    <div class="form-group">
+      <label for="pe-text">내용</label>
+      <input type="text" id="pe-text" maxlength="50">
+    </div>
+    <div class="form-group">
+      <label for="pe-start">시작일</label>
+      <input type="date" id="pe-start">
+    </div>
+    <div class="form-group">
+      <label for="pe-end">종료일</label>
+      <input type="date" id="pe-end">
+    </div>
+    <div class="onboard-warn" id="pe-warn"></div>
+    <div class="btn-row" style="padding-top:8px">
+      <button class="btn btn-secondary" id="btn-pe-delete">삭제</button>
+      <button class="btn btn-primary" id="btn-pe-save">저장</button>
+    </div>
+    <button class="btn btn-secondary" id="btn-pe-close" style="margin-top:8px">닫기</button>
   </div>
 </div>
 
@@ -2716,6 +2790,10 @@
         <input type="text" id="dd-event-input" placeholder="일정 추가…" maxlength="50">
         <button class="btn-dd-add" id="btn-dd-add-event">추가</button>
       </div>
+      <label class="dd-period-toggle-label">
+        <input type="checkbox" id="dd-event-period-toggle"> 기간으로 추가
+      </label>
+      <input type="date" id="dd-event-end-input" class="dd-period-end-input" style="display:none">
       <div class="onboard-warn" id="dd-warn"></div>
     </div>
     <div class="btn-row" style="padding-top:4px">
@@ -3133,6 +3211,10 @@
         ev.id = genId('e');
         changed = true;
       }
+      if (!ev.endDate) {
+        ev.endDate = ev.date;
+        changed = true;
+      }
     });
     if (s.themeMode !== 'light' && s.themeMode !== 'dark' && s.themeMode !== 'system') {
       s.themeMode = 'system';
@@ -3181,7 +3263,25 @@
   }
 
   function getEventsForDate(dateStr) {
-    return (state.events || []).filter(function (e) { return e.date === dateStr; });
+    return (state.events || []).filter(function (e) {
+      return e.date <= dateStr && (e.endDate || e.date) >= dateStr;
+    });
+  }
+
+  function isMultiDay(ev) {
+    return !!ev.endDate && ev.endDate !== ev.date;
+  }
+
+  function formatMD(dateStr) {
+    const d = parseLocalDate(dateStr);
+    return (d.getMonth() + 1) + '/' + d.getDate();
+  }
+
+  function eventDisplayText(ev) {
+    if (isMultiDay(ev)) {
+      return ev.text + ' (' + formatMD(ev.date) + '~' + formatMD(ev.endDate) + ')';
+    }
+    return ev.text;
   }
 
   function getEffectiveShiftName(dateStr, dayIdx0) {
@@ -3539,7 +3639,7 @@
 
           const text = document.createElement('span');
           text.className = 'today-event-text';
-          text.textContent = ev.text;
+          text.textContent = eventDisplayText(ev);
           row.appendChild(text);
 
           eventsEl.appendChild(row);
@@ -3576,7 +3676,7 @@
         addBtn.style.cssText = 'padding:4px 8px;border:1.5px solid var(--accent);border-radius:8px;background:none;color:var(--accent);font-size:12px;font-family:inherit;cursor:pointer;';
         addBtn.addEventListener('click', function() {
           if (!Array.isArray(state.events)) state.events = [];
-          state.events.push({ id: genId('e'), date: todayDateStr, text: r.name });
+          state.events.push({ id: genId('e'), date: todayDateStr, endDate: todayDateStr, text: r.name });
           saveState();
           renderToday();
           renderGrid();
@@ -3601,6 +3701,39 @@
       });
     } else {
       remCard.style.display = 'none';
+    }
+  }
+
+  // 기간 할 일은 이어진 띠로, 하루짜리는 기존처럼 텍스트 목록으로 표시
+  function appendEventIndicators(cell, cellDateStr, cellEvents) {
+    const periodEvents = cellEvents.filter(isMultiDay);
+    const singleEvents = cellEvents.filter(function (e) { return !isMultiDay(e); });
+
+    if (periodEvents.length > 0) {
+      const ev = periodEvents[0];
+      const band = document.createElement('div');
+      band.className = 'cell-period-band';
+      if (ev.date === cellDateStr) { band.classList.add('band-start'); band.textContent = ev.text; }
+      if (ev.endDate === cellDateStr) band.classList.add('band-end');
+      cell.appendChild(band);
+    }
+
+    if (singleEvents.length > 0) {
+      const evList = document.createElement('div');
+      evList.className = 'cell-event-list';
+      singleEvents.slice(0, 2).forEach(function (ev) {
+        const evEl = document.createElement('div');
+        evEl.className = 'cell-event-item';
+        evEl.textContent = ev.text;
+        evList.appendChild(evEl);
+      });
+      if (singleEvents.length > 2) {
+        const moreEl = document.createElement('div');
+        moreEl.className = 'cell-event-more';
+        moreEl.textContent = '+' + (singleEvents.length - 2) + '개 더';
+        evList.appendChild(moreEl);
+      }
+      cell.appendChild(evList);
     }
   }
 
@@ -3701,23 +3834,7 @@
         });
         cell.appendChild(dotsRow);
       }
-      if (cellEvents.length > 0) {
-        const evList = document.createElement('div');
-        evList.className = 'cell-event-list';
-        cellEvents.slice(0, 2).forEach(function (ev) {
-          const evEl = document.createElement('div');
-          evEl.className = 'cell-event-item';
-          evEl.textContent = ev.text;
-          evList.appendChild(evEl);
-        });
-        if (cellEvents.length > 2) {
-          const moreEl = document.createElement('div');
-          moreEl.className = 'cell-event-more';
-          moreEl.textContent = '+' + (cellEvents.length - 2) + '개 더';
-          evList.appendChild(moreEl);
-        }
-        cell.appendChild(evList);
-      }
+      appendEventIndicators(cell, cellDateStr, cellEvents);
 
       cell.addEventListener('click', function () { openDayDetail(dayIdx0, cellDateStr); });
       grid.appendChild(cell);
@@ -4090,6 +4207,11 @@
 
     document.getElementById('dd-event-input').value = '';
     document.getElementById('dd-warn').textContent = '';
+    document.getElementById('dd-event-period-toggle').checked = false;
+    const ddEndInput = document.getElementById('dd-event-end-input');
+    ddEndInput.style.display = 'none';
+    ddEndInput.min = dateStr;
+    ddEndInput.value = '';
 
     // 루틴 추가 행 초기화
     const ddCatSel = document.getElementById('dd-routine-cat');
@@ -4133,12 +4255,21 @@
       row.className = 'dd-event-item';
       const text = document.createElement('span');
       text.className = 'dd-event-text';
-      text.textContent = ev.text;
-      const repeatBtn = document.createElement('button');
-      repeatBtn.className = 'btn-dd-repeat-event';
-      repeatBtn.textContent = '반복';
-      repeatBtn.setAttribute('aria-label', '반복으로 전환');
-      repeatBtn.addEventListener('click', function () { openPromote(ev); });
+      text.textContent = eventDisplayText(ev);
+      if (isMultiDay(ev)) {
+        text.style.cursor = 'pointer';
+        text.style.textDecoration = 'underline dotted';
+        text.addEventListener('click', function () { openPeriodEdit(ev); });
+      }
+      row.appendChild(text);
+      if (!isMultiDay(ev)) {
+        const repeatBtn = document.createElement('button');
+        repeatBtn.className = 'btn-dd-repeat-event';
+        repeatBtn.textContent = '반복';
+        repeatBtn.setAttribute('aria-label', '반복으로 전환');
+        repeatBtn.addEventListener('click', function () { openPromote(ev); });
+        row.appendChild(repeatBtn);
+      }
       const del = document.createElement('button');
       del.className = 'btn-dd-del-event';
       del.textContent = '×';
@@ -4152,8 +4283,6 @@
         renderGrid();
         renderToday();
       });
-      row.appendChild(text);
-      row.appendChild(repeatBtn);
       row.appendChild(del);
       el.appendChild(row);
     });
@@ -4236,12 +4365,26 @@
 
   document.getElementById('btn-dd-add-event').addEventListener('click', function () {
     const input = document.getElementById('dd-event-input');
+    const warn = document.getElementById('dd-warn');
     const text = input.value.trim();
-    if (!text) { document.getElementById('dd-warn').textContent = '일정을 입력해 주세요.'; return; }
-    document.getElementById('dd-warn').textContent = '';
+    if (!text) { warn.textContent = '일정을 입력해 주세요.'; return; }
+    const isPeriod = document.getElementById('dd-event-period-toggle').checked;
+    let endDate = detailDateStr;
+    if (isPeriod) {
+      const endInput = document.getElementById('dd-event-end-input').value;
+      if (!endInput || endInput < detailDateStr) {
+        warn.textContent = '종료일을 시작일 이후로 선택해 주세요.';
+        return;
+      }
+      endDate = endInput;
+    }
+    warn.textContent = '';
     if (!Array.isArray(state.events)) { state.events = []; }
-    state.events.push({ id: genId('e'), date: detailDateStr, text: text });
+    state.events.push({ id: genId('e'), date: detailDateStr, endDate: endDate, text: text });
     input.value = '';
+    document.getElementById('dd-event-period-toggle').checked = false;
+    document.getElementById('dd-event-end-input').style.display = 'none';
+    document.getElementById('dd-event-end-input').value = '';
     saveState();
     renderDDEvents();
     renderGrid();
@@ -4250,6 +4393,10 @@
 
   document.getElementById('dd-event-input').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { document.getElementById('btn-dd-add-event').click(); }
+  });
+
+  document.getElementById('dd-event-period-toggle').addEventListener('change', function () {
+    document.getElementById('dd-event-end-input').style.display = this.checked ? '' : 'none';
   });
 
   document.getElementById('btn-dd-add-routine').addEventListener('click', function () {
@@ -4737,6 +4884,26 @@
   let placeCalYear = _now.getFullYear();
   let placeCalMonth = _now.getMonth();
   let placingInboxId = null;
+  let placeMode = 'single';
+  let placeRangeStart = null;
+
+  function setPlaceMode(mode) {
+    placeMode = mode;
+    placeRangeStart = null;
+    document.getElementById('btn-place-mode-single').classList.toggle('active', mode === 'single');
+    document.getElementById('btn-place-mode-range').classList.toggle('active', mode === 'range');
+    const hint = document.getElementById('place-range-hint');
+    if (mode === 'range') {
+      hint.style.display = '';
+      hint.textContent = '시작일을 선택하세요.';
+    } else {
+      hint.style.display = 'none';
+    }
+    renderPlaceCal();
+  }
+
+  document.getElementById('btn-place-mode-single').addEventListener('click', function () { setPlaceMode('single'); });
+  document.getElementById('btn-place-mode-range').addEventListener('click', function () { setPlaceMode('range'); });
 
   function openPlace(inboxId) {
     if (!state || !state.cycleDays || !state.baseDate) {
@@ -4747,13 +4914,14 @@
     const today = new Date();
     placeCalYear = today.getFullYear();
     placeCalMonth = today.getMonth();
-    renderPlaceCal();
+    setPlaceMode('single');
     document.getElementById('place-overlay').classList.add('open');
   }
 
   function closePlace() {
     document.getElementById('place-overlay').classList.remove('open');
     placingInboxId = null;
+    placeRangeStart = null;
   }
 
   function renderPlaceCal() {
@@ -4799,7 +4967,8 @@
       const dayIdx0 = dayIndex0ForDate(cellDateStr);
 
       const cell = document.createElement('div');
-      cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '');
+      cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '') +
+        (placeMode === 'range' && placeRangeStart === cellDateStr ? ' range-pick' : '');
 
       const dateEl = document.createElement('div');
       dateEl.className = 'cell-date';
@@ -4818,27 +4987,39 @@
       }
 
       cell.addEventListener('click', function () {
-        placeInboxItem(placingInboxId, cellDateStr);
+        if (placeMode === 'single') {
+          placeInboxItem(placingInboxId, cellDateStr);
+          return;
+        }
+        if (placeRangeStart === null) {
+          placeRangeStart = cellDateStr;
+          document.getElementById('place-range-hint').textContent = '종료일을 선택하세요.';
+          renderPlaceCal();
+          return;
+        }
+        const lo = placeRangeStart < cellDateStr ? placeRangeStart : cellDateStr;
+        const hi = placeRangeStart < cellDateStr ? cellDateStr : placeRangeStart;
+        placeInboxItem(placingInboxId, lo, hi);
       });
 
       grid.appendChild(cell);
     });
   }
 
-  function placeInboxItem(inboxId, dateStr) {
+  function placeInboxItem(inboxId, dateStr, endDateStr) {
     const idx = (state.inbox || []).findIndex(function (it) { return it.id === inboxId; });
     if (idx === -1) return;
     const item = state.inbox[idx];
     state.inbox.splice(idx, 1);
     if (!Array.isArray(state.events)) state.events = [];
-    state.events.push({ id: genId('e'), date: dateStr, text: item.text, done: false });
+    state.events.push({ id: genId('e'), date: dateStr, endDate: endDateStr || dateStr, text: item.text, done: false });
     saveState();
     closePlace();
     renderInboxList();
     renderInboxBadge();
     renderToday();
     renderGrid();
-    if (detailDateStr === dateStr) renderDDEvents();
+    renderDDEvents();
   }
 
   document.getElementById('btn-place-cancel').addEventListener('click', closePlace);
@@ -4996,6 +5177,56 @@
     renderDDEvents();
     if (detailDayIdx0 !== null) renderDDRoutines(state.days[detailDayIdx0]);
     renderRoutine();
+    renderGrid();
+    renderToday();
+  });
+
+  // ── 기간 할 일 수정 ──────────────────────────────────────────
+  let periodEditingId = null;
+
+  function openPeriodEdit(ev) {
+    periodEditingId = ev.id;
+    document.getElementById('pe-text').value = ev.text;
+    document.getElementById('pe-start').value = ev.date;
+    document.getElementById('pe-end').value = ev.endDate;
+    document.getElementById('pe-warn').textContent = '';
+    document.getElementById('period-edit-overlay').classList.add('open');
+  }
+
+  function closePeriodEdit() {
+    document.getElementById('period-edit-overlay').classList.remove('open');
+    periodEditingId = null;
+  }
+
+  document.getElementById('btn-pe-close').addEventListener('click', closePeriodEdit);
+  document.getElementById('period-edit-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closePeriodEdit();
+  });
+
+  document.getElementById('btn-pe-save').addEventListener('click', function () {
+    const warn = document.getElementById('pe-warn');
+    const text = document.getElementById('pe-text').value.trim();
+    const start = document.getElementById('pe-start').value;
+    const end = document.getElementById('pe-end').value;
+    if (!text) { warn.textContent = '내용을 입력해 주세요.'; return; }
+    if (!start || !end || end < start) { warn.textContent = '종료일은 시작일 이후로 선택해 주세요.'; return; }
+    const ev = (state.events || []).find(function (e) { return e.id === periodEditingId; });
+    if (!ev) { closePeriodEdit(); return; }
+    ev.text = text;
+    ev.date = start;
+    ev.endDate = end;
+    saveState();
+    closePeriodEdit();
+    renderDDEvents();
+    renderGrid();
+    renderToday();
+  });
+
+  document.getElementById('btn-pe-delete').addEventListener('click', function () {
+    state.events = (state.events || []).filter(function (e) { return e.id !== periodEditingId; });
+    saveState();
+    closePeriodEdit();
+    renderDDEvents();
     renderGrid();
     renderToday();
   });
@@ -5810,7 +6041,7 @@
       const targetDate = dateInput.value;
       if (!targetDate) return;
       if (!Array.isArray(state.events)) state.events = [];
-      state.events.push({ id: genId('e'), date: targetDate, text: text });
+      state.events.push({ id: genId('e'), date: targetDate, endDate: targetDate, text: text });
       saveState();
       moveRow.remove();
       renderGrid();
