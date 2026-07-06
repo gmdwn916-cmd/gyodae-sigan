@@ -3940,7 +3940,15 @@
       cur.setDate(cur.getDate() + 1);
     }
     bulkShiftSelectedDates = set;
-    renderGrid();
+    updateBulkShiftSelectionUI();
+  }
+
+  // 드래그 도중에는 화면을 통째로 다시 그리지 않고 선택 표시만 갱신한다.
+  // (달력 전체를 다시 그리면 손가락이 눌린 칸 자체가 없어져서 손을 뗄 때 신호가 전달 안 됨)
+  function updateBulkShiftSelectionUI() {
+    document.querySelectorAll('#day-grid .grid-cell[data-date-str]').forEach(function (cell) {
+      cell.classList.toggle('bulk-shift-selected', bulkShiftSelectedDates.has(cell.dataset.dateStr));
+    });
   }
 
   function openBulkShiftSheet() {
@@ -3961,6 +3969,8 @@
 
   document.getElementById('btn-bulk-shift-cancel').addEventListener('click', closeBulkShiftSheet);
   document.getElementById('bulk-shift-overlay').addEventListener('click', function (e) {
+    // 손을 뗀 직후 화면이 만들어내는 가짜 클릭이 배경을 눌러 창을 즉시 닫아버리는 것 방지
+    if (bulkShiftSuppressClick) { bulkShiftSuppressClick = false; return; }
     if (e.target === this) closeBulkShiftSheet();
   });
 
