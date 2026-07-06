@@ -145,24 +145,96 @@
     .tab-content {
       flex: 1;
       display: none;
-      padding: 20px 16px 100px;
+      padding: 20px 16px 156px;
       overflow-y: auto;
     }
 
     .tab-content.active { display: block; }
 
-    /* ── Bottom Nav ── */
-    nav {
+    /* ── 하단 고정 영역(빠른 추가 바 + 내비게이션) ── */
+    #bottom-fixed {
       position: fixed;
       bottom: 0;
       left: 50%;
       transform: translateX(-50%);
       width: 100%;
       max-width: 480px;
+      z-index: 20;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── 전역 빠른 추가 바 ── */
+    #quick-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--surface);
+      border-top: 1px solid var(--line);
+    }
+
+    #quick-add-input {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12px;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--surface-2);
+      color: var(--text-1);
+      outline: none;
+    }
+
+    #btn-quick-add, #btn-inbox-open {
+      flex-shrink: 0;
+      width: 38px;
+      height: 38px;
+      border-radius: 10px;
+      font-family: inherit;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #btn-quick-add {
+      border: none;
+      background: #007aff;
+      color: #fff;
+      font-size: 20px;
+      font-weight: 600;
+    }
+
+    #btn-inbox-open {
+      position: relative;
+      border: 1.5px solid var(--line);
+      background: var(--surface-2);
+      font-size: 17px;
+    }
+
+    .inbox-badge {
+      position: absolute;
+      top: -4px;
+      right: -4px;
+      min-width: 16px;
+      height: 16px;
+      padding: 0 3px;
+      border-radius: 999px;
+      background: #ff3b30;
+      color: #fff;
+      font-size: 10px;
+      font-weight: 700;
+      line-height: 16px;
+      text-align: center;
+    }
+
+    /* ── Bottom Nav ── */
+    nav {
       background: var(--surface);
       border-top: 1px solid var(--line);
       display: flex;
-      z-index: 20;
       padding-bottom: env(safe-area-inset-bottom, 0);
     }
 
@@ -544,6 +616,21 @@
     }
 
     .btn-dd-del-event:active { color: #ff3b30; }
+
+    .btn-dd-repeat-event {
+      background: none;
+      border: 1.5px solid var(--line);
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      cursor: pointer;
+      padding: 3px 8px;
+      font-family: inherit;
+      flex-shrink: 0;
+    }
+
+    .btn-dd-repeat-event:active { color: #007aff; border-color: #007aff; }
 
     .dd-routine-hint {
       font-size: 11px;
@@ -1067,6 +1154,30 @@
       border-radius: 1.5px;
       background: #ff9500;
       margin-top: 4px;
+    }
+
+    .cell-event-list {
+      width: 100%;
+      margin-top: 3px;
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .cell-event-item {
+      font-size: 9px;
+      line-height: 1.3;
+      color: #ff9500;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      width: 100%;
+    }
+
+    .cell-event-more {
+      font-size: 9px;
+      line-height: 1.3;
+      color: var(--text-3);
     }
 
     .grid-empty-msg {
@@ -1818,6 +1929,105 @@
       margin-bottom: 4px;
     }
 
+    /* ── 인박스 / 배치 / 반복 승격 오버레이(공통 바텀시트 패턴) ── */
+    #inbox-overlay, #place-overlay, #promote-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 45;
+      align-items: flex-end;
+      justify-content: center;
+    }
+
+    #inbox-overlay.open, #place-overlay.open, #promote-overlay.open { display: flex; }
+
+    #inbox-panel, #place-panel, #promote-panel {
+      background: var(--bg);
+      width: 100%;
+      max-width: 480px;
+      border-radius: 20px 20px 0 0;
+      max-height: 80vh;
+      overflow-y: auto;
+      padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0));
+    }
+
+    #inbox-panel h2, #place-panel h2, #promote-panel h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 14px;
+    }
+
+    .inbox-item-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--divider);
+      cursor: pointer;
+    }
+
+    .inbox-item-row:last-child { border-bottom: none; }
+
+    .inbox-item-text {
+      flex: 1;
+      font-size: 15px;
+      color: var(--text-1);
+    }
+
+    .inbox-item-del {
+      background: none;
+      border: none;
+      font-size: 18px;
+      color: var(--text-3);
+      cursor: pointer;
+      padding: 0 4px;
+      font-family: inherit;
+    }
+
+    .inbox-empty {
+      font-size: 14px;
+      color: var(--text-3);
+      padding: 8px 0;
+      text-align: center;
+    }
+
+    #promote-panel .btn.active {
+      background: #007aff;
+      color: #fff;
+      border-color: #007aff;
+    }
+
+    .promote-weekday-picker {
+      display: flex;
+      gap: 6px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .promote-weekday-chip {
+      padding: 6px 10px;
+      border: 1.5px solid var(--line);
+      border-radius: 999px;
+      font-size: 13px;
+      color: var(--text-1);
+      background: var(--surface-2);
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .promote-weekday-chip.selected {
+      background: #007aff;
+      border-color: #007aff;
+      color: #fff;
+    }
+
+    #promote-manual-grid-wrap {
+      max-height: 40vh;
+      overflow-y: auto;
+    }
+
     .dd-shift-view {
       display: flex;
       align-items: center;
@@ -2327,6 +2537,14 @@
     </div>
   </div>
 
+  <!-- ── 하단 고정 영역 ── -->
+  <div id="bottom-fixed">
+  <!-- ── 전역 빠른 추가 바 ── -->
+  <div id="quick-bar">
+    <input type="text" id="quick-add-input" placeholder="할 일이나 루틴을 입력하세요…" maxlength="50">
+    <button id="btn-quick-add" aria-label="추가">+</button>
+    <button id="btn-inbox-open" aria-label="미배치">📥<span id="inbox-badge" class="inbox-badge" style="display:none">0</span></button>
+  </div>
   <!-- ── 하단 내비게이션 ── -->
   <nav>
     <button id="nav-routine" onclick="switchTab('routine')">
@@ -2362,6 +2580,80 @@
       설정
     </button>
   </nav>
+  </div>
+</div>
+
+<!-- ── 인박스(미배치) 오버레이 ── -->
+<div id="inbox-overlay">
+  <div id="inbox-panel">
+    <h2>미배치</h2>
+    <div id="inbox-list"></div>
+    <div class="btn-row" style="padding-top:4px">
+      <button class="btn btn-secondary" id="btn-inbox-close">닫기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 배치 날짜 선택 오버레이 ── -->
+<div id="place-overlay">
+  <div id="place-panel">
+    <h2 id="place-title">언제로 배치할까요?</h2>
+    <div class="cal-nav" style="padding:0 0 8px">
+      <button class="btn-cal-nav" id="btn-place-cal-prev">‹</button>
+      <span id="place-cal-title"></span>
+      <button class="btn-cal-nav" id="btn-place-cal-next">›</button>
+    </div>
+    <div class="grid-header" id="place-grid-header"></div>
+    <div id="place-day-grid-wrap">
+      <div class="day-grid" id="place-cal-grid"></div>
+    </div>
+    <div class="btn-row" style="padding-top:8px">
+      <button class="btn btn-secondary" id="btn-place-cancel">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 반복 승격 오버레이 ── -->
+<div id="promote-overlay">
+  <div id="promote-panel">
+    <h2>어떤 날마다 반복할까요?</h2>
+    <div class="btn-row" id="promote-mode-row">
+      <button class="btn btn-secondary" id="btn-promote-mode-shift">근무로 고르기</button>
+      <button class="btn btn-secondary" id="btn-promote-mode-weekday">요일로 고르기</button>
+      <button class="btn btn-secondary" id="btn-promote-mode-manual">달력에서 선택</button>
+    </div>
+
+    <div id="promote-shift-section" style="display:none">
+      <div class="form-group">
+        <label for="promote-shift-name">근무 조건</label>
+        <select id="promote-shift-name"></select>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-secondary" id="btn-promote-offset-0">이 날마다</button>
+        <button class="btn btn-secondary" id="btn-promote-offset-1">다음날마다</button>
+      </div>
+      <label style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);margin-top:10px;">
+        <input type="checkbox" id="promote-shift-weekday-toggle"> 요일 조건 추가
+      </label>
+      <div id="promote-shift-weekday-picker" class="promote-weekday-picker" style="display:none"></div>
+    </div>
+
+    <div id="promote-weekday-section" style="display:none">
+      <div class="promote-weekday-picker" id="promote-weekday-picker"></div>
+    </div>
+
+    <div id="promote-manual-section" style="display:none">
+      <div id="promote-manual-grid-wrap">
+        <div id="promote-manual-grid" class="rd-day-grid"></div>
+      </div>
+    </div>
+
+    <div class="onboard-warn" id="promote-warn"></div>
+    <div class="btn-row" style="padding-top:8px">
+      <button class="btn btn-secondary" id="btn-promote-cancel">취소</button>
+      <button class="btn btn-primary" id="btn-promote-confirm" style="display:none">확인</button>
+    </div>
+  </div>
 </div>
 
 <!-- ── Day 편집 바텀시트 ── -->
@@ -2732,6 +3024,10 @@
     return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
 
+  function genId(prefix) {
+    return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  }
+
   function populateTriggerSelect(selectEl, currentId) {
     if (!selectEl) return;
     selectEl.innerHTML = '';
@@ -2767,7 +3063,7 @@
 
   function applyShiftPattern(n, pattern, baseDate) {
     const cycleDays = n * 7;
-    if (!state) { state = { cycleDays: 0, baseDate: '', days: [], events: [], shiftColors: {}, shiftOverrides: [], dayOverrides: [], weekStart: 0 }; }
+    if (!state) { state = { cycleDays: 0, baseDate: '', days: [], events: [], inbox: [], shiftColors: {}, shiftOverrides: [], dayOverrides: [], weekStart: 0 }; }
     if (!Array.isArray(state.events)) { state.events = []; }
     if (!state.shiftColors) { state.shiftColors = {}; }
     state.days = resizeDays(state.days, cycleDays);
@@ -2828,6 +3124,16 @@
       s.triggers = [];
       changed = true;
     }
+    if (!Array.isArray(s.inbox)) {
+      s.inbox = [];
+      changed = true;
+    }
+    s.events.forEach(function(ev) {
+      if (!ev.id) {
+        ev.id = genId('e');
+        changed = true;
+      }
+    });
     if (s.themeMode !== 'light' && s.themeMode !== 'dark' && s.themeMode !== 'system') {
       s.themeMode = 'system';
       changed = true;
@@ -2906,12 +3212,64 @@
   }
 
   // 0-based index 반환 / 미설정이면 null
-  function calcTodayIdx() {
+  function dayIndex0ForDate(dateStr) {
     if (!state || !state.cycleDays || !state.baseDate) return null;
     const baseMid = parseLocalDate(state.baseDate);
-    const todayMid = todayMidnight();
-    const diff = Math.round((todayMid - baseMid) / 86400000);
+    const dateMid = parseLocalDate(dateStr);
+    const diff = Math.round((dateMid - baseMid) / 86400000);
     return ((diff % state.cycleDays) + state.cycleDays) % state.cycleDays;
+  }
+
+  function calcTodayIdx() {
+    if (!state || !state.cycleDays || !state.baseDate) return null;
+    return dayIndex0ForDate(formatDateStr(todayMidnight()));
+  }
+
+  // idx0의 요일(0=일…6=토). cycleDays가 항상 7의 배수라 주기 내내 고정된다.
+  function weekdayForDayIndex(idx0) {
+    const baseMid = parseLocalDate(state.baseDate);
+    const d = new Date(baseMid.getFullYear(), baseMid.getMonth(), baseMid.getDate() + idx0);
+    return d.getDay();
+  }
+
+  // rule 타입별로 일치하는 day-array index(0-based) 목록 반환
+  function computeIndicesForRule(rule) {
+    if (!state || !state.cycleDays) return [];
+    const n = state.cycleDays;
+    if (rule.type === 'weekday') {
+      const wds = new Set(rule.weekdays || []);
+      const result = [];
+      for (let i = 0; i < n; i++) {
+        if (wds.has(weekdayForDayIndex(i))) result.push(i);
+      }
+      return result;
+    }
+    if (rule.type === 'shift') {
+      const names = new Set(rule.shiftNames || []);
+      const offset = rule.offset || 0;
+      const wds = rule.weekdays && rule.weekdays.length ? new Set(rule.weekdays) : null;
+      const result = [];
+      for (let i = 0; i < n; i++) {
+        const srcIdx = ((i - offset) % n + n) % n;
+        const srcName = state.days[srcIdx] && state.days[srcIdx].shiftType.name;
+        if (!names.has(srcName)) continue;
+        if (wds && !wds.has(weekdayForDayIndex(i))) continue;
+        result.push(i);
+      }
+      return result;
+    }
+    return [];
+  }
+
+  // 계산된 인덱스들의 day.items에 항목 추가(중복 방지)
+  function addRoutineFromRule(text, category, rule, indices) {
+    indices.forEach(function(i) {
+      const day = state.days[i];
+      if (!Array.isArray(day.items)) day.items = [];
+      if (!day.items.some(function(it) { return it.text === text; })) {
+        day.items.push({ text: text, category: category || 'etc', rule: rule });
+      }
+    });
   }
 
   // ── 탭 전환 ──────────────────────────────────────────────
@@ -3218,7 +3576,7 @@
         addBtn.style.cssText = 'padding:4px 8px;border:1.5px solid var(--accent);border-radius:8px;background:none;color:var(--accent);font-size:12px;font-family:inherit;cursor:pointer;';
         addBtn.addEventListener('click', function() {
           if (!Array.isArray(state.events)) state.events = [];
-          state.events.push({ date: todayDateStr, text: r.name });
+          state.events.push({ id: genId('e'), date: todayDateStr, text: r.name });
           saveState();
           renderToday();
           renderGrid();
@@ -3344,9 +3702,21 @@
         cell.appendChild(dotsRow);
       }
       if (cellEvents.length > 0) {
-        const evBar = document.createElement('div');
-        evBar.className = 'cell-event-bar';
-        cell.appendChild(evBar);
+        const evList = document.createElement('div');
+        evList.className = 'cell-event-list';
+        cellEvents.slice(0, 2).forEach(function (ev) {
+          const evEl = document.createElement('div');
+          evEl.className = 'cell-event-item';
+          evEl.textContent = ev.text;
+          evList.appendChild(evEl);
+        });
+        if (cellEvents.length > 2) {
+          const moreEl = document.createElement('div');
+          moreEl.className = 'cell-event-more';
+          moreEl.textContent = '+' + (cellEvents.length - 2) + '개 더';
+          evList.appendChild(moreEl);
+        }
+        cell.appendChild(evList);
       }
 
       cell.addEventListener('click', function () { openDayDetail(dayIdx0, cellDateStr); });
@@ -3764,13 +4134,18 @@
       const text = document.createElement('span');
       text.className = 'dd-event-text';
       text.textContent = ev.text;
+      const repeatBtn = document.createElement('button');
+      repeatBtn.className = 'btn-dd-repeat-event';
+      repeatBtn.textContent = '반복';
+      repeatBtn.setAttribute('aria-label', '반복으로 전환');
+      repeatBtn.addEventListener('click', function () { openPromote(ev); });
       const del = document.createElement('button');
       del.className = 'btn-dd-del-event';
       del.textContent = '×';
       del.setAttribute('aria-label', '삭제');
       del.addEventListener('click', function () {
         state.events = state.events.filter(function (e) {
-          return !(e.date === detailDateStr && e.text === ev.text);
+          return e.id ? e.id !== ev.id : !(e.date === detailDateStr && e.text === ev.text);
         });
         saveState();
         renderDDEvents();
@@ -3778,6 +4153,7 @@
         renderToday();
       });
       row.appendChild(text);
+      row.appendChild(repeatBtn);
       row.appendChild(del);
       el.appendChild(row);
     });
@@ -3864,7 +4240,7 @@
     if (!text) { document.getElementById('dd-warn').textContent = '일정을 입력해 주세요.'; return; }
     document.getElementById('dd-warn').textContent = '';
     if (!Array.isArray(state.events)) { state.events = []; }
-    state.events.push({ date: detailDateStr, text: text });
+    state.events.push({ id: genId('e'), date: detailDateStr, text: text });
     input.value = '';
     saveState();
     renderDDEvents();
@@ -4281,6 +4657,348 @@
       el.appendChild(row);
     });
   }
+
+  // ── 넣기(전역 빠른 추가) + 미배치(인박스) ──────────────────
+  function renderInboxBadge() {
+    const badge = document.getElementById('inbox-badge');
+    const n = (state && Array.isArray(state.inbox)) ? state.inbox.length : 0;
+    if (n > 0) {
+      badge.textContent = n > 99 ? '99+' : String(n);
+      badge.style.display = '';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function submitQuickAdd() {
+    const input = document.getElementById('quick-add-input');
+    const text = input.value.trim();
+    if (!text) return;
+    if (!Array.isArray(state.inbox)) state.inbox = [];
+    state.inbox.push({ id: genId('i'), text: text, createdAt: Date.now() });
+    input.value = '';
+    saveState();
+    renderInboxBadge();
+  }
+
+  document.getElementById('btn-quick-add').addEventListener('click', submitQuickAdd);
+  document.getElementById('quick-add-input').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') submitQuickAdd();
+  });
+
+  function renderInboxList() {
+    const el = document.getElementById('inbox-list');
+    el.innerHTML = '';
+    const inbox = state.inbox || [];
+    if (inbox.length === 0) {
+      el.innerHTML = '<div class="inbox-empty">미배치 항목이 없어요.</div>';
+      return;
+    }
+    inbox.forEach(function (item) {
+      const row = document.createElement('div');
+      row.className = 'inbox-item-row';
+      const text = document.createElement('span');
+      text.className = 'inbox-item-text';
+      text.textContent = item.text;
+      const del = document.createElement('button');
+      del.className = 'inbox-item-del';
+      del.textContent = '×';
+      del.setAttribute('aria-label', '삭제');
+      del.addEventListener('click', function (e) {
+        e.stopPropagation();
+        state.inbox = state.inbox.filter(function (it) { return it.id !== item.id; });
+        saveState();
+        renderInboxList();
+        renderInboxBadge();
+      });
+      row.appendChild(text);
+      row.appendChild(del);
+      row.addEventListener('click', function () { openPlace(item.id); });
+      el.appendChild(row);
+    });
+  }
+
+  function openInbox() {
+    renderInboxList();
+    document.getElementById('inbox-overlay').classList.add('open');
+  }
+
+  function closeInbox() {
+    document.getElementById('inbox-overlay').classList.remove('open');
+  }
+
+  document.getElementById('btn-inbox-open').addEventListener('click', openInbox);
+  document.getElementById('btn-inbox-close').addEventListener('click', closeInbox);
+  document.getElementById('inbox-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closeInbox();
+  });
+
+  // ── 배치: 인박스 항목에 날짜 지정 ───────────────────────────
+  let placeCalYear = _now.getFullYear();
+  let placeCalMonth = _now.getMonth();
+  let placingInboxId = null;
+
+  function openPlace(inboxId) {
+    if (!state || !state.cycleDays || !state.baseDate) {
+      alert('먼저 설정 탭에서 교대 주기를 설정해 주세요.');
+      return;
+    }
+    placingInboxId = inboxId;
+    const today = new Date();
+    placeCalYear = today.getFullYear();
+    placeCalMonth = today.getMonth();
+    renderPlaceCal();
+    document.getElementById('place-overlay').classList.add('open');
+  }
+
+  function closePlace() {
+    document.getElementById('place-overlay').classList.remove('open');
+    placingInboxId = null;
+  }
+
+  function renderPlaceCal() {
+    document.getElementById('place-cal-title').textContent = placeCalYear + '년 ' + (placeCalMonth + 1) + '월';
+
+    const weekStart = (state && state.weekStart === 1) ? 1 : 0;
+    const headerEl = document.getElementById('place-grid-header');
+    headerEl.innerHTML = '';
+    const HEADERS = weekStart === 1
+      ? ['일','월','화','수','목','금','토']
+      : ['월','화','수','목','금','토','일'];
+    HEADERS.forEach(function (h, i) {
+      const cell = document.createElement('div');
+      cell.className = 'grid-header-cell';
+      if (weekStart === 0 && i === 5) cell.classList.add('sat');
+      else if (weekStart === 0 && i === 6) cell.classList.add('sun');
+      else if (weekStart === 1 && i === 0) cell.classList.add('sun');
+      else if (weekStart === 1 && i === 6) cell.classList.add('sat');
+      cell.textContent = h;
+      headerEl.appendChild(cell);
+    });
+
+    const grid = document.getElementById('place-cal-grid');
+    grid.innerHTML = '';
+
+    const todayMid = todayMidnight();
+    const firstOfMonth = new Date(placeCalYear, placeCalMonth, 1);
+    const daysInMonth = new Date(placeCalYear, placeCalMonth + 1, 0).getDate();
+    const startWd = weekStart === 1
+      ? firstOfMonth.getDay()
+      : (firstOfMonth.getDay() + 6) % 7;
+
+    const cells = [];
+    for (let d = 1 - startWd; d <= 0; d++) { cells.push({ date: new Date(placeCalYear, placeCalMonth, d), inMonth: false }); }
+    for (let d = 1; d <= daysInMonth; d++) { cells.push({ date: new Date(placeCalYear, placeCalMonth, d), inMonth: true }); }
+    const trailing = (7 - (cells.length % 7)) % 7;
+    for (let d = 1; d <= trailing; d++) { cells.push({ date: new Date(placeCalYear, placeCalMonth + 1, d), inMonth: false }); }
+
+    cells.forEach(function ({ date, inMonth }) {
+      const dateMid = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const isToday = dateMid.getTime() === todayMid.getTime();
+      const cellDateStr = formatDateStr(dateMid);
+      const dayIdx0 = dayIndex0ForDate(cellDateStr);
+
+      const cell = document.createElement('div');
+      cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '');
+
+      const dateEl = document.createElement('div');
+      dateEl.className = 'cell-date';
+      dateEl.textContent = date.getDate();
+      cell.appendChild(dateEl);
+
+      if (dayIdx0 !== null) {
+        const { name: shiftName } = getEffectiveShiftName(cellDateStr, dayIdx0);
+        if (shiftName) {
+          const shiftEl = document.createElement('div');
+          shiftEl.className = 'cell-shift-badge';
+          shiftEl.textContent = shiftName;
+          applyShiftBadgeColor(shiftEl, shiftName);
+          cell.appendChild(shiftEl);
+        }
+      }
+
+      cell.addEventListener('click', function () {
+        placeInboxItem(placingInboxId, cellDateStr);
+      });
+
+      grid.appendChild(cell);
+    });
+  }
+
+  function placeInboxItem(inboxId, dateStr) {
+    const idx = (state.inbox || []).findIndex(function (it) { return it.id === inboxId; });
+    if (idx === -1) return;
+    const item = state.inbox[idx];
+    state.inbox.splice(idx, 1);
+    if (!Array.isArray(state.events)) state.events = [];
+    state.events.push({ id: genId('e'), date: dateStr, text: item.text, done: false });
+    saveState();
+    closePlace();
+    renderInboxList();
+    renderInboxBadge();
+    renderToday();
+    renderGrid();
+    if (detailDateStr === dateStr) renderDDEvents();
+  }
+
+  document.getElementById('btn-place-cancel').addEventListener('click', closePlace);
+  document.getElementById('place-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closePlace();
+  });
+  document.getElementById('btn-place-cal-prev').addEventListener('click', function () {
+    placeCalMonth--;
+    if (placeCalMonth < 0) { placeCalMonth = 11; placeCalYear--; }
+    renderPlaceCal();
+  });
+  document.getElementById('btn-place-cal-next').addEventListener('click', function () {
+    placeCalMonth++;
+    if (placeCalMonth > 11) { placeCalMonth = 0; placeCalYear++; }
+    renderPlaceCal();
+  });
+
+  // ── 반복 승격: 배치된 할 일 → 루틴 규칙 지정 ─────────────────
+  let promoteEvent = null;
+  let promoteMode = null;
+  let promoteOffset = 0;
+  let promoteManualSelected = new Set();
+
+  function renderWeekdayPicker(containerEl, selectedSet) {
+    containerEl.innerHTML = '';
+    const DOW_KR = ['일','월','화','수','목','금','토'];
+    DOW_KR.forEach(function (label, i) {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'promote-weekday-chip' + (selectedSet.has(i) ? ' selected' : '');
+      chip.textContent = label;
+      chip.dataset.wd = i;
+      chip.addEventListener('click', function () { chip.classList.toggle('selected'); });
+      containerEl.appendChild(chip);
+    });
+  }
+
+  function selectedWeekdaysFrom(containerEl) {
+    return Array.from(containerEl.querySelectorAll('.promote-weekday-chip.selected'))
+      .map(function (c) { return parseInt(c.dataset.wd, 10); });
+  }
+
+  function setPromoteOffset(v) {
+    promoteOffset = v;
+    document.getElementById('btn-promote-offset-0').classList.toggle('active', v === 0);
+    document.getElementById('btn-promote-offset-1').classList.toggle('active', v === 1);
+  }
+
+  function setPromoteMode(mode) {
+    promoteMode = mode;
+    document.getElementById('promote-shift-section').style.display = mode === 'shift' ? '' : 'none';
+    document.getElementById('promote-weekday-section').style.display = mode === 'weekday' ? '' : 'none';
+    document.getElementById('promote-manual-section').style.display = mode === 'manual' ? '' : 'none';
+    document.getElementById('btn-promote-confirm').style.display = '';
+    document.getElementById('promote-warn').textContent = '';
+    document.getElementById('btn-promote-mode-shift').classList.toggle('active', mode === 'shift');
+    document.getElementById('btn-promote-mode-weekday').classList.toggle('active', mode === 'weekday');
+    document.getElementById('btn-promote-mode-manual').classList.toggle('active', mode === 'manual');
+  }
+
+  function openPromote(ev) {
+    promoteEvent = ev;
+    promoteMode = null;
+    promoteOffset = 0;
+    promoteManualSelected = new Set();
+    const evIdx0 = dayIndex0ForDate(ev.date);
+    if (evIdx0 !== null) promoteManualSelected.add(evIdx0);
+    const evWeekday = parseLocalDate(ev.date).getDay();
+
+    document.getElementById('promote-warn').textContent = '';
+    document.getElementById('promote-shift-section').style.display = 'none';
+    document.getElementById('promote-weekday-section').style.display = 'none';
+    document.getElementById('promote-manual-section').style.display = 'none';
+    document.getElementById('btn-promote-confirm').style.display = 'none';
+    document.querySelectorAll('#promote-mode-row .btn').forEach(function (b) { b.classList.remove('active'); });
+
+    const shiftSel = document.getElementById('promote-shift-name');
+    shiftSel.innerHTML = '';
+    const names = [];
+    state.days.forEach(function (d) {
+      const n = d.shiftType.name;
+      if (n && names.indexOf(n) === -1) names.push(n);
+    });
+    names.forEach(function (n) {
+      const opt = document.createElement('option');
+      opt.value = n; opt.textContent = n;
+      shiftSel.appendChild(opt);
+    });
+    setPromoteOffset(0);
+    document.getElementById('promote-shift-weekday-toggle').checked = false;
+    document.getElementById('promote-shift-weekday-picker').style.display = 'none';
+
+    renderWeekdayPicker(document.getElementById('promote-weekday-picker'), new Set([evWeekday]));
+    renderWeekdayPicker(document.getElementById('promote-shift-weekday-picker'), new Set([evWeekday]));
+    renderDayIndexGrid(document.getElementById('promote-manual-grid'), promoteManualSelected);
+
+    document.getElementById('promote-overlay').classList.add('open');
+  }
+
+  function closePromote() {
+    document.getElementById('promote-overlay').classList.remove('open');
+    promoteEvent = null;
+  }
+
+  document.getElementById('btn-promote-mode-shift').addEventListener('click', function () { setPromoteMode('shift'); });
+  document.getElementById('btn-promote-mode-weekday').addEventListener('click', function () { setPromoteMode('weekday'); });
+  document.getElementById('btn-promote-mode-manual').addEventListener('click', function () { setPromoteMode('manual'); });
+  document.getElementById('btn-promote-offset-0').addEventListener('click', function () { setPromoteOffset(0); });
+  document.getElementById('btn-promote-offset-1').addEventListener('click', function () { setPromoteOffset(1); });
+  document.getElementById('promote-shift-weekday-toggle').addEventListener('change', function () {
+    document.getElementById('promote-shift-weekday-picker').style.display = this.checked ? '' : 'none';
+  });
+  document.getElementById('btn-promote-cancel').addEventListener('click', closePromote);
+  document.getElementById('promote-overlay').addEventListener('click', function (e) {
+    if (e.target === this) closePromote();
+  });
+
+  document.getElementById('btn-promote-confirm').addEventListener('click', function () {
+    const warn = document.getElementById('promote-warn');
+    warn.textContent = '';
+    let rule = null;
+    let indices = [];
+
+    if (promoteMode === 'shift') {
+      const shiftName = document.getElementById('promote-shift-name').value;
+      if (!shiftName) { warn.textContent = '근무를 선택해 주세요.'; return; }
+      const useWeekday = document.getElementById('promote-shift-weekday-toggle').checked;
+      const weekdays = useWeekday ? selectedWeekdaysFrom(document.getElementById('promote-shift-weekday-picker')) : null;
+      if (useWeekday && (!weekdays || weekdays.length === 0)) { warn.textContent = '요일을 선택해 주세요.'; return; }
+      rule = { type: 'shift', shiftNames: [shiftName], offset: promoteOffset, weekdays: (weekdays && weekdays.length) ? weekdays : undefined };
+      indices = computeIndicesForRule(rule);
+    } else if (promoteMode === 'weekday') {
+      const weekdays = selectedWeekdaysFrom(document.getElementById('promote-weekday-picker'));
+      if (weekdays.length === 0) { warn.textContent = '요일을 선택해 주세요.'; return; }
+      rule = { type: 'weekday', weekdays: weekdays };
+      indices = computeIndicesForRule(rule);
+    } else if (promoteMode === 'manual') {
+      const selectedCells = document.querySelectorAll('#promote-manual-grid .rd-day-cell.selected');
+      indices = Array.from(selectedCells).map(function (c) { return parseInt(c.dataset.idx, 10); });
+      rule = { type: 'manual' };
+    } else {
+      warn.textContent = '방법을 선택해 주세요.';
+      return;
+    }
+
+    if (indices.length === 0) {
+      warn.textContent = promoteMode === 'manual' ? 'Day를 선택해 주세요.' : '조건에 맞는 날이 없어요.';
+      return;
+    }
+
+    addRoutineFromRule(promoteEvent.text, 'etc', rule, indices);
+    state.events = state.events.filter(function (e) { return e.id !== promoteEvent.id; });
+    saveState();
+    closePromote();
+    renderDDEvents();
+    if (detailDayIdx0 !== null) renderDDRoutines(state.days[detailDayIdx0]);
+    renderRoutine();
+    renderGrid();
+    renderToday();
+  });
 
   // 팀 행 long-press 드래그 정렬 (tableWrap 기준)
   function setupLongPressDrag(handleEl, rowEl, tableWrap) {
@@ -4804,6 +5522,45 @@
 
   let routineDetailName = null;
 
+  // D-index 다중 선택 그리드 (rd-day-grid, promote-overlay 수동 선택에서 공용)
+  function renderDayIndexGrid(containerEl, selectedIdxSet) {
+    containerEl.innerHTML = '';
+    state.days.forEach(function (day, i) {
+      const cell = document.createElement('div');
+      cell.className = 'rd-day-cell' + (selectedIdxSet.has(i) ? ' selected' : '');
+      cell.dataset.idx = i;
+
+      const shiftColor = getShiftColor(day.shiftType.name);
+      if (shiftColor) {
+        cell.style.background = selectedIdxSet.has(i)
+          ? ''
+          : 'rgba(' + hexToRgb(shiftColor) + ',0.08)';
+      }
+
+      const dnumEl = document.createElement('div');
+      dnumEl.className = 'rd-cell-dnum';
+      dnumEl.textContent = 'D' + day.dayIndex;
+
+      const shiftEl = document.createElement('div');
+      shiftEl.className = 'rd-cell-shift';
+      shiftEl.textContent = day.shiftType.name || '';
+
+      cell.appendChild(dnumEl);
+      cell.appendChild(shiftEl);
+
+      cell.addEventListener('click', function () {
+        cell.classList.toggle('selected');
+        if (shiftColor) {
+          cell.style.background = cell.classList.contains('selected')
+            ? ''
+            : 'rgba(' + hexToRgb(shiftColor) + ',0.08)';
+        }
+      });
+
+      containerEl.appendChild(cell);
+    });
+  }
+
   function openRoutineDetail(name) {
     routineDetailName = name;
 
@@ -4838,42 +5595,7 @@
     document.getElementById('rd-warn').textContent = '';
 
     // Day 그리드 렌더
-    const grid = document.getElementById('rd-day-grid');
-    grid.innerHTML = '';
-    state.days.forEach(function (day, i) {
-      const cell = document.createElement('div');
-      cell.className = 'rd-day-cell' + (selectedIdxSet.has(i) ? ' selected' : '');
-      cell.dataset.idx = i;
-
-      const shiftColor = getShiftColor(day.shiftType.name);
-      if (shiftColor) {
-        cell.style.background = selectedIdxSet.has(i)
-          ? ''
-          : 'rgba(' + hexToRgb(shiftColor) + ',0.08)';
-      }
-
-      const dnumEl = document.createElement('div');
-      dnumEl.className = 'rd-cell-dnum';
-      dnumEl.textContent = 'D' + day.dayIndex;
-
-      const shiftEl = document.createElement('div');
-      shiftEl.className = 'rd-cell-shift';
-      shiftEl.textContent = day.shiftType.name || '';
-
-      cell.appendChild(dnumEl);
-      cell.appendChild(shiftEl);
-
-      cell.addEventListener('click', function () {
-        cell.classList.toggle('selected');
-        if (shiftColor) {
-          cell.style.background = cell.classList.contains('selected')
-            ? ''
-            : 'rgba(' + hexToRgb(shiftColor) + ',0.08)';
-        }
-      });
-
-      grid.appendChild(cell);
-    });
+    renderDayIndexGrid(document.getElementById('rd-day-grid'), selectedIdxSet);
 
     document.getElementById('routine-detail-overlay').classList.add('open');
   }
@@ -5088,7 +5810,7 @@
       const targetDate = dateInput.value;
       if (!targetDate) return;
       if (!Array.isArray(state.events)) state.events = [];
-      state.events.push({ date: targetDate, text: text });
+      state.events.push({ id: genId('e'), date: targetDate, text: text });
       saveState();
       moveRow.remove();
       renderGrid();
@@ -5178,6 +5900,7 @@
   }
   applyTheme();
   switchTab('today');
+  renderInboxBadge();
   if (!state || !state.cycleDays || !state.baseDate) {
     openOnboarding();
   }
