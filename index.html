@@ -1610,22 +1610,6 @@
       gap: 6px;
       margin-bottom: 12px;
     }
-    .btn-period {
-      padding: 5px 14px;
-      border-radius: 20px;
-      border: 1.5px solid var(--check-border);
-      background: none;
-      font-size: 13px;
-      color: var(--text-2);
-      cursor: pointer;
-      font-family: inherit;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .btn-period.active {
-      background: #007aff;
-      border-color: #007aff;
-      color: #fff;
-    }
     .team-chip {
       display: inline-block;
       padding: 2px 8px;
@@ -1636,18 +1620,6 @@
       margin-right: 6px;
       margin-top: 2px;
     }
-    .btn-add-reminder {
-      margin-top: 10px;
-      padding: 8px 14px;
-      background: none;
-      border: 1.5px solid #007aff;
-      border-radius: 10px;
-      color: #007aff;
-      font-size: 13px;
-      font-family: inherit;
-      cursor: pointer;
-    }
-
     /* ── 인박스 / 배치 / 반복 승격 / 기간 수정 오버레이(공통 바텀시트 패턴) ── */
     #inbox-overlay, #place-overlay, #promote-overlay, #period-edit-overlay, #bulk-shift-overlay {
       display: none;
@@ -2083,10 +2055,6 @@
         </div>
         <div id="td-events"></div>
       </div>
-      <div class="card" id="td-reminders-card" style="display:none">
-        <div class="section-label">🔔 리마인더</div>
-        <div id="td-reminders"></div>
-      </div>
     </div>
   </div>
 
@@ -2176,14 +2144,6 @@
               <option value="dark">다크 모드</option>
             </select>
           </div>
-        </div>
-      </div>
-
-      <!-- 리마인더 -->
-      <div id="sd-reminders" style="display:none">
-        <div class="card">
-          <div id="reminder-list"></div>
-          <button class="btn-add-reminder" id="btn-add-reminder">+ 추가</button>
         </div>
       </div>
 
@@ -2420,29 +2380,6 @@
     </div>
     <div class="btn-row" style="padding-top:4px">
       <button class="btn btn-secondary" id="btn-dd-close">닫기</button>
-    </div>
-  </div>
-</div>
-
-<!-- ── 리마인더 추가 오버레이 ── -->
-<div id="reminder-add-overlay" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:50; align-items:flex-end; justify-content:center;">
-  <div style="background:var(--bg); width:100%; max-width:480px; border-radius:20px 20px 0 0; padding:20px; padding-bottom:calc(20px + env(safe-area-inset-bottom,0));">
-    <div style="font-weight:700; font-size:16px; margin-bottom:16px; color:var(--text-1);">리마인더 추가</div>
-    <input type="text" id="rem-name-input" placeholder="리마인더 이름" maxlength="30" style="width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:14px; font-family:inherit; background:var(--surface); color:var(--text-1); margin-bottom:10px; outline:none;">
-    <div style="display:flex; gap:8px; margin-bottom:10px;">
-      <button class="btn-period active" id="rem-type-interval" style="flex:1">간격형</button>
-      <button class="btn-period" id="rem-type-date" style="flex:1">날짜형</button>
-    </div>
-    <div id="rem-interval-row" style="margin-bottom:10px;">
-      <input type="number" id="rem-interval-days" placeholder="반복 주기 (일)" min="1" max="365" style="width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:14px; font-family:inherit; background:var(--surface); color:var(--text-1); outline:none;">
-    </div>
-    <div id="rem-date-row" style="margin-bottom:10px; display:none;">
-      <input type="date" id="rem-target-date" style="width:100%; padding:10px 12px; border:1.5px solid var(--line); border-radius:10px; font-size:14px; font-family:inherit; background:var(--surface); color:var(--text-1); outline:none;">
-    </div>
-    <div style="color:#ff3b30; font-size:12px; min-height:18px; margin-bottom:8px;" id="rem-warn"></div>
-    <div style="display:flex; gap:8px;">
-      <button id="btn-rem-cancel" style="flex:1; padding:12px; border:1.5px solid var(--check-border); border-radius:12px; background:none; color:var(--text-1); font-size:15px; font-family:inherit; cursor:pointer;">취소</button>
-      <button id="btn-rem-save" style="flex:1; padding:12px; background:#007aff; color:#fff; border:none; border-radius:12px; font-size:15px; font-family:inherit; cursor:pointer; font-weight:600;">저장</button>
     </div>
   </div>
 </div>
@@ -2707,10 +2644,6 @@
     }
     if (!Array.isArray(s.done_log)) {
       s.done_log = [];
-      changed = true;
-    }
-    if (!Array.isArray(s.reminders)) {
-      s.reminders = [];
       changed = true;
     }
     if (!Array.isArray(s.teams)) {
@@ -3362,59 +3295,6 @@
       eventsEl.appendChild(msg);
     }
 
-    // 오늘 리마인더
-    const remCard = document.getElementById('td-reminders-card');
-    const remEl = document.getElementById('td-reminders');
-    const dueReminders = (state.reminders || []).filter(function(r) {
-      if (r.type === 'date') {
-        return r.targetDate && parseLocalDate(r.targetDate) <= tdMid;
-      } else {
-        if (!r.lastDoneDate) return true;
-        const last = parseLocalDate(r.lastDoneDate);
-        const next = new Date(last.getFullYear(), last.getMonth(), last.getDate() + (r.intervalDays || 0));
-        return next <= tdMid;
-      }
-    });
-    if (dueReminders.length > 0) {
-      remCard.style.display = '';
-      remEl.innerHTML = '';
-      dueReminders.forEach(function(r) {
-        const row = document.createElement('div');
-        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--divider);font-size:14px;';
-        const nameEl = document.createElement('span');
-        nameEl.style.flex = '1';
-        nameEl.textContent = '🔔 ' + r.name;
-        const addBtn = document.createElement('button');
-        addBtn.textContent = '할 일 추가';
-        addBtn.style.cssText = 'padding:4px 8px;border:1.5px solid var(--accent);border-radius:8px;background:none;color:var(--accent);font-size:12px;font-family:inherit;cursor:pointer;';
-        addBtn.addEventListener('click', function() {
-          if (!Array.isArray(state.events)) state.events = [];
-          state.events.push({ id: genId('e'), date: todayDateStr, endDate: todayDateStr, text: r.name });
-          saveState();
-          renderToday();
-          renderGrid();
-        });
-        const doneBtn = document.createElement('button');
-        doneBtn.textContent = '완료';
-        doneBtn.style.cssText = 'padding:4px 8px;border:none;border-radius:8px;background:var(--accent);color:#fff;font-size:12px;font-family:inherit;cursor:pointer;';
-        doneBtn.addEventListener('click', function() {
-          if (r.type === 'date') {
-            const d = parseLocalDate(r.targetDate);
-            r.targetDate = formatDateStr(new Date(d.getFullYear() + 1, d.getMonth(), d.getDate()));
-          } else {
-            r.lastDoneDate = todayDateStr;
-          }
-          saveState();
-          renderToday();
-        });
-        row.appendChild(nameEl);
-        row.appendChild(addBtn);
-        row.appendChild(doneBtn);
-        remEl.appendChild(row);
-      });
-    } else {
-      remCard.style.display = 'none';
-    }
   }
 
   // 기간 할 일은 이어진 띠로, 하루짜리는 기존처럼 텍스트 목록으로 표시
@@ -3732,10 +3612,6 @@
         var mode = (state && state.themeMode) || 'system';
         return THEME_LABELS[mode] || THEME_LABELS.system;
       }},
-      { key: 'reminders', icon: '🔔', label: '리마인더', getValue: function() {
-        var n = (state && state.reminders || []).length;
-        return n ? n + '개' : '없음';
-      }},
       { key: 'teams', icon: '👥', label: '팀 근무', getValue: function() { return ''; }},
     ];
 
@@ -3779,10 +3655,10 @@
     document.getElementById('settings-list-view').style.display = 'none';
     document.getElementById('settings-detail-view').style.display = '';
 
-    var titles = { cycle: '교대 주기', colors: '근무유형 색', weekstart: '주 시작 요일', theme: '테마', reminders: '리마인더', teams: '팀 근무' };
+    var titles = { cycle: '교대 주기', colors: '근무유형 색', weekstart: '주 시작 요일', theme: '테마', teams: '팀 근무' };
     document.getElementById('settings-detail-title').textContent = titles[key] || '';
 
-    ['sd-cycle','sd-colors','sd-weekstart','sd-theme','sd-reminders','sd-teams'].forEach(function(id) {
+    ['sd-cycle','sd-colors','sd-weekstart','sd-theme','sd-teams'].forEach(function(id) {
       document.getElementById(id).style.display = 'none';
     });
     document.getElementById('sd-' + key).style.display = '';
@@ -3805,8 +3681,6 @@
       document.getElementById('input-week-start').value = (state && state.weekStart !== undefined) ? String(state.weekStart) : '0';
     } else if (key === 'theme') {
       document.getElementById('input-theme').value = (state && state.themeMode) || 'system';
-    } else if (key === 'reminders') {
-      renderReminderList();
     } else if (key === 'teams') {
       renderTeamSettings();
     }
@@ -4260,38 +4134,6 @@
     const adjustedDiff = diff - team.offsetDays;
     const idx0 = ((adjustedDiff % state.cycleDays) + state.cycleDays) % state.cycleDays;
     return state.days[idx0] ? (state.days[idx0].shiftType.name || null) : null;
-  }
-
-  function renderReminderList() {
-    const el = document.getElementById('reminder-list');
-    if (!el) return;
-    el.innerHTML = '';
-    const reminders = state.reminders || [];
-    if (reminders.length === 0) {
-      el.innerHTML = '<div style="font-size:13px;color:var(--text-3);padding:4px 0;">등록된 리마인더 없음</div>';
-      return;
-    }
-    reminders.forEach(function(r, i) {
-      const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;padding:8px 0;border-bottom:1px solid var(--divider);font-size:14px;gap:8px;';
-      const info = document.createElement('span');
-      info.style.flex = '1';
-      info.textContent = r.type === 'interval'
-        ? r.name + ' (' + r.intervalDays + '일마다)'
-        : r.name + ' (' + r.targetDate + ')';
-      const del = document.createElement('button');
-      del.textContent = '×';
-      del.style.cssText = 'background:none;border:none;font-size:18px;color:var(--text-3);cursor:pointer;padding:0 4px;font-family:inherit;';
-      del.addEventListener('click', function() {
-        state.reminders.splice(i, 1);
-        saveState();
-        renderReminderList();
-        renderToday();
-      });
-      row.appendChild(info);
-      row.appendChild(del);
-      el.appendChild(row);
-    });
   }
 
   // ── 넣기(전역 빠른 추가) + 미배치(인박스) ──────────────────
@@ -5365,68 +5207,6 @@
   document.getElementById('btn-new-routine').addEventListener('click', function () {
     openRepeatEditor({});
   });
-
-  // ── 리마인더 이벤트 ──────────────────────────────────────
-  let remAddType = 'interval';
-
-  function openReminderAddOverlay() {
-    document.getElementById('rem-name-input').value = '';
-    document.getElementById('rem-interval-days').value = '';
-    document.getElementById('rem-target-date').value = '';
-    document.getElementById('rem-warn').textContent = '';
-    remAddType = 'interval';
-    document.getElementById('rem-type-interval').classList.add('active');
-    document.getElementById('rem-type-date').classList.remove('active');
-    document.getElementById('rem-interval-row').style.display = '';
-    document.getElementById('rem-date-row').style.display = 'none';
-    document.getElementById('reminder-add-overlay').style.display = 'flex';
-  }
-
-  document.getElementById('btn-add-reminder').addEventListener('click', openReminderAddOverlay);
-
-  document.getElementById('rem-type-interval').addEventListener('click', function() {
-    remAddType = 'interval';
-    this.classList.add('active');
-    document.getElementById('rem-type-date').classList.remove('active');
-    document.getElementById('rem-interval-row').style.display = '';
-    document.getElementById('rem-date-row').style.display = 'none';
-  });
-
-  document.getElementById('rem-type-date').addEventListener('click', function() {
-    remAddType = 'date';
-    this.classList.add('active');
-    document.getElementById('rem-type-interval').classList.remove('active');
-    document.getElementById('rem-interval-row').style.display = 'none';
-    document.getElementById('rem-date-row').style.display = '';
-  });
-
-  document.getElementById('btn-rem-cancel').addEventListener('click', function() {
-    document.getElementById('reminder-add-overlay').style.display = 'none';
-  });
-
-  document.getElementById('btn-rem-save').addEventListener('click', function() {
-    const name = document.getElementById('rem-name-input').value.trim();
-    const warn = document.getElementById('rem-warn');
-    if (!name) { warn.textContent = '이름을 입력해 주세요.'; return; }
-    let reminder;
-    if (remAddType === 'interval') {
-      const days = parseInt(document.getElementById('rem-interval-days').value, 10);
-      if (!days || days < 1) { warn.textContent = '반복 주기(일)를 입력해 주세요.'; return; }
-      reminder = { name: name, type: 'interval', intervalDays: days, lastDoneDate: null };
-    } else {
-      const tDate = document.getElementById('rem-target-date').value;
-      if (!tDate) { warn.textContent = '날짜를 선택해 주세요.'; return; }
-      reminder = { name: name, type: 'date', targetDate: tDate };
-    }
-    warn.textContent = '';
-    if (!Array.isArray(state.reminders)) state.reminders = [];
-    state.reminders.push(reminder);
-    saveState();
-    document.getElementById('reminder-add-overlay').style.display = 'none';
-    renderReminderList();
-    renderToday();
-  });
-
 
   // ── 초기화 ───────────────────────────────────────────────
   state = loadState();
