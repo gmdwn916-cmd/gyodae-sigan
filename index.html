@@ -2378,7 +2378,10 @@
       <button class="dd-shift-cancel-btn" id="btn-dd-shift-cancel">취소</button>
     </div>
     <div class="dd-section" id="dd-events-section">
-      <div class="dd-section-label">할 일</div>
+      <div class="today-events-header">
+        <div class="dd-section-label section-label">할 일</div>
+        <button type="button" class="today-events-toggle" id="dd-events-toggle"></button>
+      </div>
       <div id="dd-events-list"></div>
       <div class="dd-add-row">
         <input type="text" id="dd-event-input" placeholder="할 일 추가…" maxlength="50">
@@ -2605,6 +2608,7 @@
   let bulkCalMonth = _now.getMonth();
   let bulkSelectedDates = new Set();
   let showDoneEvents = false; // 오늘 탭: 완료한 할 일 표시 여부(새로고침 시 기본 false로 리셋)
+  let showDoneDDEvents = false; // 날짜 상세: 완료한 할 일 표시 여부(열 때마다 기본 false로 리셋)
 
   let teamCalYear = _now.getFullYear();
   let teamCalMonth = _now.getMonth();
@@ -3844,6 +3848,7 @@
       'D' + day.dayIndex + (effShiftName ? ' · ' + effShiftName : '');
     renderDDShift(effShiftName, effIsOverride, effOverrideType);
 
+    showDoneDDEvents = false;
     renderDDTodos();
 
     document.getElementById('dd-event-input').value = '';
@@ -3853,20 +3858,35 @@
     document.getElementById('day-detail-overlay').classList.add('open');
   }
 
-  // 그 날짜에 해당하는 반복 할일 + 한 번짜리 할 일을 하나의 목록으로 합쳐 보여줌
+  // 그 날짜에 해당하는 반복 할일 + 한 번짜리 할 일을 하나의 목록으로 합쳐 보여줌.
+  // 완료된 항목은 기본적으로 숨기고, "완료 보기" 토글을 눌러야 보임.
   function renderDDTodos() {
     const el = document.getElementById('dd-events-list');
     el.innerHTML = '';
 
+    const toggleBtn = document.getElementById('dd-events-toggle');
+    toggleBtn.textContent = showDoneDDEvents ? '완료 숨기기' : '완료 보기';
+    toggleBtn.classList.toggle('is-on', showDoneDDEvents);
+    toggleBtn.onclick = function () {
+      showDoneDDEvents = !showDoneDDEvents;
+      renderDDTodos();
+    };
+
     const repeatTodos = getRepeatTodosForDate(detailDateStr);
-    renderRoutineItems(el, repeatTodos, detailDateStr, function () {
+    const visibleRepeat = repeatTodos.filter(function (item) {
+      return showDoneDDEvents || !isRepeatDoneOn(item.id, detailDateStr);
+    });
+    renderRoutineItems(el, visibleRepeat, detailDateStr, function () {
       renderDDTodos();
       renderGrid();
       renderToday();
     });
 
     const events = getEventsForDate(detailDateStr);
-    events.forEach(function (ev) {
+    const visibleEvents = events.filter(function (ev) {
+      return showDoneDDEvents || !ev.done;
+    });
+    visibleEvents.forEach(function (ev) {
       const row = document.createElement('div');
       row.className = 'dd-event-item';
       const text = document.createElement('span');
@@ -3917,7 +3937,9 @@
     if (el.children.length === 0) {
       const empty = document.createElement('div');
       empty.className = 'dd-routine-empty';
-      empty.textContent = '할 일 없음';
+      empty.textContent = (repeatTodos.length + events.length) === 0
+        ? '할 일 없음'
+        : '완료한 할 일만 있어요';
       el.appendChild(empty);
     }
   }
