@@ -416,12 +416,6 @@
       background: var(--accent);
       border-color: var(--accent);
     }
-    #tab-today .today-event-item { color: var(--text-1); padding: 6px 0; }
-    #tab-today .today-event-check { border-color: var(--check-border); }
-    #tab-today .today-event-item--done .today-event-check {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
     #tab-today .today-events-toggle { border-color: var(--line); color: var(--text-2); }
     #tab-today .today-events-toggle.is-on { border-color: var(--accent); color: var(--accent); }
     #tab-today .today-events-empty-msg { color: var(--text-3); }
@@ -542,46 +536,6 @@
       font-family: inherit;
     }
 
-    .dd-event-item {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 0;
-      border-bottom: 1px solid var(--divider);
-      font-size: 14px;
-      color: var(--text-1);
-    }
-
-    .dd-event-item:last-child { border-bottom: none; }
-
-    .dd-event-check {
-      width: 22px;
-      height: 22px;
-      min-width: 22px;
-      border-radius: 50%;
-      border: 2px solid var(--check-border);
-      background: none;
-      cursor: pointer;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      transition: border-color 0.15s, background 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .dd-event-check:active { opacity: 0.7; }
-    .dd-event-item--done .dd-event-check {
-      background: var(--accent);
-      border-color: var(--accent);
-    }
-    .dd-event-item--done .dd-event-text {
-      opacity: 0.4;
-      text-decoration: line-through;
-    }
-
-    .dd-event-text { flex: 1; }
-
     /* 할 일 글씨를 눌렀을 때 그 자리에서 바로 고치는 입력창 (여러 목록에서 공용) */
     .inline-edit-input {
       flex: 1;
@@ -619,19 +573,6 @@
       position: relative;
       will-change: transform;
     }
-
-    .btn-dd-del-event {
-      background: none;
-      border: none;
-      font-size: 18px;
-      color: var(--text-3);
-      cursor: pointer;
-      padding: 0 2px;
-      line-height: 1;
-      font-family: inherit;
-    }
-
-    .btn-dd-del-event:active { color: #ff3b30; }
 
     .btn-dd-repeat-event {
       background: none;
@@ -722,45 +663,6 @@
       width: 100%;
       background: rgba(255,149,0,0.15);
       color: #b35c00;
-    }
-
-    /* 오늘 탭 일정 행 */
-    .today-event-item {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 15px;
-      color: #1c1c1e;
-      padding: 4px 0;
-    }
-
-    .today-event-item--done .today-event-text {
-      opacity: 0.4;
-      text-decoration: line-through;
-    }
-
-    .today-event-text { flex: 1; }
-
-    .today-event-check {
-      width: 22px;
-      height: 22px;
-      min-width: 22px;
-      border-radius: 50%;
-      border: 2px solid #d1d1d6;
-      background: none;
-      cursor: pointer;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      padding: 0;
-      transition: border-color 0.15s, background 0.15s;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .today-event-check:active { opacity: 0.7; }
-    .today-event-item--done .today-event-check {
-      background: #34c759;
-      border-color: #34c759;
     }
 
     .today-events-header {
@@ -3144,56 +3046,95 @@
 
   // ── 루틴 항목 공유 렌더링 ────────────────────────────────
   // items: 반복 할일(state.events, repeat 있는 것) 목록. id 기준으로 완료 기록.
-  function renderRoutineItems(containerEl, items, dateStr, refreshFn) {
-    containerEl.innerHTML = '';
-    if (!items || items.length === 0) return;
+  // kind: 'repeat'(반복 할일) | 'onetime'(한 번짜리 할 일). 반복이든 아니든 결국 같은
+  // "할 일"이므로 완전히 같은 모양의 줄로 만든다. 다른 점은 각자에게만 있는 동작뿐
+  // (반복→ 완료는 done_log, 한번짜리→ ev.done / 기간이면 기간수정, 반복전환 버튼).
+  function buildTodoRow(kind, item, dateStr, refreshFn) {
+    const cat = getCat(item.category);
+    const isMulti = kind === 'onetime' && isMultiDay(item);
+    const isDone = kind === 'repeat' ? isRepeatDoneOn(item.id, dateStr) : !!item.done;
 
-    const ul = document.createElement('ul');
-    ul.className = 'today-items';
+    const li = document.createElement('li');
+    li.dataset.id = item.id;
+    li.className = 'today-item' + (isDone ? ' today-item--done' : '');
+    li.style.setProperty('--cat-color', cat.color);
 
-    items.forEach(function(item) {
-      const cat = getCat(item.category);
-      const isDone = isRepeatDoneOn(item.id, dateStr);
-      const li = document.createElement('li');
-      li.dataset.id = item.id;
-      li.className = 'today-item' + (isDone ? ' today-item--done' : '');
-      li.style.setProperty('--cat-color', cat.color);
+    const iconEl = document.createElement('span');
+    iconEl.className = 'item-icon';
+    iconEl.textContent = cat.icon || '●';
+    li.appendChild(iconEl);
 
-      const iconEl = document.createElement('span');
-      iconEl.className = 'item-icon';
-      iconEl.textContent = cat.icon || '●';
-      li.appendChild(iconEl);
-
-      const textEl = document.createElement('span');
-      textEl.className = 'item-text';
-      textEl.textContent = item.text;
+    const textEl = document.createElement('span');
+    textEl.className = 'item-text';
+    textEl.textContent = kind === 'onetime' ? eventDisplayText(item) : item.text;
+    if (isMulti) {
+      textEl.style.cursor = 'pointer';
+      textEl.style.textDecoration = 'underline dotted';
+      textEl.addEventListener('click', function () { openPeriodEdit(item); });
+    } else {
       makeEventTextEditable(textEl, item, refreshFn);
-      li.appendChild(textEl);
+    }
+    li.appendChild(textEl);
 
-      const checkBtn = document.createElement('button');
-      checkBtn.className = 'item-check-btn';
-      checkBtn.setAttribute('aria-label', isDone ? '완료 취소' : '완료');
-      if (isDone) {
-        checkBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      }
-      checkBtn.addEventListener('click', function() {
+    if (kind === 'onetime' && !isMulti) {
+      const repeatBtn = document.createElement('button');
+      repeatBtn.className = 'btn-dd-repeat-event';
+      repeatBtn.textContent = '반복';
+      repeatBtn.setAttribute('aria-label', '반복으로 전환');
+      repeatBtn.addEventListener('click', function () { openRepeatEditor({ sourceEvent: item }); });
+      li.appendChild(repeatBtn);
+    }
+
+    const checkBtn = document.createElement('button');
+    checkBtn.className = 'item-check-btn';
+    checkBtn.setAttribute('aria-label', isDone ? '완료 취소' : '완료');
+    if (isDone) {
+      checkBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    }
+    checkBtn.addEventListener('click', function () {
+      if (kind === 'repeat') {
         if (!Array.isArray(state.done_log)) state.done_log = [];
-        const idx = state.done_log.findIndex(function(d) { return d.date === dateStr && d.id === item.id; });
+        const idx = state.done_log.findIndex(function (d) { return d.date === dateStr && d.id === item.id; });
         if (idx === -1) {
           state.done_log.push({ date: dateStr, id: item.id });
         } else {
           state.done_log.splice(idx, 1);
         }
-        saveState();
-        refreshFn();
-      });
-      li.appendChild(checkBtn);
+      } else {
+        item.done = !item.done;
+      }
+      saveState();
+      refreshFn();
+    });
+    li.appendChild(checkBtn);
 
+    return li;
+  }
+
+  // 반복 할일 + 한 번짜리 할 일을 완전히 같은 모양으로 합쳐서 하나의 목록에 그린다.
+  function renderTodoList(containerEl, repeatItems, oneTimeItems, dateStr, bgVar, refreshFn) {
+    containerEl.innerHTML = '';
+    if (repeatItems.length === 0 && oneTimeItems.length === 0) return;
+
+    const ul = document.createElement('ul');
+    ul.className = 'today-items';
+
+    repeatItems.forEach(function (item) {
+      const li = buildTodoRow('repeat', item, dateStr, refreshFn);
       // 여기서 스와이프 삭제는 이 날짜만 제외(excludedDates). 반복 할일 자체를
       // 통째로 지우려면 "반복 할일" 탭에서 지워야 함.
-      ul.appendChild(wrapWithSwipeToDelete(li, 'var(--surface)', function () {
+      ul.appendChild(wrapWithSwipeToDelete(li, bgVar, function () {
         if (!Array.isArray(item.excludedDates)) item.excludedDates = [];
         if (item.excludedDates.indexOf(dateStr) === -1) item.excludedDates.push(dateStr);
+        saveState();
+        refreshFn();
+      }));
+    });
+
+    oneTimeItems.forEach(function (ev) {
+      const li = buildTodoRow('onetime', ev, dateStr, refreshFn);
+      ul.appendChild(wrapWithSwipeToDelete(li, bgVar, function () {
+        state.events = state.events.filter(function (e) { return e !== ev; });
         saveState();
         refreshFn();
       }));
@@ -3263,50 +3204,15 @@
       renderToday();
     };
 
-    eventsEl.innerHTML = '';
-
     const visibleRepeat = repeatTodos.filter(function (ev) {
       return showDoneEvents || !isRepeatDoneOn(ev.id, todayDateStr);
     });
-    renderRoutineItems(eventsEl, visibleRepeat, todayDateStr, renderToday);
-
     const visibleOneTime = oneTimeEvents.filter(function (ev) {
       return showDoneEvents || !ev.done;
     });
-    visibleOneTime.forEach(function (ev) {
-      const row = document.createElement('div');
-      row.className = 'today-event-item' + (ev.done ? ' today-event-item--done' : '');
-
-      const checkBtn = document.createElement('button');
-      checkBtn.className = 'today-event-check';
-      checkBtn.setAttribute('aria-label', ev.done ? '완료 취소' : '완료');
-      if (ev.done) {
-        checkBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      }
-      checkBtn.addEventListener('click', function () {
-        ev.done = !ev.done;
-        saveState();
-        renderToday();
-      });
-      row.appendChild(checkBtn);
-
-      const text = document.createElement('span');
-      text.className = 'today-event-text';
-      text.textContent = eventDisplayText(ev);
-      if (!isMultiDay(ev)) {
-        makeEventTextEditable(text, ev, function () {
-          renderToday();
-          renderGrid();
-        });
-      }
-      row.appendChild(text);
-
-      eventsEl.appendChild(wrapWithSwipeToDelete(row, 'var(--surface)', function () {
-        state.events = state.events.filter(function (e) { return e !== ev; });
-        saveState();
-        renderToday();
-        renderGrid();
-      }));
+    renderTodoList(eventsEl, visibleRepeat, visibleOneTime, todayDateStr, 'var(--surface)', function () {
+      renderToday();
+      renderGrid();
     });
 
     if (eventsEl.children.length === 0) {
@@ -3902,78 +3808,14 @@
     const visibleRepeat = repeatTodos.filter(function (item) {
       return showDoneDDEvents || !isRepeatDoneOn(item.id, detailDateStr);
     });
-    renderRoutineItems(el, visibleRepeat, detailDateStr, function () {
-      renderDDTodos();
-      renderGrid();
-      renderToday();
-    });
-
     const events = getEventsForDate(detailDateStr);
     const visibleEvents = events.filter(function (ev) {
       return showDoneDDEvents || !ev.done;
     });
-    visibleEvents.forEach(function (ev) {
-      const row = document.createElement('div');
-      row.className = 'dd-event-item' + (ev.done ? ' dd-event-item--done' : '');
-
-      const checkBtn = document.createElement('button');
-      checkBtn.className = 'dd-event-check';
-      checkBtn.setAttribute('aria-label', ev.done ? '완료 취소' : '완료');
-      if (ev.done) {
-        checkBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      }
-      checkBtn.addEventListener('click', function () {
-        ev.done = !ev.done;
-        saveState();
-        renderDDTodos();
-        renderGrid();
-        renderToday();
-      });
-      row.appendChild(checkBtn);
-
-      const text = document.createElement('span');
-      text.className = 'dd-event-text';
-      text.textContent = eventDisplayText(ev);
-      if (isMultiDay(ev)) {
-        text.style.cursor = 'pointer';
-        text.style.textDecoration = 'underline dotted';
-        text.addEventListener('click', function () { openPeriodEdit(ev); });
-      } else {
-        makeEventTextEditable(text, ev, function () {
-          renderDDTodos();
-          renderGrid();
-          renderToday();
-        });
-      }
-      row.appendChild(text);
-      if (!isMultiDay(ev)) {
-        const repeatBtn = document.createElement('button');
-        repeatBtn.className = 'btn-dd-repeat-event';
-        repeatBtn.textContent = '반복';
-        repeatBtn.setAttribute('aria-label', '반복으로 전환');
-        repeatBtn.addEventListener('click', function () { openRepeatEditor({ sourceEvent: ev }); });
-        row.appendChild(repeatBtn);
-      }
-      const del = document.createElement('button');
-      del.className = 'btn-dd-del-event';
-      del.textContent = '×';
-      del.setAttribute('aria-label', '삭제');
-      del.addEventListener('click', function () {
-        deleteThisEvent();
-      });
-      row.appendChild(del);
-
-      function deleteThisEvent() {
-        state.events = state.events.filter(function (e) {
-          return e.id ? e.id !== ev.id : !(e.date === detailDateStr && e.text === ev.text);
-        });
-        saveState();
-        renderDDTodos();
-        renderGrid();
-        renderToday();
-      }
-
-      el.appendChild(wrapWithSwipeToDelete(row, 'var(--bg)', deleteThisEvent));
+    renderTodoList(el, visibleRepeat, visibleEvents, detailDateStr, 'var(--bg)', function () {
+      renderDDTodos();
+      renderGrid();
+      renderToday();
     });
 
     if (el.children.length === 0) {
