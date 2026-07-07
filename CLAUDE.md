@@ -42,7 +42,7 @@
     때 되면 신호 → 사용자가 근무 보고 할 일로 놓음.
 
 ## 보류/제외 (지금 안 만듦)
-- 못 한 것 재배치(스킵 재설계): 나중에 다시 설계.
+- 스킵(못 한 것 표시) 기능: 영구 제외. 다시 만들지 말 것.
 - 리마인더(층3): 백로그 보관, 시스템 안정 후.
 - 회고·통계 대시보드·월간 리포트: 영구 제외(앱 정체성 밖).
 - 근무 기반 알람(백로그, 넣기/미배치 시스템 안정화 후 검토):
@@ -96,7 +96,7 @@
   - 공통: { id, text, category }
   - 한 번짜리(repeat 없음): { date, endDate, done }
   - 반복 할일(repeat 있음): { repeat: rule } — date/endDate/done은 안 씀,
-    대신 done_log/skips를 (date, id) 기준으로 찾아서 그날 완료/스킵 여부 판단.
+    대신 done_log를 (date, id) 기준으로 찾아서 그날 완료 여부 판단.
   - rule 종류: {type:'shift', shiftNames:[...], offset, weekdays?}
               {type:'weekday', weekdays:[...]}
               {type:'manual', dayIndices:[...]}  (달력에서 직접 고른 날짜 → D인덱스로 변환해서 저장)
@@ -107,8 +107,9 @@
 - inbox[]: 미배치 { text, createdAt } (반복 배치 옵션은 아직 없음, 범위 밖으로 보류 중)
 - shiftOverrides: 날짜 예외{date,shiftName} / D번호 예외{dayIndex,shiftName}
 - shiftColors { 근무이름: 색 }, weekStart
-- done_log[]/skips[]: { date, id } — 반복 할일의 그 날짜 완료/스킵 기록.
+- done_log[]: { date, id } — 반복 할일의 그 날짜 완료 기록.
   (예전엔 text로 저장해서 이름 바꾸면 기록이 끊겼는데, id로 바꿔서 해결됨)
+  스킵 기능은 제거됨(state.skips는 더 이상 안 씀).
 - teams[] { name, offsetDays }
 - routinesMigratedV1: true — 예전 루틴(day.items)을 반복 할일로 1회 변환했다는 표시.
   이 값이 있으면 마이그레이션을 다시 돌리지 않는다(중복 생성 방지).
