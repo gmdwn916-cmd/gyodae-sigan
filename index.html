@@ -4108,6 +4108,25 @@
     }, { passive: true });
   })();
 
+  // 연간 스와이프 (좌우로 50px 이상, 수직보다 수평이 클 때만 연도 이동)
+  (function () {
+    var sx = 0, sy = 0;
+    var yearTab = document.getElementById('tab-year');
+    yearTab.addEventListener('touchstart', function (e) {
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+    }, { passive: true });
+    yearTab.addEventListener('touchend', function (e) {
+      var dx = e.changedTouches[0].clientX - sx;
+      var dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) { yearViewYear++; }
+        else        { yearViewYear--; }
+        renderYear();
+      }
+    }, { passive: true });
+  })();
+
   // ── 일괄 추가 ──────────────────────────────────────────
   // 반복 규칙의 "달력에서 선택" 모드용 달력 (근무 일괄변경 달력과 별개, 반복 편집 시트 안에 표시)
   function renderRepeatManualCal() {
