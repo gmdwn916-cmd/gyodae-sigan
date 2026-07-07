@@ -416,18 +416,6 @@
       background: var(--accent);
       border-color: var(--accent);
     }
-    #tab-today .skip-btn { border-color: var(--line); color: var(--text-2); }
-    #tab-today .unskip-btn { color: var(--text-3); }
-    #tab-today .today-items li.skip-move-row { background: var(--surface-2); }
-    #tab-today .skip-move-label { color: var(--text-2); }
-    #tab-today .skip-move-date {
-      background: var(--surface);
-      border-color: var(--line);
-      color: var(--text-1);
-    }
-    #tab-today .skip-move-date:focus { border-color: var(--accent); }
-    #tab-today .btn-skip-move { background: var(--accent); }
-    #tab-today .btn-skip-dismiss { color: var(--text-2); }
     #tab-today .today-event-item { color: var(--text-1); padding: 6px 0; }
     #tab-today .today-event-check { border-color: var(--check-border); }
     #tab-today .today-event-item--done .today-event-check {
@@ -1885,27 +1873,8 @@
       font-weight: 700;
     }
 
-    /* ── 스킵 ── */
-    .skip-btn {
-      margin-left: auto;
-      flex-shrink: 0;
-      background: none;
-      border: 1.5px solid var(--line);
-      border-radius: 7px;
-      font-size: 11px;
-      color: var(--text-3);
-      padding: 3px 8px;
-      cursor: pointer;
-      font-family: inherit;
-      line-height: 1.4;
-      transition: border-color 0.12s, color 0.12s;
-    }
-    .skip-btn:active { color: var(--text-2); border-color: var(--text-3); }
     .today-item--done .item-icon,
     .today-item--done .item-text { opacity: 0.4; }
-    .today-item--skip .item-icon,
-    .today-item--skip .item-text { opacity: 0.4; }
-    .today-item--skip .item-text { text-decoration: line-through; }
     .item-check-btn {
       width: 26px;
       height: 26px;
@@ -1926,82 +1895,6 @@
     .today-item--done .item-check-btn {
       background: var(--accent);
       border-color: var(--accent);
-    }
-    .today-item--skip .item-check-btn {
-      background: var(--check-border);
-      border-color: var(--check-border);
-      cursor: default;
-    }
-    .unskip-btn {
-      margin-left: auto;
-      flex-shrink: 0;
-      background: none;
-      border: none;
-      font-size: 11px;
-      color: var(--text-3);
-      cursor: pointer;
-      font-family: inherit;
-      padding: 3px 2px;
-      line-height: 1.4;
-    }
-    .unskip-btn:active { color: var(--text-2); }
-    .today-items li.skip-move-row {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 6px;
-      padding: 8px 10px;
-      background: var(--surface-2);
-      border-radius: 8px;
-      border-bottom: none;
-      margin-top: -1px;
-    }
-    .skip-move-label {
-      font-size: 12px;
-      color: var(--text-2);
-    }
-    .skip-move-controls {
-      display: flex;
-      gap: 6px;
-      align-items: center;
-      width: 100%;
-    }
-    .skip-move-date {
-      flex: 1;
-      min-width: 0;
-      padding: 6px 8px;
-      border: 1.5px solid var(--line);
-      border-radius: 8px;
-      font-size: 12px;
-      font-family: inherit;
-      background: var(--surface);
-      color: var(--text-1);
-      outline: none;
-      -webkit-appearance: none;
-    }
-    .skip-move-date:focus { border-color: #007aff; }
-    .btn-skip-move {
-      padding: 6px 12px;
-      background: #007aff;
-      color: #fff;
-      border: none;
-      border-radius: 8px;
-      font-size: 12px;
-      font-weight: 600;
-      font-family: inherit;
-      cursor: pointer;
-      flex-shrink: 0;
-    }
-    .btn-skip-dismiss {
-      padding: 6px 8px;
-      background: none;
-      border: 1.5px solid var(--line);
-      border-radius: 8px;
-      font-size: 12px;
-      color: var(--text-2);
-      font-family: inherit;
-      cursor: pointer;
-      flex-shrink: 0;
     }
 
     /* ── 팀 달력 ── */
@@ -2726,7 +2619,6 @@
   let bulkCalYear = _now.getFullYear();
   let bulkCalMonth = _now.getMonth();
   let bulkSelectedDates = new Set();
-  let _skipMoveRowTarget = null;
   let showDoneEvents = false; // 오늘 탭: 완료한 할 일 표시 여부(새로고침 시 기본 false로 리셋)
 
   let teamCalYear = _now.getFullYear();
@@ -2800,10 +2692,6 @@
       s.weekStart = 0;
       changed = true;
     }
-    if (!Array.isArray(s.skips)) {
-      s.skips = [];
-      changed = true;
-    }
     if (!Array.isArray(s.done_log)) {
       s.done_log = [];
       changed = true;
@@ -2869,7 +2757,7 @@
     });
 
     // 루틴(day.items, D번호 기준 배치) → 반복 할일(state.events, repeat 규칙) 1회 전환.
-    // 같은 이름의 항목을 모아 하나의 반복 할일로 만들고, done_log/skips도 이름 대신 새 id 기준으로 옮긴다.
+    // 같은 이름의 항목을 모아 하나의 반복 할일로 만들고, done_log도 이름 대신 새 id 기준으로 옮긴다.
     if (!s.routinesMigratedV1) {
       const routineMap = new Map();
       s.days.forEach(function (day, i) {
@@ -2909,7 +2797,6 @@
           })
           .filter(Boolean);
       }
-      s.skips = rekeyByText(s.skips || []);
       s.done_log = rekeyByText(s.done_log || []);
 
       s.days.forEach(function (day) { day.items = []; });
@@ -2943,10 +2830,6 @@
 
   function isRepeatDoneOn(id, dateStr) {
     return (state.done_log || []).some(function (d) { return d.date === dateStr && d.id === id; });
-  }
-
-  function isRepeatSkippedOn(id, dateStr) {
-    return (state.skips || []).some(function (s) { return s.date === dateStr && s.id === id; });
   }
 
   function describeRepeatRule(rule) {
@@ -3243,7 +3126,7 @@
   }
 
   // ── 루틴 항목 공유 렌더링 ────────────────────────────────
-  // items: 반복 할일(state.events, repeat 있는 것) 목록. id 기준으로 완료/스킵 기록.
+  // items: 반복 할일(state.events, repeat 있는 것) 목록. id 기준으로 완료 기록.
   function renderRoutineItems(containerEl, items, dateStr, refreshFn) {
     containerEl.innerHTML = '';
     if (!items || items.length === 0) return;
@@ -3253,13 +3136,10 @@
 
     items.forEach(function(item) {
       const cat = getCat(item.category);
-      const isSkipped = isRepeatSkippedOn(item.id, dateStr);
       const isDone = isRepeatDoneOn(item.id, dateStr);
       const li = document.createElement('li');
       li.dataset.id = item.id;
-      li.className = 'today-item' +
-        (isDone ? ' today-item--done' : '') +
-        (isSkipped ? ' today-item--skip' : '');
+      li.className = 'today-item' + (isDone ? ' today-item--done' : '');
       li.style.setProperty('--cat-color', cat.color);
 
       const iconEl = document.createElement('span');
@@ -3277,76 +3157,28 @@
       });
       li.appendChild(textEl);
 
-      if (!isDone) {
-        if (isSkipped) {
-          const unskipBtn = document.createElement('button');
-          unskipBtn.className = 'unskip-btn';
-          unskipBtn.textContent = '스킵 취소';
-          unskipBtn.addEventListener('click', function() {
-            state.skips = (state.skips || []).filter(function(s) { return !(s.date === dateStr && s.id === item.id); });
-            saveState();
-            refreshFn();
-          });
-          li.appendChild(unskipBtn);
-        } else {
-          const skipBtn = document.createElement('button');
-          skipBtn.className = 'skip-btn';
-          skipBtn.textContent = '스킵';
-          skipBtn.addEventListener('click', function() {
-            if (!Array.isArray(state.skips)) state.skips = [];
-            if (!state.skips.some(function(s) { return s.date === dateStr && s.id === item.id; })) {
-              state.skips.push({ date: dateStr, id: item.id });
-            }
-            state.done_log = (state.done_log || []).filter(function(d) { return !(d.date === dateStr && d.id === item.id); });
-            saveState();
-            _skipMoveRowTarget = item.id;
-            refreshFn();
-          });
-          li.appendChild(skipBtn);
-        }
-      }
-
       const checkBtn = document.createElement('button');
       checkBtn.className = 'item-check-btn';
       checkBtn.setAttribute('aria-label', isDone ? '완료 취소' : '완료');
       if (isDone) {
         checkBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-      } else if (isSkipped) {
-        checkBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><line x1="3" y1="7" x2="11" y2="7" stroke="white" stroke-width="2.2" stroke-linecap="round"/></svg>';
-        checkBtn.disabled = true;
       }
-      if (!isSkipped) {
-        checkBtn.addEventListener('click', function() {
-          if (!Array.isArray(state.done_log)) state.done_log = [];
-          const idx = state.done_log.findIndex(function(d) { return d.date === dateStr && d.id === item.id; });
-          if (idx === -1) {
-            state.done_log.push({ date: dateStr, id: item.id });
-            state.skips = (state.skips || []).filter(function(s) { return !(s.date === dateStr && s.id === item.id); });
-          } else {
-            state.done_log.splice(idx, 1);
-          }
-          saveState();
-          refreshFn();
-        });
-      }
+      checkBtn.addEventListener('click', function() {
+        if (!Array.isArray(state.done_log)) state.done_log = [];
+        const idx = state.done_log.findIndex(function(d) { return d.date === dateStr && d.id === item.id; });
+        if (idx === -1) {
+          state.done_log.push({ date: dateStr, id: item.id });
+        } else {
+          state.done_log.splice(idx, 1);
+        }
+        saveState();
+        refreshFn();
+      });
       li.appendChild(checkBtn);
       ul.appendChild(li);
     });
 
     containerEl.appendChild(ul);
-
-    if (_skipMoveRowTarget !== null) {
-      var tgt = _skipMoveRowTarget;
-      var matched = false;
-      ul.querySelectorAll('li.today-item--skip').forEach(function(skipLi) {
-        if (skipLi.dataset.id === tgt) {
-          var tEl = skipLi.querySelector('.item-text');
-          showMoveRow(skipLi, ul, tEl ? tEl.textContent : '', dateStr);
-          matched = true;
-        }
-      });
-      if (matched) { _skipMoveRowTarget = null; }
-    }
   }
 
   // ── 오늘 탭 ──────────────────────────────────────────────
@@ -5498,49 +5330,6 @@
   document.getElementById('btn-new-routine').addEventListener('click', function () {
     openRepeatEditor({});
   });
-
-  // ── 스킵 / 완료 ──────────────────────────────────────────
-  function showMoveRow(li, ul, text, dateStr) {
-    const existing = ul.querySelector('.skip-move-row');
-    if (existing) existing.remove();
-    const base = dateStr ? parseLocalDate(dateStr) : todayMidnight();
-    const next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + 1);
-    const tomorrowStr = formatDateStr(next);
-    const moveRow = document.createElement('li');
-    moveRow.className = 'skip-move-row';
-    const label = document.createElement('span');
-    label.className = 'skip-move-label';
-    label.textContent = '다른 날 할 일로 옮길까요?';
-    const dateInput = document.createElement('input');
-    dateInput.type = 'date';
-    dateInput.value = tomorrowStr;
-    dateInput.className = 'skip-move-date';
-    const moveBtn = document.createElement('button');
-    moveBtn.className = 'btn-skip-move';
-    moveBtn.textContent = '옮기기';
-    moveBtn.addEventListener('click', function() {
-      const targetDate = dateInput.value;
-      if (!targetDate) return;
-      if (!Array.isArray(state.events)) state.events = [];
-      state.events.push({ id: genId('e'), date: targetDate, endDate: targetDate, text: text });
-      saveState();
-      moveRow.remove();
-      renderGrid();
-      renderToday();
-    });
-    const dismissBtn = document.createElement('button');
-    dismissBtn.className = 'btn-skip-dismiss';
-    dismissBtn.textContent = '그냥 스킵';
-    dismissBtn.addEventListener('click', function() { moveRow.remove(); });
-    const controls = document.createElement('div');
-    controls.className = 'skip-move-controls';
-    controls.appendChild(dateInput);
-    controls.appendChild(moveBtn);
-    controls.appendChild(dismissBtn);
-    moveRow.appendChild(label);
-    moveRow.appendChild(controls);
-    li.after(moveRow);
-  }
 
   // ── 리마인더 이벤트 ──────────────────────────────────────
   let remAddType = 'interval';
