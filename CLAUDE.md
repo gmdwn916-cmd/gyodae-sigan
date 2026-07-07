@@ -108,6 +108,10 @@
     쓸어 삭제하면 그 날짜만 여기 추가됨(반복 할일 자체는 안 지워짐).
     반복 할일 전체 삭제는 반드시 "반복 할일" 탭에서만(openRepeatEditor의
     삭제 버튼). 이 구분 헷갈리지 말 것 — 실제로 헷갈려서 버그 신고된 적 있음.
+  - 화면에 그릴 때는 반드시 buildTodoRow()/renderTodoList() 공용 함수로 그릴 것.
+    반복 할일과 한 번짜리 할 일은 겉모습(체크 버튼·카테고리 점·인라인 수정·
+    스와이프 삭제)이 완전히 같아야 함 — 별도 마크업/스타일을 새로 만들지 말 것.
+    (예전엔 today-event-item/dd-event-item으로 따로 그렸다가 통합함.)
 - inbox[]: 미배치 { text, createdAt } (반복 배치 옵션은 아직 없음, 범위 밖으로 보류 중)
 - shiftOverrides: 날짜 예외{date,shiftName} / D번호 예외{dayIndex,shiftName}
 - shiftColors { 근무이름: 색 }, weekStart
