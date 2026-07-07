@@ -602,15 +602,6 @@
     }
     .btn-important-toggle.is-on { color: #ff9500; }
 
-    .dd-repeat-toggle-label {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      font-size: 12px;
-      color: var(--text-2);
-      margin-top: 6px;
-    }
-
     .btn-dd-del-routine {
       background: none;
       border: none;
@@ -2365,9 +2356,6 @@
         <input type="text" id="dd-event-input" placeholder="할 일 추가…" maxlength="50">
         <button class="btn-dd-add" id="btn-dd-add-event">추가</button>
       </div>
-      <label class="dd-repeat-toggle-label">
-        <input type="checkbox" id="dd-event-repeat-toggle"> 반복
-      </label>
       <div class="onboard-warn" id="dd-warn"></div>
     </div>
     <div class="btn-row" style="padding-top:4px">
@@ -3845,7 +3833,6 @@
     renderDDTodos();
 
     document.getElementById('dd-event-input').value = '';
-    document.getElementById('dd-event-repeat-toggle').checked = false;
     document.getElementById('dd-warn').textContent = '';
 
     document.getElementById('day-detail-overlay').classList.add('open');
@@ -3964,13 +3951,6 @@
     const text = input.value.trim();
     if (!text) { warn.textContent = '할 일을 입력해 주세요.'; return; }
     warn.textContent = '';
-
-    if (document.getElementById('dd-event-repeat-toggle').checked) {
-      input.value = '';
-      document.getElementById('dd-event-repeat-toggle').checked = false;
-      openRepeatEditor({ presetText: text });
-      return;
-    }
 
     if (!Array.isArray(state.events)) { state.events = []; }
     state.events.push({ id: genId('e'), date: detailDateStr, endDate: detailDateStr, text: text });
