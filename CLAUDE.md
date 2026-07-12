@@ -141,7 +141,12 @@
                 형식 {shiftNames, offset, weekdays}(묶음 1개짜리와 동일)도 계속
                 읽힘 — 별도 마이그레이션 없이 computeIndicesForRule/
                 describeRepeatRule이 groups 없으면 그 자리에서 묶음 1개로
-                감싸서 처리)
+                감싸서 처리.
+                offset("이 근무 다음날"): 화면에서 고르는 UI를 없애서 새로
+                만드는 묶음은 항상 offset:0("이 날"). 예전에 offset:1(다음날)로
+                저장된 묶음은 계속 그 값 그대로 정상 계산·표시되지만(하위 호환),
+                수정하려고 열면(꺼내서 다시 편집) 그 값을 바꿀 화면이 없으니
+                다시 쌓을 때 offset:0으로 저장됨 — 의도된 동작, 다시 만들지 말 것)
               {type:'weekday', weekdays:[...]}  (예전 "요일로 고르기" 전용 모드였음 —
                버튼은 없어졌지만 이 형식으로 저장된 예전 데이터를 계속 읽기
                위해 computeIndicesForRule/describeRepeatRule에 남겨둠. 그런
