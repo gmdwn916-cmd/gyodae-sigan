@@ -1765,6 +1765,56 @@
       color: #fff;
     }
 
+    .promote-shift-matrix {
+      display: grid;
+      grid-template-columns: minmax(34px, auto) repeat(7, 1fr);
+      gap: 4px;
+      margin-top: 10px;
+    }
+
+    .promote-shift-matrix-corner { }
+
+    .promote-shift-matrix-header {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-align: center;
+      align-self: center;
+    }
+
+    .promote-shift-matrix-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-1);
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+      padding-right: 2px;
+    }
+
+    .promote-shift-cell {
+      aspect-ratio: 1;
+      min-height: 30px;
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      cursor: pointer;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .promote-shift-cell.selected {
+      background: #007aff;
+      border-color: #007aff;
+    }
+
+    .promote-shift-matrix-empty {
+      font-size: 13px;
+      color: var(--text-2);
+      padding: 8px 0;
+      grid-column: 1 / -1;
+    }
+
     .promote-interval-row {
       display: flex;
       align-items: center;
@@ -2341,17 +2391,8 @@
     </div>
 
     <div id="promote-shift-section" style="display:none">
-      <div id="promote-shift-group-list" class="promote-weekday-picker"></div>
-      <div class="form-group">
-        <label>근무 (여러 개 선택 가능)</label>
-        <div id="promote-shift-name-picker" class="promote-weekday-picker"></div>
-      </div>
-      <div class="form-group">
-        <label>요일 (여러 개 선택 가능)</label>
-        <div id="promote-shift-weekday-picker" class="promote-weekday-picker"></div>
-      </div>
-      <button type="button" class="btn btn-secondary" id="btn-promote-shift-add-group" style="margin-top:10px;width:100%;">+ 조건 추가</button>
-      <div class="promote-interval-hint">근무나 요일 중 하나 이상 고르고 "+ 조건 추가"를 누르면 위 목록에 쌓여요. 쌓인 조건을 다시 누르면 지워지고 편집 칸으로 돌아와요. 쌓인 조건 중 하나라도 맞으면 반복돼요.</div>
+      <div id="promote-shift-matrix" class="promote-shift-matrix"></div>
+      <div class="promote-interval-hint">근무×요일 칸을 눌러서 켜고 끄세요. 색칠된 칸에 해당하는 날마다 반복돼요.</div>
     </div>
 
     <div class="onboard-warn" id="promote-warn"></div>
@@ -5140,48 +5181,11 @@
   let promoteIntervalSubMode = 'interval'; // '기간' 안의 하위 선택: 'interval'(기간) | 'lunar'(음력)
   let promoteIntervalValues = { years: 0, months: 0, days: 0 };
   let promoteLunarValues = { month: 1, day: 1 };
-  let promoteShiftGroups = []; // 근무로 고르기: 쌓아 둔 (근무+요일) 조건 묶음들. OR로 합쳐짐.
-  let promoteShiftAllNames = []; // 현재 설정에 있는 근무 이름 전체 목록 (선택지)
-
-  function renderWeekdayPicker(containerEl, selectedSet) {
-    containerEl.innerHTML = '';
-    const DOW_KR = ['일','월','화','수','목','금','토'];
-    const WEEKDAY_DISPLAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // 월~일 순서로 보여줌(요일 번호 자체는 그대로 0=일~6=토)
-    WEEKDAY_DISPLAY_ORDER.forEach(function (wd) {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'promote-weekday-chip' + (selectedSet.has(wd) ? ' selected' : '');
-      chip.textContent = DOW_KR[wd];
-      chip.dataset.wd = wd;
-      chip.addEventListener('click', function () { chip.classList.toggle('selected'); });
-      containerEl.appendChild(chip);
-    });
-  }
-
-  function selectedWeekdaysFrom(containerEl) {
-    return Array.from(containerEl.querySelectorAll('.promote-weekday-chip.selected'))
-      .map(function (c) { return parseInt(c.dataset.wd, 10); });
-  }
-
-  function renderNamePicker(containerEl, names, selectedSet) {
-    containerEl.innerHTML = '';
-    names.forEach(function (name) {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'promote-weekday-chip' + (selectedSet.has(name) ? ' selected' : '');
-      chip.textContent = name;
-      chip.dataset.name = name;
-      chip.addEventListener('click', function () { chip.classList.toggle('selected'); });
-      containerEl.appendChild(chip);
-    });
-  }
-
-  function selectedNamesFrom(containerEl) {
-    return Array.from(containerEl.querySelectorAll('.promote-weekday-chip.selected'))
-      .map(function (c) { return c.dataset.name; });
-  }
+  let promoteShiftGridSelected = new Set(); // 근무×요일 표에서 켜진 칸들 ("근무이름|요일번호" 문자열)
+  let promoteShiftAllNames = []; // 현재 설정에 있는 근무 이름 전체 목록(표의 세로 행)
 
   // "근무로 고르기" 조건 묶음 하나를 사람이 읽을 문장으로. (예: "주간인 토요일마다")
+  // 반복 할일 탭 목록에 표시할 때만 씀 — 편집 화면(표)에는 문장을 따로 안 보여줌.
   function describeShiftGroup(g) {
     const DOW = ['일', '월', '화', '수', '목', '금', '토'];
     const names = (g.shiftNames || []).join('·');
@@ -5193,29 +5197,78 @@
     return g.offset === 1 ? (names + ' 다음날마다') : (names + '날마다');
   }
 
-  // 지금 편집 칸(근무 선택/요일 선택)을 비워서 다음 조건을 새로 고를 수 있게 함
-  function resetPromoteShiftCurrentInputs() {
-    renderNamePicker(document.getElementById('promote-shift-name-picker'), promoteShiftAllNames, new Set());
-    renderWeekdayPicker(document.getElementById('promote-shift-weekday-picker'), new Set());
+  function shiftCellKey(name, wd) { return name + '|' + wd; }
+
+  // 근무×요일 표를 그림(세로: 근무 순서대로, 가로: 월~일). 칸을 누르면 바로 켜고 끔.
+  function renderShiftMatrix() {
+    const el = document.getElementById('promote-shift-matrix');
+    el.innerHTML = '';
+    if (promoteShiftAllNames.length === 0) {
+      el.innerHTML = '<div class="promote-shift-matrix-empty">설정된 근무유형이 없어요. 설정 탭에서 교대 주기를 먼저 만들어 주세요.</div>';
+      return;
+    }
+    const DOW_KR = ['일', '월', '화', '수', '목', '금', '토'];
+    const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0]; // 월~일 순(요일 번호 자체는 0=일~6=토 그대로)
+
+    el.appendChild(document.createElement('div')).className = 'promote-shift-matrix-corner';
+    WEEKDAY_ORDER.forEach(function (wd) {
+      const h = document.createElement('div');
+      h.className = 'promote-shift-matrix-header';
+      h.textContent = DOW_KR[wd];
+      el.appendChild(h);
+    });
+
+    promoteShiftAllNames.forEach(function (name) {
+      const label = document.createElement('div');
+      label.className = 'promote-shift-matrix-label';
+      label.textContent = name;
+      el.appendChild(label);
+
+      WEEKDAY_ORDER.forEach(function (wd) {
+        const key = shiftCellKey(name, wd);
+        const cell = document.createElement('button');
+        cell.type = 'button';
+        cell.className = 'promote-shift-cell' + (promoteShiftGridSelected.has(key) ? ' selected' : '');
+        cell.setAttribute('aria-label', name + ' ' + DOW_KR[wd] + '요일');
+        cell.addEventListener('click', function () {
+          if (promoteShiftGridSelected.has(key)) promoteShiftGridSelected.delete(key);
+          else promoteShiftGridSelected.add(key);
+          cell.classList.toggle('selected');
+        });
+        el.appendChild(cell);
+      });
+    });
   }
 
-  // 쌓아 둔 조건 묶음을 화면에 그림. 묶음 칩을 누르면 목록에서 빠지고 편집 칸으로 돌아옴.
-  function renderPromoteShiftGroupList() {
-    const el = document.getElementById('promote-shift-group-list');
-    el.innerHTML = '';
-    promoteShiftGroups.forEach(function (g, i) {
-      const chip = document.createElement('button');
-      chip.type = 'button';
-      chip.className = 'promote-weekday-chip selected';
-      chip.textContent = describeShiftGroup(g);
-      chip.addEventListener('click', function () {
-        promoteShiftGroups.splice(i, 1);
-        renderNamePicker(document.getElementById('promote-shift-name-picker'), promoteShiftAllNames, new Set(g.shiftNames || []));
-        renderWeekdayPicker(document.getElementById('promote-shift-weekday-picker'), new Set(g.weekdays || []));
-        renderPromoteShiftGroupList();
+  // 저장된 규칙(그룹들)을 표의 켜진 칸 상태로 풀어줌. shiftNames/weekdays가 비어 있으면
+  // "근무 전체"/"요일 전체"를 뜻하므로 그 축 전체를 켠다.
+  function expandGroupsToGridSelection(groups) {
+    const selected = new Set();
+    groups.forEach(function (g) {
+      const names = (g.shiftNames && g.shiftNames.length) ? g.shiftNames : promoteShiftAllNames;
+      const wds = (g.weekdays && g.weekdays.length) ? g.weekdays : [0, 1, 2, 3, 4, 5, 6];
+      names.forEach(function (name) {
+        wds.forEach(function (wd) { selected.add(shiftCellKey(name, wd)); });
       });
-      el.appendChild(chip);
     });
+    return selected;
+  }
+
+  // 표의 켜진 칸들을 저장용 groups[]로 압축. 근무 하나당 묶음 하나 —
+  // 그 근무의 요일 7개가 전부 켜져 있으면 요일 제한 없이("이 근무 날마다"), 아니면 켜진 요일만.
+  function collapseGridSelectionToGroups() {
+    const groups = [];
+    promoteShiftAllNames.forEach(function (name) {
+      const wds = [];
+      for (let wd = 0; wd < 7; wd++) {
+        if (promoteShiftGridSelected.has(shiftCellKey(name, wd))) wds.push(wd);
+      }
+      if (wds.length === 0) return;
+      groups.push(wds.length === 7
+        ? { shiftNames: [name], offset: 0 }
+        : { shiftNames: [name], offset: 0, weekdays: wds });
+    });
+    return groups;
   }
 
   function renderIntervalSpinner() {
@@ -5375,23 +5428,17 @@
       const n = d.shiftType.name;
       if (n && promoteShiftAllNames.indexOf(n) === -1) promoteShiftAllNames.push(n);
     });
-    promoteShiftGroups = [];
-    resetPromoteShiftCurrentInputs();
-    renderPromoteShiftGroupList();
+    promoteShiftGridSelected = new Set();
 
     if (initialRule && initialRule.type === 'shift') {
       const legacyGroups = (initialRule.groups && initialRule.groups.length)
         ? initialRule.groups
         : [{ shiftNames: initialRule.shiftNames || [], offset: initialRule.offset || 0, weekdays: initialRule.weekdays }];
-      promoteShiftGroups = legacyGroups.map(function (g) {
-        return { shiftNames: (g.shiftNames || []).slice(), offset: g.offset || 0, weekdays: g.weekdays ? g.weekdays.slice() : undefined };
-      });
-      renderPromoteShiftGroupList();
+      promoteShiftGridSelected = expandGroupsToGridSelection(legacyGroups);
       setPromoteMode('shift');
     } else if (initialRule && initialRule.type === 'weekday') {
-      // 예전 "요일로 고르기"(별도 모드) 데이터 — 근무 없이 요일만 있는 조건 묶음 하나로 변환
-      promoteShiftGroups = [{ shiftNames: [], offset: 0, weekdays: (initialRule.weekdays || []).slice() }];
-      renderPromoteShiftGroupList();
+      // 예전 "요일로 고르기"(별도 모드) 데이터 — 근무 없이 요일만 있던 것 → 그 요일의 모든 근무 칸을 켬
+      promoteShiftGridSelected = expandGroupsToGridSelection([{ shiftNames: [], weekdays: (initialRule.weekdays || []).slice() }]);
       setPromoteMode('shift');
     } else if (initialRule && initialRule.type === 'interval') {
       promoteIntervalValues = {
@@ -5407,6 +5454,7 @@
       setPromoteIntervalSubMode('lunar');
     }
 
+    renderShiftMatrix();
     renderIntervalSpinner();
     renderLunarSpinner();
 
@@ -5441,16 +5489,6 @@
   setupIntervalSpinner(document.getElementById('pi-days'), 'days');
   setupLunarSpinner(document.getElementById('pl-month'), 'month', 1, 12);
   setupLunarSpinner(document.getElementById('pl-day'), 'day', 1, 30);
-  document.getElementById('btn-promote-shift-add-group').addEventListener('click', function () {
-    const warn = document.getElementById('promote-warn');
-    const names = selectedNamesFrom(document.getElementById('promote-shift-name-picker'));
-    const weekdays = selectedWeekdaysFrom(document.getElementById('promote-shift-weekday-picker'));
-    if (names.length === 0 && weekdays.length === 0) { warn.textContent = '근무나 요일을 하나 이상 선택해 주세요.'; return; }
-    warn.textContent = '';
-    promoteShiftGroups.push({ shiftNames: names, offset: 0, weekdays: weekdays.length ? weekdays : undefined });
-    renderPromoteShiftGroupList();
-    resetPromoteShiftCurrentInputs();
-  });
   document.getElementById('btn-promote-cancel').addEventListener('click', closeRepeatEditor);
   document.getElementById('promote-overlay').addEventListener('click', function (e) {
     if (e.target === this) closeRepeatEditor();
@@ -5479,14 +5517,8 @@
     let indices = [];
 
     if (promoteMode === 'shift') {
-      // 지금 편집 칸에 남아 있는(아직 "+ 조건 추가"를 안 누른) 조건이 있으면 그것도 자동으로 포함
-      const groups = promoteShiftGroups.slice();
-      const currentNames = selectedNamesFrom(document.getElementById('promote-shift-name-picker'));
-      const currentWeekdays = selectedWeekdaysFrom(document.getElementById('promote-shift-weekday-picker'));
-      if (currentNames.length || currentWeekdays.length) {
-        groups.push({ shiftNames: currentNames, offset: 0, weekdays: currentWeekdays.length ? currentWeekdays : undefined });
-      }
-      if (groups.length === 0) { warn.textContent = '근무나 요일을 하나 이상 선택해 주세요.'; return; }
+      const groups = collapseGridSelectionToGroups();
+      if (groups.length === 0) { warn.textContent = '근무·요일 표에서 칸을 하나 이상 눌러 주세요.'; return; }
       rule = { type: 'shift', groups: groups };
       indices = computeIndicesForRule(rule);
     } else if (promoteMode === 'interval' && promoteIntervalSubMode === 'lunar') {
