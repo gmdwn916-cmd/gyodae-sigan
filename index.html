@@ -2508,10 +2508,14 @@
 
 <script>
   const CATEGORIES = [
-    { id: 'exercise', name: '운동', color: '#34c759', icon: '🥋' },
-    { id: 'diet',     name: '식단', color: '#ff9500', icon: '🍚' },
-    { id: 'clean',    name: '청소', color: '#007aff', icon: '🧹' },
-    { id: 'etc',      name: '기타', color: '#8e8e93', icon: ''   },
+    { id: 'exercise',    name: '운동', color: '#34c759', icon: '🥋' },
+    { id: 'diet',        name: '식단', color: '#ff9500', icon: '🍚' },
+    { id: 'clean',       name: '청소', color: '#007aff', icon: '🧹' },
+    { id: 'appointment', name: '약속', color: '#ffcc00', icon: '🤝' },
+    { id: 'health',      name: '병원', color: '#00c7be', icon: '🏥' },
+    { id: 'study',       name: '공부', color: '#5856d6', icon: '📚' },
+    { id: 'family',      name: '가족', color: '#ff2d55', icon: '👪' },
+    { id: 'etc',         name: '기타', color: '#8e8e93', icon: ''   },
   ];
   function getCat(id) {
     return CATEGORIES.find(c => c.id === id) ?? CATEGORIES[CATEGORIES.length - 1];
