@@ -2396,11 +2396,6 @@
     </div>
 
     <div class="onboard-warn" id="promote-warn"></div>
-    <div class="btn-row" style="padding-top:8px">
-      <button class="btn btn-secondary" id="btn-promote-delete" style="display:none">삭제</button>
-      <button class="btn btn-secondary" id="btn-promote-cancel">취소</button>
-      <button class="btn btn-primary" id="btn-promote-confirm" style="display:none">확인</button>
-    </div>
   </div>
 </div>
 
@@ -5242,6 +5237,7 @@
           const nowSelected = !cell.classList.contains('selected');
           if (nowSelected) promoteShiftGridSelected.add(key); else promoteShiftGridSelected.delete(key);
           cell.classList.toggle('selected', nowSelected);
+          syncPromoteEditorToState();
         });
         el.appendChild(cell);
       });
@@ -5311,7 +5307,11 @@
       }
       renderIntervalSpinner();
     }
-    function end() { dragging = false; }
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      syncPromoteEditorToState();
+    }
 
     el.addEventListener('touchstart', function (e) { start(e.touches[0].clientY); }, { passive: true });
     el.addEventListener('touchmove', function (e) { move(e.touches[0].clientY); e.preventDefault(); }, { passive: false });
@@ -5352,7 +5352,11 @@
       }
       renderLunarSpinner();
     }
-    function end() { dragging = false; }
+    function end() {
+      if (!dragging) return;
+      dragging = false;
+      syncPromoteEditorToState();
+    }
 
     el.addEventListener('touchstart', function (e) { start(e.touches[0].clientY); }, { passive: true });
     el.addEventListener('touchmove', function (e) { move(e.touches[0].clientY); e.preventDefault(); }, { passive: false });
@@ -5366,7 +5370,6 @@
     promoteMode = mode;
     document.getElementById('promote-interval-section').style.display = mode === 'interval' ? '' : 'none';
     document.getElementById('promote-shift-section').style.display = mode === 'shift' ? '' : 'none';
-    document.getElementById('btn-promote-confirm').style.display = '';
     document.getElementById('promote-warn').textContent = '';
     document.getElementById('btn-promote-mode-interval').classList.toggle('active', mode === 'interval');
     document.getElementById('btn-promote-mode-shift').classList.toggle('active', mode === 'shift');
@@ -5412,13 +5415,11 @@
       sourceDateInfoEl.style.display = 'none';
     }
     document.getElementById('promote-text-input').value = initialText;
-    document.getElementById('btn-promote-delete').style.display = existing ? '' : 'none';
 
     document.getElementById('promote-warn').textContent = '';
     document.getElementById('promote-interval-section').style.display = 'none';
     document.getElementById('promote-shift-section').style.display = 'none';
     document.getElementById('promote-lunar-section').style.display = 'none';
-    document.getElementById('btn-promote-confirm').style.display = 'none';
     document.querySelectorAll('#promote-mode-row .btn').forEach(function (b) { b.classList.remove('active'); });
 
     const catSel = document.getElementById('promote-cat-select');
@@ -5476,13 +5477,65 @@
     repeatEditorSourceEvent = null;
   }
 
+  // 확인 버튼 없이, 화면에서 뭔가 바뀔 때마다 바로 저장. 텍스트가 아직 비어 있거나
+  // 반복 방식을 아직 하나도 안 골랐으면(규칙을 만들 수 없으면) 저장을 보류하고 기다림.
+  function syncPromoteEditorToState() {
+    const text = document.getElementById('promote-text-input').value.trim();
+    if (!text) return;
+    const category = document.getElementById('promote-cat-select').value;
+
+    let rule = null;
+    if (promoteMode === 'shift') {
+      const groups = collapseGridSelectionToGroups();
+      if (groups.length) rule = { type: 'shift', groups: groups };
+    } else if (promoteMode === 'interval' && promoteIntervalSubMode === 'lunar') {
+      rule = { type: 'lunar', lunarMonth: promoteLunarValues.month, lunarDay: promoteLunarValues.day };
+    } else if (promoteMode === 'interval') {
+      const years = promoteIntervalValues.years, months = promoteIntervalValues.months, days = promoteIntervalValues.days;
+      if (years || months || days) {
+        const anchorDate = (repeatEditorTargetEvent && repeatEditorTargetEvent.repeat && repeatEditorTargetEvent.repeat.type === 'interval')
+          ? repeatEditorTargetEvent.repeat.anchorDate
+          : (repeatEditorSourceEvent ? repeatEditorSourceEvent.date : formatDateStr(todayMidnight()));
+        rule = { type: 'interval', years: years, months: months, days: days, anchorDate: anchorDate };
+      }
+    }
+    if (!rule) return;
+
+    if (!repeatEditorTargetEvent) {
+      repeatEditorTargetEvent = {
+        id: genId('e'), text: text, category: category, repeat: rule,
+        important: repeatEditorSourceEvent ? !!repeatEditorSourceEvent.important : false,
+      };
+      if (!Array.isArray(state.events)) state.events = [];
+      state.events.push(repeatEditorTargetEvent);
+    } else {
+      repeatEditorTargetEvent.text = text;
+      repeatEditorTargetEvent.category = category;
+      repeatEditorTargetEvent.repeat = rule;
+    }
+
+    if (repeatEditorSourceEvent) {
+      state.events = state.events.filter(function (e) { return e.id !== repeatEditorSourceEvent.id; });
+    }
+
+    saveState();
+    renderRoutine();
+    renderGrid();
+    renderToday();
+    if (detailDateStr !== null) { renderDDTodos(); }
+  }
+
   document.getElementById('btn-promote-mode-interval').addEventListener('click', function () {
     setPromoteMode('interval');
     promoteIntervalValues = { years: 0, months: 0, days: 0 };
     renderIntervalSpinner();
     setPromoteIntervalSubMode('interval');
+    syncPromoteEditorToState();
   });
-  document.getElementById('btn-promote-mode-shift').addEventListener('click', function () { setPromoteMode('shift'); });
+  document.getElementById('btn-promote-mode-shift').addEventListener('click', function () {
+    setPromoteMode('shift');
+    syncPromoteEditorToState();
+  });
   document.getElementById('btn-promote-lunar-toggle').addEventListener('click', function () {
     if (promoteIntervalSubMode === 'lunar') {
       promoteIntervalValues = { years: 0, months: 0, days: 0 };
@@ -5491,86 +5544,18 @@
     } else {
       setPromoteIntervalSubMode('lunar');
     }
+    syncPromoteEditorToState();
   });
   setupIntervalSpinner(document.getElementById('pi-years'), 'years');
   setupIntervalSpinner(document.getElementById('pi-months'), 'months');
   setupIntervalSpinner(document.getElementById('pi-days'), 'days');
   setupLunarSpinner(document.getElementById('pl-month'), 'month', 1, 12);
   setupLunarSpinner(document.getElementById('pl-day'), 'day', 1, 30);
-  document.getElementById('btn-promote-cancel').addEventListener('click', closeRepeatEditor);
   document.getElementById('promote-overlay').addEventListener('click', function (e) {
     if (e.target === this) closeRepeatEditor();
   });
-
-  document.getElementById('btn-promote-delete').addEventListener('click', function () {
-    if (repeatEditorTargetEvent) {
-      state.events = state.events.filter(function (e) { return e.id !== repeatEditorTargetEvent.id; });
-      saveState();
-    }
-    closeRepeatEditor();
-    renderRoutine();
-    renderGrid();
-    renderToday();
-    if (detailDateStr !== null) { renderDDTodos(); }
-  });
-
-  document.getElementById('btn-promote-confirm').addEventListener('click', function () {
-    const warn = document.getElementById('promote-warn');
-    warn.textContent = '';
-    const text = document.getElementById('promote-text-input').value.trim();
-    if (!text) { warn.textContent = '내용을 입력해 주세요.'; return; }
-    const category = document.getElementById('promote-cat-select').value;
-
-    let rule = null;
-    let indices = [];
-
-    if (promoteMode === 'shift') {
-      const groups = collapseGridSelectionToGroups();
-      if (groups.length === 0) { warn.textContent = '근무·요일 표에서 칸을 하나 이상 눌러 주세요.'; return; }
-      rule = { type: 'shift', groups: groups };
-      indices = computeIndicesForRule(rule);
-    } else if (promoteMode === 'interval' && promoteIntervalSubMode === 'lunar') {
-      rule = { type: 'lunar', lunarMonth: promoteLunarValues.month, lunarDay: promoteLunarValues.day };
-    } else if (promoteMode === 'interval') {
-      const years = promoteIntervalValues.years, months = promoteIntervalValues.months, days = promoteIntervalValues.days;
-      if (years === 0 && months === 0 && days === 0) { warn.textContent = '기간을 하나 이상 입력해 주세요.'; return; }
-      const anchorDate = (repeatEditorTargetEvent && repeatEditorTargetEvent.repeat && repeatEditorTargetEvent.repeat.type === 'interval')
-        ? repeatEditorTargetEvent.repeat.anchorDate
-        : (repeatEditorSourceEvent ? repeatEditorSourceEvent.date : formatDateStr(todayMidnight()));
-      rule = { type: 'interval', years: years, months: months, days: days, anchorDate: anchorDate };
-    } else {
-      warn.textContent = '반복 방법을 선택해 주세요.';
-      return;
-    }
-
-    if (rule.type !== 'interval' && rule.type !== 'lunar' && indices.length === 0) {
-      warn.textContent = '조건에 맞는 날이 없어요.';
-      return;
-    }
-
-    if (repeatEditorTargetEvent) {
-      repeatEditorTargetEvent.text = text;
-      repeatEditorTargetEvent.category = category;
-      repeatEditorTargetEvent.repeat = rule;
-    } else {
-      if (!Array.isArray(state.events)) state.events = [];
-      state.events.push({
-        id: genId('e'), text: text, category: category, repeat: rule,
-        important: repeatEditorSourceEvent ? !!repeatEditorSourceEvent.important : false,
-      });
-    }
-
-    if (repeatEditorSourceEvent) {
-      state.events = state.events.filter(function (e) { return e.id !== repeatEditorSourceEvent.id; });
-    }
-
-    saveState();
-    closeRepeatEditor();
-    renderRoutine();
-    renderGrid();
-    renderToday();
-    if (detailDateStr !== null) { renderDDTodos(); }
-  });
+  document.getElementById('promote-text-input').addEventListener('input', syncPromoteEditorToState);
+  document.getElementById('promote-cat-select').addEventListener('change', syncPromoteEditorToState);
 
   // ── 기간 할 일 수정 ──────────────────────────────────────────
   let periodEditingId = null;
@@ -6139,7 +6124,18 @@
       label.textContent = g.label;
       list.appendChild(label);
 
-      items.forEach(function (ev) { list.appendChild(buildRoutineCard(ev)); });
+      items.forEach(function (ev) {
+        const card = buildRoutineCard(ev);
+        // 한 번짜리/오늘 탭 할 일과 같은 스와이프 삭제 — 여기서는 반복 할일 자체를 통째로 지움.
+        list.appendChild(wrapWithSwipeToDelete(card, 'var(--bg)', function () {
+          state.events = state.events.filter(function (e) { return e.id !== ev.id; });
+          saveState();
+          renderRoutine();
+          renderGrid();
+          renderToday();
+          if (detailDateStr !== null) { renderDDTodos(); }
+        }));
+      });
     });
   }
 
