@@ -2158,7 +2158,7 @@
       <div id="sd-categories" style="display:none">
         <div class="card" id="category-settings-card"></div>
         <button type="button" class="btn btn-secondary" id="btn-category-add" style="width:100%;margin-top:10px;">+ 새 카테고리 추가</button>
-        <p class="shift-color-hint">카테고리를 지우면 그걸 쓰던 할 일은 회색 "기타" 모양으로 보여요. 적어도 1개는 남아 있어야 해요.</p>
+        <p class="shift-color-hint">카테고리를 지우면 그걸 쓰던 할 일은 "기타" 모양으로 보여요. "기타"는 항상 회색으로 고정돼 있고 수정·삭제가 안 돼요.</p>
       </div>
 
       <!-- 주 시작 요일 -->
@@ -2709,6 +2709,20 @@
     if (!Array.isArray(s.categories)) {
       s.categories = CATEGORIES_DEFAULT.map(function (c) { return Object.assign({}, c); });
       changed = true;
+    }
+    // "기타"는 항상 맨 끝에 고정된 모양(회색, 수정·삭제 불가)으로 유지 —
+    // 카테고리가 지워지거나 미설정일 때의 기본값이라 늘 이 모양 그대로 있어야 함.
+    {
+      const etcIdx = s.categories.findIndex(function (c) { return c.id === 'etc'; });
+      const isFixedShape = function (c) { return c && c.name === CAT_FALLBACK.name && c.color === CAT_FALLBACK.color && c.icon === CAT_FALLBACK.icon; };
+      if (etcIdx === -1) {
+        s.categories.push(Object.assign({}, CAT_FALLBACK));
+        changed = true;
+      } else if (etcIdx !== s.categories.length - 1 || !isFixedShape(s.categories[etcIdx])) {
+        s.categories.splice(etcIdx, 1);
+        s.categories.push(Object.assign({}, CAT_FALLBACK));
+        changed = true;
+      }
     }
     if (!Array.isArray(s.teams)) {
       s.teams = [];
@@ -4294,29 +4308,45 @@
   }
 
   // ── 카테고리 관리 (사용자가 직접 추가·수정·삭제) ──────────────
+  // "아이콘 텍스트" 앞머리에 붙은 이모지 1개를 떼어내고 나머지를 이름으로 분리
+  function splitCategoryInput(raw) {
+    const trimmed = raw.trim();
+    const m = trimmed.match(/^(\p{Extended_Pictographic}️?)\s*(.*)$/u);
+    if (m) return { icon: m[1], name: m[2].trim() };
+    return { icon: '', name: trimmed };
+  }
+
   function renderCategorySettings() {
     const card = document.getElementById('category-settings-card');
     card.innerHTML = '';
     const cats = getCategories();
 
-    cats.forEach(function (cat, idx) {
+    cats.forEach(function (cat) {
       const row = document.createElement('div');
       row.className = 'shift-color-row';
+
+      // "기타"는 항상 회색으로 고정 — 수정·삭제 불가(카테고리 미설정 시의 기본값이라 늘 있어야 함)
+      if (cat.id === 'etc') {
+        const rowTop = document.createElement('div');
+        rowTop.className = 'shift-color-row-top';
+        const label = document.createElement('span');
+        label.className = 'shift-color-name';
+        label.style.color = cat.color;
+        label.textContent = cat.name + ' · 고정';
+        rowTop.appendChild(label);
+        row.appendChild(rowTop);
+        card.appendChild(row);
+        return;
+      }
 
       const rowTop = document.createElement('div');
       rowTop.className = 'shift-color-row-top';
 
-      const iconInput = document.createElement('input');
-      iconInput.type = 'text';
-      iconInput.value = cat.icon || '';
-      iconInput.maxLength = 4;
-      iconInput.placeholder = '아이콘';
-      iconInput.style.cssText = 'flex-shrink:0;width:38px;text-align:center;padding:8px 4px;border:1.5px solid var(--line);border-radius:8px;font-size:15px;background:var(--surface-2);color:var(--text-1);font-family:inherit;';
-
       const nameInput = document.createElement('input');
       nameInput.type = 'text';
-      nameInput.value = cat.name;
-      nameInput.maxLength = 10;
+      nameInput.value = (cat.icon ? cat.icon + ' ' : '') + cat.name;
+      nameInput.maxLength = 14;
+      nameInput.placeholder = '예: 🥋 운동';
       nameInput.className = 'shift-color-name';
       nameInput.style.cssText = 'flex:1;min-width:0;width:0;border:1.5px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--surface-2);font-family:inherit;';
 
@@ -4325,12 +4355,10 @@
       }
       applyPreview();
 
-      iconInput.addEventListener('input', function () {
-        cat.icon = iconInput.value;
-        saveState();
-      });
       nameInput.addEventListener('input', function () {
-        cat.name = nameInput.value;
+        const parsed = splitCategoryInput(nameInput.value);
+        cat.icon = parsed.icon;
+        cat.name = parsed.name;
         saveState();
       });
 
@@ -4339,15 +4367,14 @@
       delBtn.textContent = '×';
       delBtn.setAttribute('aria-label', '카테고리 삭제');
       delBtn.style.flexShrink = '0';
-      if (cats.length <= 1) delBtn.style.visibility = 'hidden';
       delBtn.addEventListener('click', function () {
-        if (getCategories().length <= 1) return;
-        state.categories.splice(idx, 1);
+        const i = state.categories.findIndex(function (c) { return c === cat; });
+        if (i === -1) return;
+        state.categories.splice(i, 1);
         saveState();
         renderCategorySettings();
       });
 
-      rowTop.appendChild(iconInput);
       rowTop.appendChild(nameInput);
       rowTop.appendChild(delBtn);
       row.appendChild(rowTop);
@@ -4394,7 +4421,10 @@
 
   document.getElementById('btn-category-add').addEventListener('click', function () {
     if (!Array.isArray(state.categories)) state.categories = [];
-    state.categories.push({ id: genId('cat'), name: '새 카테고리', color: '#8e8e93', icon: '' });
+    const newCat = { id: genId('cat'), name: '새 카테고리', color: '#8e8e93', icon: '' };
+    const etcIdx = state.categories.findIndex(function (c) { return c.id === 'etc'; });
+    if (etcIdx === -1) state.categories.push(newCat);
+    else state.categories.splice(etcIdx, 0, newCat);
     saveState();
     renderCategorySettings();
   });
