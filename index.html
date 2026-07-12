@@ -5846,6 +5846,65 @@
   })();
 
   // ── 루틴 탭 ──────────────────────────────────────────────
+  // 반복 할일 탭 정리 기준: 카테고리가 아니라 "얼마나/어떻게 반복되는지"(반복 방식)로 묶음.
+  // 이 탭은 반복 설정을 확인·수정하는 용도라 방식별 묶음이 더 맞음(카테고리는 각 줄 아이콘/색으로 이미 보임).
+  function repeatGroupKey(rule) {
+    if (!rule) return 'other';
+    if (rule.type === 'shift' || rule.type === 'weekday') return 'shift';
+    if (rule.type === 'interval') return 'interval';
+    if (rule.type === 'lunar') return 'lunar';
+    return 'other';
+  }
+
+  const ROUTINE_GROUPS = [
+    { key: 'shift', label: '근무·요일' },
+    { key: 'interval', label: '기간' },
+    { key: 'lunar', label: '음력' },
+    { key: 'other', label: '기타' },
+  ];
+
+  function buildRoutineCard(ev) {
+    const cat = getCat(ev.category);
+
+    const card = document.createElement('div');
+    card.className = 'routine-card';
+
+    const iconEl = document.createElement('span');
+    iconEl.className = 'routine-icon';
+    if (cat.icon) {
+      iconEl.textContent = cat.icon;
+    } else {
+      iconEl.textContent = '●';
+      iconEl.style.color = cat.color;
+    }
+
+    const infoEl = document.createElement('div');
+    infoEl.className = 'routine-info';
+
+    const nameEl = document.createElement('div');
+    nameEl.className = 'routine-name';
+    nameEl.textContent = ev.text;
+    nameEl.style.color = cat.color;
+
+    const daysEl = document.createElement('div');
+    daysEl.className = 'routine-days';
+    daysEl.textContent = describeRepeatRule(ev.repeat);
+
+    infoEl.appendChild(nameEl);
+    infoEl.appendChild(daysEl);
+
+    const chevron = document.createElement('span');
+    chevron.className = 'routine-chevron';
+    chevron.textContent = '›';
+
+    card.appendChild(iconEl);
+    card.appendChild(infoEl);
+    card.appendChild(chevron);
+
+    card.addEventListener('click', function () { openRepeatEditor({ editEvent: ev }); });
+    return card;
+  }
+
   function renderRoutine() {
     const list = document.getElementById('routine-list');
     if (!state || !state.cycleDays || !state.baseDate) {
@@ -5861,46 +5920,17 @@
       return;
     }
 
-    repeatTodos.forEach(function (ev) {
-      const cat = getCat(ev.category);
+    ROUTINE_GROUPS.forEach(function (g) {
+      const items = repeatTodos.filter(function (ev) { return repeatGroupKey(ev.repeat) === g.key; });
+      if (items.length === 0) return;
 
-      const card = document.createElement('div');
-      card.className = 'routine-card';
+      const label = document.createElement('div');
+      label.className = 'section-label';
+      if (list.children.length) label.style.marginTop = '18px';
+      label.textContent = g.label;
+      list.appendChild(label);
 
-      const iconEl = document.createElement('span');
-      iconEl.className = 'routine-icon';
-      if (cat.icon) {
-        iconEl.textContent = cat.icon;
-      } else {
-        iconEl.textContent = '●';
-        iconEl.style.color = cat.color;
-      }
-
-      const infoEl = document.createElement('div');
-      infoEl.className = 'routine-info';
-
-      const nameEl = document.createElement('div');
-      nameEl.className = 'routine-name';
-      nameEl.textContent = ev.text;
-      nameEl.style.color = cat.color;
-
-      const daysEl = document.createElement('div');
-      daysEl.className = 'routine-days';
-      daysEl.textContent = describeRepeatRule(ev.repeat);
-
-      infoEl.appendChild(nameEl);
-      infoEl.appendChild(daysEl);
-
-      const chevron = document.createElement('span');
-      chevron.className = 'routine-chevron';
-      chevron.textContent = '›';
-
-      card.appendChild(iconEl);
-      card.appendChild(infoEl);
-      card.appendChild(chevron);
-
-      card.addEventListener('click', function () { openRepeatEditor({ editEvent: ev }); });
-      list.appendChild(card);
+      items.forEach(function (ev) { list.appendChild(buildRoutineCard(ev)); });
     });
   }
 
