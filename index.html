@@ -294,7 +294,7 @@
 
     .today-date-row {
       display: flex;
-      align-items: flex-start;
+      align-items: baseline;
       justify-content: space-between;
       margin-bottom: 12px;
     }
@@ -324,29 +324,7 @@
       padding: 4px 10px;
       border-radius: 999px;
       flex-shrink: 0;
-      margin-top: 2px;
     }
-
-    .today-shift {
-      display: inline-flex;
-      align-items: center;
-      font-size: 15px;
-      font-weight: 700;
-      color: var(--text-1);
-      background: var(--surface-2);
-      padding: 6px 14px;
-      border-radius: 999px;
-    }
-
-    /* 근무색 칩: --shift-color는 JS가 인라인으로 지정.
-       color-mix 미지원 브라우저는 위 기본(중립 칩)으로 동작 */
-    .today-shift.has-color {
-      color: var(--shift-color);
-      color: color-mix(in srgb, var(--shift-color) var(--shift-ink-mix), var(--shift-ink));
-      background: color-mix(in srgb, var(--shift-color) var(--tint-pill), transparent);
-    }
-
-    .today-shift.empty { color: var(--text-3); font-weight: 400; font-size: 14px; }
 
     .section-label {
       font-size: 11px;
@@ -2080,7 +2058,6 @@
           </div>
           <div class="today-dnum" id="td-dnum"></div>
         </div>
-        <div class="today-shift" id="td-shift"></div>
       </div>
       <div class="card" id="td-events-card">
         <div class="today-events-header">
@@ -3743,26 +3720,16 @@
     holidayNameEl.textContent = todayHoliday ? todayHoliday.name : '';
     holidayNameEl.classList.toggle('show', !!todayHoliday);
 
-    const shiftEl = document.getElementById('td-shift');
     const todayShiftColor = getShiftColor(todayShiftName);
-    if (todayShiftName) {
-      shiftEl.textContent = todayShiftName;
-      shiftEl.className = 'today-shift' + (todayShiftColor ? ' has-color' : '');
-    } else {
-      shiftEl.textContent = '근무유형 미설정';
-      shiftEl.className = 'today-shift empty';
-    }
 
     // 근무색은 CSS 변수로만 전달하고, 라이트/다크별 톤 조정은 CSS(color-mix)가 담당
     const todayCard = document.querySelector('#today-content .today-hero');
     if (todayShiftColor) {
       todayCard.classList.add('has-shift');
       todayCard.style.setProperty('--shift-color', todayShiftColor);
-      shiftEl.style.setProperty('--shift-color', todayShiftColor);
     } else {
       todayCard.classList.remove('has-shift');
       todayCard.style.removeProperty('--shift-color');
-      shiftEl.style.removeProperty('--shift-color');
     }
 
     // 오늘 할 일 (반복 할일 + 한 번짜리 할 일을 하나의 목록으로 합쳐 보여줌)
