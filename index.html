@@ -306,6 +306,16 @@
       line-height: 1.25;
     }
 
+    .td-holiday-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: #ff3b30;
+      margin-top: 2px;
+      display: none;
+    }
+
+    .td-holiday-name.show { display: block; }
+
     .today-dnum {
       font-size: 12px;
       color: var(--text-2);
@@ -477,6 +487,14 @@
       font-weight: 400;
       color: var(--text-2);
     }
+
+    .dd-holiday-name {
+      font-size: 12px;
+      font-weight: 700;
+      color: #ff3b30;
+    }
+
+    .dd-date-title.is-holiday { color: #ff3b30; }
 
     .dd-day-info {
       font-size: 13px;
@@ -1078,6 +1096,7 @@
       width: 100%;
     }
 
+    .grid-cell.is-holiday .cell-date { color: #ff3b30; }
     .grid-cell.today .cell-date { color: #007aff; }
 
     .cell-shift-badge {
@@ -2044,7 +2063,10 @@
     <div id="today-content" style="display:none">
       <div class="card today-hero">
         <div class="today-date-row">
-          <div class="today-date-header" id="td-date"></div>
+          <div>
+            <div class="today-date-header" id="td-date"></div>
+            <div class="td-holiday-name" id="td-holiday-name"></div>
+          </div>
           <div class="today-dnum" id="td-dnum"></div>
         </div>
         <div class="today-shift" id="td-shift"></div>
@@ -2343,6 +2365,7 @@
     <div class="dd-header">
       <div class="dd-date-title-row">
         <div id="dd-date-title" class="dd-date-title"></div>
+        <span id="dd-holiday-name" class="dd-holiday-name"></span>
         <span id="dd-lunar-date" class="dd-lunar-date"></span>
       </div>
       <div class="dd-day-info-row">
@@ -3318,6 +3341,123 @@
     return '음력 ' + (lunar.isLeap ? '윤' : '') + lunar.month + '월 ' + lunar.day + '일';
   }
 
+  // 음력 날짜(lunarYear, lunarMonth, lunarDay) → 양력 날짜 문자열. solarToLunar의 역변환.
+  function lunarToSolar(lunarYear, lunarMonth, lunarDay, isIntercalation) {
+    const absDays = lunarAbsDays(lunarYear, lunarMonth, lunarDay, !!isIntercalation);
+    const solarYear = absDays < solarAbsDays(lunarYear + 1, 1, 1) ? lunarYear : lunarYear + 1;
+    let solarMonth = 0, solarDay = 0;
+    for (let month = 12; month > 0; month--) {
+      const absDaysByMonth = solarAbsDays(solarYear, month, 1);
+      if (absDays >= absDaysByMonth) {
+        solarMonth = month;
+        solarDay = absDays - absDaysByMonth + 1;
+        break;
+      }
+    }
+    return solarYear + '-' + String(solarMonth).padStart(2, '0') + '-' + String(solarDay).padStart(2, '0');
+  }
+
+  // ── 한국 공휴일 + 대체공휴일 계산 ──
+  // 근거: 「관공서의 공휴일에 관한 규정」(대통령령) 제2조·제3조, 2023.5.4. 시행 기준.
+  // 대체공휴일 발동 조건이 공휴일마다 다름:
+  //  - 국경일(삼일절·광복절·개천절·한글날)·부처님오신날·어린이날·성탄절: 토·일 모두 겹치면 발동
+  //  - 설날·추석 연휴: 일요일과 겹칠 때만 발동(토요일은 해당 없음)
+  //  - 위 항목이 평일에 서로 다른 공휴일과 겹치는 경우도 발동
+  // 대체공휴일 제도가 순차 확대돼 와서(2014 설/추석/어린이날 → 2021.8.4 국경일 → 2023.5.4 부처님오신날/성탄절),
+  // 계산 시점 이전엔 해당 공휴일에 대체 규칙을 적용하지 않는다.
+  const KOREAN_FIXED_HOLIDAYS = [
+    { md: [1, 1], name: '신정', cat: null },
+    { md: [3, 1], name: '삼일절', cat: 'gukgyeongil' },
+    { md: [5, 5], name: '어린이날', cat: 'childrens' },
+    { md: [6, 6], name: '현충일', cat: null },
+    { md: [8, 15], name: '광복절', cat: 'gukgyeongil' },
+    { md: [10, 3], name: '개천절', cat: 'gukgyeongil' },
+    { md: [10, 9], name: '한글날', cat: 'gukgyeongil' },
+    { md: [12, 25], name: '성탄절', cat: 'christmas' },
+  ];
+
+  function addDaysStr(dateStr, n) {
+    const d = parseLocalDate(dateStr);
+    d.setDate(d.getDate() + n);
+    return formatDateStr(d);
+  }
+
+  function isHolidaySubstituteEligible(cat, dateStr) {
+    if (!cat) return false;
+    if (cat === 'seollal' || cat === 'chuseok' || cat === 'childrens') return dateStr >= '2014-01-01';
+    if (cat === 'gukgyeongil') return dateStr >= '2021-08-04';
+    if (cat === 'christmas') return dateStr >= '2023-05-04';
+    return false;
+  }
+
+  function holidayTriggersSubstitute(cat, dateStr, dow, overlapsOtherHoliday) {
+    if (!isHolidaySubstituteEligible(cat, dateStr)) return false;
+    if (overlapsOtherHoliday) return true;
+    if (cat === 'seollal' || cat === 'chuseok') return dow === 0;
+    return dow === 0 || dow === 6;
+  }
+
+  const koreanHolidayCache = new Map(); // dateStr -> { name, isSubstitute }
+  const koreanHolidayComputedYears = new Set();
+
+  function ensureKoreanHolidaysForYear(year) {
+    if (koreanHolidayComputedYears.has(year)) return;
+    koreanHolidayComputedYears.add(year);
+    if (year < 1000 || year > 2050) return;
+
+    const entries = [];
+    KOREAN_FIXED_HOLIDAYS.forEach(function (h) {
+      const date = year + '-' + String(h.md[0]).padStart(2, '0') + '-' + String(h.md[1]).padStart(2, '0');
+      entries.push({ date: date, name: h.name, cat: h.cat });
+    });
+
+    const seollalDay = lunarToSolar(year, 1, 1, false);
+    entries.push({ date: addDaysStr(seollalDay, -1), name: '설날 연휴', cat: 'seollal' });
+    entries.push({ date: seollalDay, name: '설날', cat: 'seollal' });
+    entries.push({ date: addDaysStr(seollalDay, 1), name: '설날 연휴', cat: 'seollal' });
+
+    const chuseokDay = lunarToSolar(year, 8, 15, false);
+    entries.push({ date: addDaysStr(chuseokDay, -1), name: '추석 연휴', cat: 'chuseok' });
+    entries.push({ date: chuseokDay, name: '추석', cat: 'chuseok' });
+    entries.push({ date: addDaysStr(chuseokDay, 1), name: '추석 연휴', cat: 'chuseok' });
+
+    const buddhaDay = lunarToSolar(year, 4, 8, false);
+    entries.push({ date: buddhaDay, name: '부처님오신날', cat: 'buddha' });
+
+    const dateCount = new Map();
+    entries.forEach(function (e) { dateCount.set(e.date, (dateCount.get(e.date) || 0) + 1); });
+
+    entries.forEach(function (e) {
+      if (!koreanHolidayCache.has(e.date)) {
+        koreanHolidayCache.set(e.date, { name: e.name, isSubstitute: false });
+      }
+    });
+
+    // 대체공휴일이 서로 밀리는 순서를 안정적으로 계산하기 위해 날짜순 처리
+    entries.sort(function (a, b) { return a.date < b.date ? -1 : a.date > b.date ? 1 : 0; });
+    entries.forEach(function (e) {
+      const dow = parseLocalDate(e.date).getDay();
+      const overlaps = dateCount.get(e.date) > 1;
+      if (!holidayTriggersSubstitute(e.cat, e.date, dow, overlaps)) return;
+
+      let candidate = addDaysStr(e.date, 1);
+      while (true) {
+        const cdow = parseLocalDate(candidate).getDay();
+        if (cdow !== 0 && cdow !== 6 && !koreanHolidayCache.has(candidate)) break;
+        candidate = addDaysStr(candidate, 1);
+      }
+      koreanHolidayCache.set(candidate, { name: e.name + ' 대체공휴일', isSubstitute: true });
+    });
+  }
+
+  // 그 날짜가 한국 공휴일이면 { name, isSubstitute } 반환, 아니면 null
+  function getKoreanHoliday(dateStr) {
+    const year = parseInt(dateStr.slice(0, 4), 10);
+    ensureKoreanHolidaysForYear(year - 1); // 전년도 말 대체공휴일이 새해로 넘어오는 극단적 경우 대비
+    ensureKoreanHolidaysForYear(year);
+    return koreanHolidayCache.get(dateStr) || null;
+  }
+
   // 0-based index 반환 / 미설정이면 null
   function dayIndex0ForDate(dateStr) {
     if (!state || !state.cycleDays || !state.baseDate) return null;
@@ -3516,6 +3656,11 @@
     document.getElementById('td-date').textContent =
       (tdMid.getMonth() + 1) + '월 ' + tdMid.getDate() + '일 ' + DOW_KR[tdMid.getDay()] + '요일';
     document.getElementById('td-dnum').textContent = 'D' + day.dayIndex;
+
+    const todayHoliday = getKoreanHoliday(todayDateStr);
+    const holidayNameEl = document.getElementById('td-holiday-name');
+    holidayNameEl.textContent = todayHoliday ? todayHoliday.name : '';
+    holidayNameEl.classList.toggle('show', !!todayHoliday);
 
     const shiftEl = document.getElementById('td-shift');
     const { name: todayShiftName } = getEffectiveShiftName(formatDateStr(tdMid), idx);
@@ -3734,7 +3879,8 @@
 
       const cell = document.createElement('div');
       cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '') +
-        (bulkShiftSelectedDates.has(cellDateStr) ? ' bulk-shift-selected' : '');
+        (bulkShiftSelectedDates.has(cellDateStr) ? ' bulk-shift-selected' : '') +
+        (getKoreanHoliday(cellDateStr) ? ' is-holiday' : '');
       cell.dataset.dateStr = cellDateStr;
       const { name: shiftName } = getEffectiveShiftName(cellDateStr, dayIdx0);
 
@@ -4124,8 +4270,11 @@
     // 날짜 제목
     const d = parseLocalDate(dateStr);
     const DOW_KR = ['일','월','화','수','목','금','토'];
+    const ddHoliday = getKoreanHoliday(dateStr);
     document.getElementById('dd-date-title').textContent =
       (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + DOW_KR[d.getDay()] + ')';
+    document.getElementById('dd-date-title').classList.toggle('is-holiday', !!ddHoliday);
+    document.getElementById('dd-holiday-name').textContent = ddHoliday ? ddHoliday.name : '';
     document.getElementById('dd-lunar-date').textContent = getLunarDateLabel(dateStr);
     document.getElementById('dd-day-info').textContent =
       'D' + day.dayIndex + (effShiftName ? ' · ' + effShiftName : '');
