@@ -2278,6 +2278,7 @@
       <button class="btn btn-secondary" id="btn-promote-mode-interval">기간</button>
       <button class="btn btn-secondary" id="btn-promote-mode-shift">근무로 고르기</button>
       <button class="btn btn-secondary" id="btn-promote-mode-weekday">요일로 고르기</button>
+      <button class="btn btn-secondary" id="btn-promote-mode-lunar">음력으로 고르기</button>
     </div>
 
     <div id="promote-interval-section" style="display:none">
@@ -2288,6 +2289,15 @@
         <span class="promote-interval-suffix">마다 반복</span>
       </div>
       <div class="promote-interval-hint">숫자 칸을 위아래로 밀면 값이 바뀌어요</div>
+    </div>
+
+    <div id="promote-lunar-section" style="display:none">
+      <div class="promote-interval-row">
+        <div class="promote-interval-field" id="pl-month" data-unit="month">1</div><span class="promote-interval-unit">월</span>
+        <div class="promote-interval-field" id="pl-day" data-unit="day">1</div><span class="promote-interval-unit">일</span>
+        <span class="promote-interval-suffix">마다 반복(음력)</span>
+      </div>
+      <div class="promote-interval-hint">숫자 칸을 위아래로 밀면 값이 바뀌어요. 매년 그 음력 날짜에 맞는 양력 날짜에 나타나요(그 달이 그 해에 29일까지밖에 없으면 그 해는 건너뜀).</div>
     </div>
 
     <div id="promote-shift-section" style="display:none">
@@ -2806,6 +2816,15 @@
     return false;
   }
 
+  // 음력 매년 반복 규칙이 해당 날짜에 걸리는지 계산. 그 음력 월/일의 "평달" 발생과만 맞춘다
+  // (윤달 여부는 무시 — 그래야 매년 정확히 한 번씩만 걸림. 그 달이 그 해엔 29일까지밖에
+  // 없어서 30일이 존재하지 않으면 그 해는 자연히 건너뛴다).
+  function isLunarRuleMatch(rule, dateStr) {
+    const lunar = solarToLunar(dateStr);
+    if (!lunar || !lunar.month) return false;
+    return !lunar.isLeap && lunar.month === rule.lunarMonth && lunar.day === rule.lunarDay;
+  }
+
   // 그 날짜에 해당하는 반복 할일들(카테고리 점/체크 대상). 그 날짜만 뺀 것(excludedDates)은 제외.
   function getRepeatTodosForDate(dateStr) {
     const idx0 = dayIndex0ForDate(dateStr);
@@ -2813,6 +2832,7 @@
       if (!e.repeat) return false;
       if ((e.excludedDates || []).indexOf(dateStr) !== -1) return false;
       if (e.repeat.type === 'interval') return isIntervalRuleMatch(e.repeat, dateStr);
+      if (e.repeat.type === 'lunar') return isLunarRuleMatch(e.repeat, dateStr);
       if (idx0 === null) return false;
       return computeIndicesForRule(e.repeat).indexOf(idx0) !== -1;
     });
@@ -2843,6 +2863,9 @@
       if (rule.months) parts.push(rule.months + '개월');
       if (rule.days) parts.push(rule.days + '일');
       return parts.join(' ') + '마다';
+    }
+    if (rule.type === 'lunar') {
+      return '음력 ' + rule.lunarMonth + '월 ' + rule.lunarDay + '일마다';
     }
     return '';
   }
@@ -4799,6 +4822,7 @@
   let promoteMode = null;
   let promoteOffset = 0;
   let promoteIntervalValues = { years: 0, months: 0, days: 0 };
+  let promoteLunarValues = { month: 1, day: 1 };
 
   function renderWeekdayPicker(containerEl, selectedSet) {
     containerEl.innerHTML = '';
@@ -4861,6 +4885,47 @@
     document.addEventListener('mouseup', end);
   }
 
+  function renderLunarSpinner() {
+    document.getElementById('pl-month').textContent = promoteLunarValues.month;
+    document.getElementById('pl-day').textContent = promoteLunarValues.day;
+  }
+
+  // 음력 월/일 칸을 위아래로 밀면 숫자가 바뀌는 스피너. 범위를 벗어나면 반대쪽 끝으로 순환.
+  function setupLunarSpinner(el, unit, min, max) {
+    const STEP_PX = 24;
+    let dragging = false;
+    let lastY = 0;
+    let accum = 0;
+
+    function start(y) {
+      dragging = true;
+      lastY = y;
+      accum = 0;
+    }
+    function move(y) {
+      if (!dragging) return;
+      accum += lastY - y;
+      lastY = y;
+      while (accum >= STEP_PX) {
+        promoteLunarValues[unit] = promoteLunarValues[unit] >= max ? min : promoteLunarValues[unit] + 1;
+        accum -= STEP_PX;
+      }
+      while (accum <= -STEP_PX) {
+        promoteLunarValues[unit] = promoteLunarValues[unit] <= min ? max : promoteLunarValues[unit] - 1;
+        accum += STEP_PX;
+      }
+      renderLunarSpinner();
+    }
+    function end() { dragging = false; }
+
+    el.addEventListener('touchstart', function (e) { start(e.touches[0].clientY); }, { passive: true });
+    el.addEventListener('touchmove', function (e) { move(e.touches[0].clientY); e.preventDefault(); }, { passive: false });
+    el.addEventListener('touchend', end, { passive: true });
+    el.addEventListener('mousedown', function (e) { start(e.clientY); });
+    document.addEventListener('mousemove', function (e) { move(e.clientY); });
+    document.addEventListener('mouseup', end);
+  }
+
   function setPromoteOffset(v) {
     promoteOffset = v;
     document.getElementById('btn-promote-offset-0').classList.toggle('active', v === 0);
@@ -4872,11 +4937,13 @@
     document.getElementById('promote-interval-section').style.display = mode === 'interval' ? '' : 'none';
     document.getElementById('promote-shift-section').style.display = mode === 'shift' ? '' : 'none';
     document.getElementById('promote-weekday-section').style.display = mode === 'weekday' ? '' : 'none';
+    document.getElementById('promote-lunar-section').style.display = mode === 'lunar' ? '' : 'none';
     document.getElementById('btn-promote-confirm').style.display = '';
     document.getElementById('promote-warn').textContent = '';
     document.getElementById('btn-promote-mode-interval').classList.toggle('active', mode === 'interval');
     document.getElementById('btn-promote-mode-shift').classList.toggle('active', mode === 'shift');
     document.getElementById('btn-promote-mode-weekday').classList.toggle('active', mode === 'weekday');
+    document.getElementById('btn-promote-mode-lunar').classList.toggle('active', mode === 'lunar');
   }
 
   function openRepeatEditor(opts) {
@@ -4886,6 +4953,9 @@
     promoteMode = null;
     promoteOffset = 0;
     promoteIntervalValues = { years: 0, months: 0, days: 0 };
+    const originDateStr = repeatEditorSourceEvent ? repeatEditorSourceEvent.date : formatDateStr(todayMidnight());
+    const originLunar = solarToLunar(originDateStr);
+    promoteLunarValues = originLunar ? { month: originLunar.month, day: originLunar.day } : { month: 1, day: 1 };
 
     const existing = repeatEditorTargetEvent;
     const initialText = existing ? existing.text : (repeatEditorSourceEvent ? repeatEditorSourceEvent.text : (opts.presetText || ''));
@@ -4914,6 +4984,7 @@
     document.getElementById('promote-interval-section').style.display = 'none';
     document.getElementById('promote-shift-section').style.display = 'none';
     document.getElementById('promote-weekday-section').style.display = 'none';
+    document.getElementById('promote-lunar-section').style.display = 'none';
     document.getElementById('btn-promote-confirm').style.display = 'none';
     document.querySelectorAll('#promote-mode-row .btn').forEach(function (b) { b.classList.remove('active'); });
 
@@ -4967,6 +5038,9 @@
         days: initialRule.days || 0,
       };
       setPromoteMode('interval');
+    } else if (initialRule && initialRule.type === 'lunar') {
+      promoteLunarValues = { month: initialRule.lunarMonth, day: initialRule.lunarDay };
+      setPromoteMode('lunar');
     } else {
       setPromoteOffset(0);
       document.getElementById('promote-shift-weekday-toggle').checked = false;
@@ -4976,6 +5050,7 @@
     }
 
     renderIntervalSpinner();
+    renderLunarSpinner();
 
     document.getElementById('promote-overlay').classList.add('open');
     document.getElementById('promote-text-input').focus();
@@ -4990,9 +5065,12 @@
   document.getElementById('btn-promote-mode-interval').addEventListener('click', function () { setPromoteMode('interval'); });
   document.getElementById('btn-promote-mode-shift').addEventListener('click', function () { setPromoteMode('shift'); });
   document.getElementById('btn-promote-mode-weekday').addEventListener('click', function () { setPromoteMode('weekday'); });
+  document.getElementById('btn-promote-mode-lunar').addEventListener('click', function () { setPromoteMode('lunar'); });
   setupIntervalSpinner(document.getElementById('pi-years'), 'years');
   setupIntervalSpinner(document.getElementById('pi-months'), 'months');
   setupIntervalSpinner(document.getElementById('pi-days'), 'days');
+  setupLunarSpinner(document.getElementById('pl-month'), 'month', 1, 12);
+  setupLunarSpinner(document.getElementById('pl-day'), 'day', 1, 30);
   document.getElementById('btn-promote-offset-0').addEventListener('click', function () { setPromoteOffset(0); });
   document.getElementById('btn-promote-offset-1').addEventListener('click', function () { setPromoteOffset(1); });
   document.getElementById('promote-shift-weekday-toggle').addEventListener('change', function () {
@@ -5045,12 +5123,14 @@
         ? repeatEditorTargetEvent.repeat.anchorDate
         : (repeatEditorSourceEvent ? repeatEditorSourceEvent.date : formatDateStr(todayMidnight()));
       rule = { type: 'interval', years: years, months: months, days: days, anchorDate: anchorDate };
+    } else if (promoteMode === 'lunar') {
+      rule = { type: 'lunar', lunarMonth: promoteLunarValues.month, lunarDay: promoteLunarValues.day };
     } else {
       warn.textContent = '반복 방법을 선택해 주세요.';
       return;
     }
 
-    if (rule.type !== 'interval' && indices.length === 0) {
+    if (rule.type !== 'interval' && rule.type !== 'lunar' && indices.length === 0) {
       warn.textContent = '조건에 맞는 날이 없어요.';
       return;
     }
