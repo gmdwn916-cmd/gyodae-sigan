@@ -5202,21 +5202,6 @@
   // 근무×요일 표를 그림(세로: 근무 순서대로, 가로: 월~일). 칸을 누르면 바로 켜고 끔.
   // 켜짐/꺼짐 상태에 맞게 칸을 그 근무색으로 칠함(달력 근무 배지와 같은 방식:
   // 꺼짐=옅은 15% 톤, 켜짐=꽉 찬 색). 근무색이 없으면 기본 회색/파랑으로.
-  function applyShiftCellColor(cell, shiftColor, isSelected) {
-    if (!shiftColor) {
-      cell.style.background = isSelected ? '#007aff' : '';
-      cell.style.borderColor = isSelected ? '#007aff' : '';
-      return;
-    }
-    if (isSelected) {
-      cell.style.background = shiftColor;
-      cell.style.borderColor = shiftColor;
-    } else {
-      cell.style.background = 'rgba(' + hexToRgb(shiftColor) + ',0.15)';
-      cell.style.borderColor = 'rgba(' + hexToRgb(shiftColor) + ',0.4)';
-    }
-  }
-
   function renderShiftMatrix() {
     const el = document.getElementById('promote-shift-matrix');
     el.innerHTML = '';
@@ -5253,12 +5238,10 @@
         cell.type = 'button';
         cell.className = 'promote-shift-cell' + (isSelected ? ' selected' : '');
         cell.setAttribute('aria-label', name + ' ' + DOW_KR[wd] + '요일');
-        applyShiftCellColor(cell, shiftColor, isSelected);
         cell.addEventListener('click', function () {
           const nowSelected = !cell.classList.contains('selected');
           if (nowSelected) promoteShiftGridSelected.add(key); else promoteShiftGridSelected.delete(key);
           cell.classList.toggle('selected', nowSelected);
-          applyShiftCellColor(cell, shiftColor, nowSelected);
         });
         el.appendChild(cell);
       });
