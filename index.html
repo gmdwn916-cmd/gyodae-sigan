@@ -434,8 +434,50 @@
       outline: none;
       cursor: pointer;
       max-width: 80px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       -webkit-appearance: none;
+      flex-shrink: 0;
     }
+
+    /* 카테고리를 누르면 바로 저장(선택→닫힘)되는 팝업 목록 — 네이티브 select의
+       "완료" 버튼 같은 별도 확인 단계 없이 항목 탭 자체가 곧 확정. */
+    .cat-picker { position: relative; flex-shrink: 0; }
+    .cat-picker-menu {
+      display: none;
+      position: absolute;
+      top: calc(100% + 4px);
+      right: 0;
+      min-width: 140px;
+      max-height: 240px;
+      overflow-y: auto;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.16);
+      z-index: 20;
+      padding: 4px;
+    }
+    .cat-picker-menu.open { display: block; }
+    .cat-picker-menu-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+      padding: 8px 10px;
+      border: none;
+      background: none;
+      border-radius: 8px;
+      font-size: 13px;
+      font-family: inherit;
+      color: var(--text-1);
+      text-align: left;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .cat-picker-menu-item:active { background: var(--surface-2); }
+    .cat-picker-menu-item.active { background: var(--surface-2); font-weight: 600; }
 
     /* ── 일별 상세 패널 ── */
     #day-detail-overlay {
@@ -792,19 +834,6 @@
 
     .bulk-input-row input:focus { border-color: #007aff; }
 
-    .bulk-input-row select {
-      padding: 10px 6px;
-      border: 1.5px solid var(--line);
-      border-radius: 10px;
-      font-size: 12px;
-      font-family: inherit;
-      background: var(--surface);
-      color: var(--text-1);
-      outline: none;
-      cursor: pointer;
-      -webkit-appearance: none;
-      flex-shrink: 0;
-    }
 
     .bulk-grid-label {
       font-size: 12px;
@@ -2353,7 +2382,10 @@
     </div>
     <div class="bulk-input-row">
       <input type="text" id="promote-text-input" maxlength="50" placeholder="예: 물 마시기, 주짓수…">
-      <select id="promote-cat-select" class="cat-select"></select>
+      <div class="cat-picker" id="promote-cat-picker">
+        <button type="button" id="promote-cat-btn" class="cat-select"></button>
+        <div id="promote-cat-menu" class="cat-picker-menu"></div>
+      </div>
     </div>
     <div class="btn-row" id="promote-mode-row">
       <button class="btn btn-secondary" id="btn-promote-mode-interval">기간</button>
@@ -5180,6 +5212,30 @@
   let promoteLunarValues = { month: 1, day: 1 };
   let promoteShiftGridSelected = new Set(); // 근무×요일 표에서 켜진 칸들 ("근무이름|요일번호" 문자열)
   let promoteShiftAllNames = []; // 현재 설정에 있는 근무 이름 전체 목록(표의 세로 행)
+  let promoteCategoryId = 'etc'; // 카테고리 팝업에서 고른 카테고리(select 대신 버튼+팝업 목록 사용)
+
+  function renderPromoteCatButton() {
+    const cat = getCat(promoteCategoryId);
+    document.getElementById('promote-cat-btn').textContent = (cat.icon ? cat.icon + ' ' : '') + cat.name;
+  }
+
+  function renderPromoteCatMenu() {
+    const menu = document.getElementById('promote-cat-menu');
+    menu.innerHTML = '';
+    getCategories().forEach(function (c) {
+      const item = document.createElement('button');
+      item.type = 'button';
+      item.className = 'cat-picker-menu-item' + (c.id === promoteCategoryId ? ' active' : '');
+      item.textContent = (c.icon ? c.icon + ' ' : '') + c.name;
+      item.addEventListener('click', function () {
+        promoteCategoryId = c.id;
+        renderPromoteCatButton();
+        menu.classList.remove('open');
+        syncPromoteEditorToState();
+      });
+      menu.appendChild(item);
+    });
+  }
 
   // "근무로 고르기" 조건 묶음 하나를 사람이 읽을 문장으로. (예: "주간인 토요일마다")
   // 반복 할일 탭 목록에 표시할 때만 씀 — 편집 화면(표)에는 문장을 따로 안 보여줌.
@@ -5424,15 +5480,10 @@
     document.getElementById('promote-lunar-section').style.display = 'none';
     document.querySelectorAll('#promote-mode-row .btn').forEach(function (b) { b.classList.remove('active'); });
 
-    const catSel = document.getElementById('promote-cat-select');
-    catSel.innerHTML = '';
-    getCategories().forEach(function (c) {
-      const opt = document.createElement('option');
-      opt.value = c.id;
-      opt.textContent = (c.icon ? c.icon + ' ' : '') + c.name;
-      catSel.appendChild(opt);
-    });
-    catSel.value = initialCategory;
+    promoteCategoryId = initialCategory;
+    renderPromoteCatButton();
+    renderPromoteCatMenu();
+    document.getElementById('promote-cat-menu').classList.remove('open');
 
     promoteShiftAllNames = [];
     state.days.forEach(function (d) {
@@ -5475,6 +5526,7 @@
 
   function closeRepeatEditor() {
     document.getElementById('promote-overlay').classList.remove('open');
+    document.getElementById('promote-cat-menu').classList.remove('open');
     repeatEditorTargetEvent = null;
     repeatEditorSourceEvent = null;
   }
@@ -5484,7 +5536,7 @@
   function syncPromoteEditorToState() {
     const text = document.getElementById('promote-text-input').value.trim();
     if (!text) return;
-    const category = document.getElementById('promote-cat-select').value;
+    const category = promoteCategoryId;
 
     let rule = null;
     if (promoteMode === 'shift') {
@@ -5557,7 +5609,15 @@
     if (e.target === this) closeRepeatEditor();
   });
   document.getElementById('promote-text-input').addEventListener('input', syncPromoteEditorToState);
-  document.getElementById('promote-cat-select').addEventListener('change', syncPromoteEditorToState);
+  document.getElementById('promote-cat-btn').addEventListener('click', function () {
+    document.getElementById('promote-cat-menu').classList.toggle('open');
+  });
+  document.addEventListener('click', function (e) {
+    const picker = document.getElementById('promote-cat-picker');
+    if (picker && !picker.contains(e.target)) {
+      document.getElementById('promote-cat-menu').classList.remove('open');
+    }
+  });
 
   // ── 기간 할 일 수정 ──────────────────────────────────────────
   let periodEditingId = null;
