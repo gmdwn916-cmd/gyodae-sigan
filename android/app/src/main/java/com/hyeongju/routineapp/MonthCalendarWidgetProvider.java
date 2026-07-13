@@ -139,9 +139,16 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
 
                         JSONArray days = monthObj.optJSONArray("days");
                         if (days != null) {
+                            // 같은 근무가 옆 칸(같은 줄=같은 주)까지 연속되면 배경 띠는 계속
+                            // 이어붙이되, 글자는 그 연속의 첫 칸에만 씀(괌 여행처럼 기간
+                            // 할일을 이어진 띠 하나로 보여주던 것과 같은 원리) — 줄이 바뀌면
+                            // 다른 주라서 새로 시작(이어짐 판단 초기화).
+                            String prevShiftInRow = null;
                             for (int i = 0; i < days.length() && i < 42; i++) {
+                                if (i % 7 == 0) prevShiftInRow = null;
+
                                 Object dayObj = days.opt(i);
-                                if (!(dayObj instanceof JSONObject)) continue; // 그 달에 속하지 않는 빈 칸
+                                if (!(dayObj instanceof JSONObject)) { prevShiftInRow = null; continue; } // 그 달에 속하지 않는 빈 칸
                                 JSONObject day = (JSONObject) dayObj;
                                 String dateStr = day.optString("date", "");
                                 int dayNum = day.optInt("dayNum", 0);
@@ -154,7 +161,10 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
                                 views.setTextViewText(dateId, String.valueOf(dayNum));
 
                                 if (!shiftName.isEmpty()) {
-                                    views.setTextViewText(shiftId, shiftName);
+                                    boolean continuesBand = shiftName.equals(prevShiftInRow);
+                                    if (!continuesBand) {
+                                        views.setTextViewText(shiftId, shiftName);
+                                    } // 이어지는 칸은 글자 없이 배경 띠만(위에서 이미 ""로 비워둔 상태)
                                     if (!color.isEmpty()) {
                                         try {
                                             int base = Color.parseColor(color);
@@ -168,6 +178,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
                                         }
                                     }
                                 }
+                                prevShiftInRow = shiftName.isEmpty() ? null : shiftName;
 
                                 if (dateStr.equals(todayStr)) {
                                     views.setTextColor(dateId, 0xFF007AFF);
