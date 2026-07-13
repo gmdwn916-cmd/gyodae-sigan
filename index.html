@@ -4758,28 +4758,15 @@
   // btn-data-export는 <button>이 아니라 <a>임 — 이 앵커 자체가 실제 사용자가 누른
   // 요소여야 다운로드가 확실히 동작함(따로 만든 임시 앵커에 .click()을 호출하는
   // 방식은 일부 환경(특히 홈 화면에 추가한 PWA)에서 조용히 씹혀서 아무 반응이
-  // 없는 문제가 있었음). 공유(navigator.share)도 실패하면 예외를 삼키지 않고
-  // 메시지로 보여준 뒤 다운로드로 이어감.
+  // 없는 문제가 있었음). navigator.share는 일부러 안 씀 — 실패해도 비동기라
+  // 이미 지나간 클릭 이벤트로는 다운로드로 이어갈 수 없어서 "한 번 더 눌러야"
+  // 하는 불편한 경험이 됐었음. 다운로드 한 가지 경로만 항상 확실하게 동작하게 함.
   document.getElementById('btn-data-export').addEventListener('click', function (e) {
     const msg = document.getElementById('data-io-msg');
-    msg.textContent = '';
     try {
       const raw = localStorage.getItem(STORAGE_KEY) || '{}';
       const filename = '루틴백업_' + formatDateStr(todayMidnight()) + '.json';
       const blob = new Blob([raw], { type: 'application/json' });
-
-      if (navigator.share && navigator.canShare) {
-        const file = new File([blob], filename, { type: 'application/json' });
-        if (navigator.canShare({ files: [file] })) {
-          e.preventDefault();
-          navigator.share({ files: [file], title: '루틴 데이터 백업' }).catch(function (err) {
-            if (err && err.name === 'AbortError') return; // 사용자가 공유를 취소한 것 — 정상
-            msg.textContent = '공유가 안 돼서 다운로드로 대신할게요. 한 번 더 눌러 주세요.';
-          });
-          return;
-        }
-      }
-
       const url = URL.createObjectURL(blob);
       this.href = url;
       this.download = filename;
