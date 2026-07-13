@@ -95,7 +95,30 @@
 - 데이터는 기기 localStorage에만. 코드 배포는 사용자 데이터에 영향 없음.
 
 ## 파일 구조
-- index.html 단일 파일(HTML/CSS/JS 일체). 외부 라이브러리 없음.
+- index.html 단일 파일(HTML/CSS/JS 일체). 외부 라이브러리 없음. 앱의 실제 로직은
+  전부 여기 있음 — 아래 android/www는 이 파일을 감싸는 껍데기일 뿐, 로직은 없음.
+- Capacitor로 안드로이드 네이티브 앱 껍데기 추가함(위젯·자체 알람 등 PWA로는
+  안 되는 기능을 넣기 위한 전환, 2026-07-13):
+  - package.json, node_modules/ — Capacitor 패키지 설치용. node_modules는
+    .gitignore에 포함(용량 커서 저장소에 안 올림).
+  - capacitor.config.json — 앱 이름 "루틴", 패키지ID `com.hyeongju.routineapp`,
+    webDir: `www`.
+  - www/index.html — 루트의 index.html 복사본. **여기를 직접 고치면 안 됨** —
+    항상 루트 index.html을 고친 뒤 `cp index.html www/index.html`로 복사하고
+    `npx cap sync`로 android 프로젝트에 반영해야 함(안 하면 안드로이드 앱에
+    옛날 버전이 남아있게 됨).
+  - android/ — Capacitor가 생성한 안드로이드 네이티브 프로젝트(Android Studio로 엶).
+    android/gradle.properties에 `android.overridePathCheck=true` 추가돼 있음
+    — 프로젝트 폴더 이름(루틴어플)에 한글이 섞여 있어서 나오는 경고를 끈 것,
+    네이티브(C++/NDK) 코드가 없어서 실제로는 문제 없음. 지우면 빌드 실패함.
+  - 빌드: `cd android && ./gradlew assembleDebug` (JAVA_HOME을 Android Studio
+    내장 JDK로 지정해야 함, 보통 `C:\Program Files\Android\Android Studio\jbr`).
+    결과물은 android/app/build/outputs/apk/debug/app-debug.apk.
+- 데이터 백업(내보내기/가져오기) 기능은 이 네이티브 전환 때문에 생김: 웹앱(브라우저)과
+  네이티브 앱(Capacitor WebView)은 같은 코드를 실행해도 localStorage가 서로 다른
+  저장공간이라 자동으로 안 이어짐 — 설정 탭의 "데이터 백업" 화면에서 JSON 파일로
+  내보내고 다른 실행 환경(웹/네이티브)에서 가져오기 하면 이어붙일 수 있음. 아래
+  데이터 모델 항목 참고.
 
 ## 용어 (통일 — 혼동 금지)
 - 할 일 = state.events[] 전체. 반복이 꺼져 있으면 한 번짜리(특정 날짜),
@@ -123,6 +146,10 @@
    어긋나면 만들기 전에 사용자에게 알릴 것.
 
 ## 데이터 모델 (localStorage key: shiftRoutine)
+- 설정 탭 "데이터 백업"(sd-data)에서 이 localStorage 전체를 JSON 파일로 내보내기/
+  가져오기 가능(btn-data-export/btn-data-import). 가져오기는 확인창(confirm) 이후
+  localStorage를 통째로 덮어쓰고 location.reload() — 마이그레이션은 그 뒤 초기화
+  과정(migrateState)에서 평소처럼 자동으로 돎.
 - cycleDays, baseDate("YYYY-MM-DD"), days[]{dayIndex, shiftType:{name}, items[]}
   ※ days[].items는 더 이상 쓰지 않음(항상 빈 배열). 과거 루틴 데이터 마이그레이션
     이후의 흔적일 뿐이니 이 필드 기준으로 새 기능을 만들지 말 것.
