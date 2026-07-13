@@ -14,6 +14,10 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+
 // 위젯(QuickAddActivity)이 SharedPreferences에 쌓아둔 "임시 우편함"을 웹(index.html)
 // 쪽 JS가 읽어서 state.inbox로 옮길 수 있게 해주는 다리 역할만 함 — 저장 형식이나
 // 미배치 데이터 구조는 전혀 모름(그냥 글자 목록을 그대로 넘겨줄 뿐), 실제 inbox
@@ -58,9 +62,17 @@ public class WidgetBridgePlugin extends Plugin {
     // 없어서 눈으로 확인하는 용도).
     @PluginMethod
     public void setMonthCalendarData(PluginCall call) {
+        JSObject rawData = call.getData();
+        String debugInfo;
+        try {
+            debugInfo = "data=" + (rawData == null ? "null" : ("keys=" + iteratorToList(rawData.keys()) + " len=" + rawData.toString().length()));
+        } catch (Exception e) {
+            debugInfo = "debug오류:" + e.getMessage();
+        }
+
         String json = call.getString("json");
         if (json == null) {
-            Toast.makeText(getContext(), "위젯 갱신 실패: 데이터 없음", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "위젯 갱신 실패: 데이터 없음 (" + debugInfo + ")", Toast.LENGTH_LONG).show();
             call.reject("json missing");
             return;
         }
@@ -86,5 +98,11 @@ public class WidgetBridgePlugin extends Plugin {
         MonthCalendarWidgetProvider.refreshAll(getContext());
         Toast.makeText(getContext(), "위젯 갱신됨 (" + monthCount + "개월치)", Toast.LENGTH_SHORT).show();
         call.resolve();
+    }
+
+    private static List<String> iteratorToList(Iterator<String> it) {
+        List<String> list = new ArrayList<>();
+        while (it.hasNext()) list.add(it.next());
+        return list;
     }
 }
