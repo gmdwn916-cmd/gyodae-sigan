@@ -19,7 +19,7 @@
             android:gravity="center"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
         <TextView
             android:id="@+id/sch_header_1"
             android:layout_width="0dp"
@@ -28,7 +28,7 @@
             android:gravity="center"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
         <TextView
             android:id="@+id/sch_header_2"
             android:layout_width="0dp"
@@ -37,7 +37,7 @@
             android:gravity="center"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
         <TextView
             android:id="@+id/sch_header_3"
             android:layout_width="0dp"
@@ -46,7 +46,7 @@
             android:gravity="center"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
         <TextView
             android:id="@+id/sch_header_4"
             android:layout_width="0dp"
@@ -55,7 +55,7 @@
             android:gravity="center"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
         <TextView
             android:id="@+id/sch_header_5"
             android:layout_width="0dp"
@@ -64,7 +64,7 @@
             android:gravity="center"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
         <TextView
             android:id="@+id/sch_header_6"
             android:layout_width="0dp"
@@ -73,17 +73,18 @@
             android:gravity="center"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="11sp" />
+            android:textSize="12sp" />
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:orientation="horizontal">
         <LinearLayout
             android:id="@+id/sch_cell_0"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -96,7 +97,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_0"
                 android:layout_width="match_parent"
@@ -105,7 +106,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_0_0"
                 android:layout_width="wrap_content"
@@ -115,7 +116,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_0_1"
                 android:layout_width="wrap_content"
@@ -125,7 +126,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_0_2"
                 android:layout_width="wrap_content"
@@ -135,12 +136,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_1"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -153,7 +154,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_1"
                 android:layout_width="match_parent"
@@ -162,7 +163,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_1_0"
                 android:layout_width="wrap_content"
@@ -172,7 +173,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_1_1"
                 android:layout_width="wrap_content"
@@ -182,7 +183,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_1_2"
                 android:layout_width="wrap_content"
@@ -192,12 +193,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_2"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -210,7 +211,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_2"
                 android:layout_width="match_parent"
@@ -219,7 +220,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_2_0"
                 android:layout_width="wrap_content"
@@ -229,7 +230,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_2_1"
                 android:layout_width="wrap_content"
@@ -239,7 +240,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_2_2"
                 android:layout_width="wrap_content"
@@ -249,12 +250,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_3"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -267,7 +268,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_3"
                 android:layout_width="match_parent"
@@ -276,7 +277,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_3_0"
                 android:layout_width="wrap_content"
@@ -286,7 +287,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_3_1"
                 android:layout_width="wrap_content"
@@ -296,7 +297,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_3_2"
                 android:layout_width="wrap_content"
@@ -306,12 +307,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_4"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -324,7 +325,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_4"
                 android:layout_width="match_parent"
@@ -333,7 +334,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_4_0"
                 android:layout_width="wrap_content"
@@ -343,7 +344,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_4_1"
                 android:layout_width="wrap_content"
@@ -353,7 +354,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_4_2"
                 android:layout_width="wrap_content"
@@ -363,12 +364,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_5"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -381,7 +382,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_5"
                 android:layout_width="match_parent"
@@ -390,7 +391,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_5_0"
                 android:layout_width="wrap_content"
@@ -400,7 +401,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_5_1"
                 android:layout_width="wrap_content"
@@ -410,7 +411,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_5_2"
                 android:layout_width="wrap_content"
@@ -420,12 +421,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_6"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -438,7 +439,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_6"
                 android:layout_width="match_parent"
@@ -447,7 +448,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_6_0"
                 android:layout_width="wrap_content"
@@ -457,7 +458,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_6_1"
                 android:layout_width="wrap_content"
@@ -467,7 +468,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_6_2"
                 android:layout_width="wrap_content"
@@ -477,18 +478,19 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="0dp"
+        android:layout_weight="1"
         android:orientation="horizontal">
         <LinearLayout
             android:id="@+id/sch_cell_7"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -501,7 +503,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_7"
                 android:layout_width="match_parent"
@@ -510,7 +512,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_7_0"
                 android:layout_width="wrap_content"
@@ -520,7 +522,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_7_1"
                 android:layout_width="wrap_content"
@@ -530,7 +532,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_7_2"
                 android:layout_width="wrap_content"
@@ -540,12 +542,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_8"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -558,7 +560,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_8"
                 android:layout_width="match_parent"
@@ -567,7 +569,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_8_0"
                 android:layout_width="wrap_content"
@@ -577,7 +579,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_8_1"
                 android:layout_width="wrap_content"
@@ -587,7 +589,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_8_2"
                 android:layout_width="wrap_content"
@@ -597,12 +599,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_9"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -615,7 +617,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_9"
                 android:layout_width="match_parent"
@@ -624,7 +626,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_9_0"
                 android:layout_width="wrap_content"
@@ -634,7 +636,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_9_1"
                 android:layout_width="wrap_content"
@@ -644,7 +646,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_9_2"
                 android:layout_width="wrap_content"
@@ -654,12 +656,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_10"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -672,7 +674,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_10"
                 android:layout_width="match_parent"
@@ -681,7 +683,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_10_0"
                 android:layout_width="wrap_content"
@@ -691,7 +693,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_10_1"
                 android:layout_width="wrap_content"
@@ -701,7 +703,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_10_2"
                 android:layout_width="wrap_content"
@@ -711,12 +713,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_11"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -729,7 +731,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_11"
                 android:layout_width="match_parent"
@@ -738,7 +740,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_11_0"
                 android:layout_width="wrap_content"
@@ -748,7 +750,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_11_1"
                 android:layout_width="wrap_content"
@@ -758,7 +760,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_11_2"
                 android:layout_width="wrap_content"
@@ -768,12 +770,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_12"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -786,7 +788,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_12"
                 android:layout_width="match_parent"
@@ -795,7 +797,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_12_0"
                 android:layout_width="wrap_content"
@@ -805,7 +807,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_12_1"
                 android:layout_width="wrap_content"
@@ -815,7 +817,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_12_2"
                 android:layout_width="wrap_content"
@@ -825,12 +827,12 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
         <LinearLayout
             android:id="@+id/sch_cell_13"
             android:layout_width="0dp"
-            android:layout_height="wrap_content"
+            android:layout_height="match_parent"
             android:layout_weight="1"
             android:orientation="vertical"
             android:gravity="center"
@@ -843,7 +845,7 @@
                 android:gravity="center"
                 android:textStyle="bold"
                 android:textColor="@color/widget_text_primary"
-                android:textSize="14sp" />
+                android:textSize="16sp" />
             <TextView
                 android:id="@+id/sch_shift_13"
                 android:layout_width="match_parent"
@@ -852,7 +854,7 @@
                 android:gravity="center"
                 android:maxLines="1"
                 android:textStyle="bold"
-                android:textSize="10sp" />
+                android:textSize="11sp" />
             <TextView
                 android:id="@+id/sch_todo_13_0"
                 android:layout_width="wrap_content"
@@ -862,7 +864,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_13_1"
                 android:layout_width="wrap_content"
@@ -872,7 +874,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
             <TextView
                 android:id="@+id/sch_todo_13_2"
                 android:layout_width="wrap_content"
@@ -882,7 +884,7 @@
                 android:maxLines="1"
                 android:ellipsize="end"
                 android:textColor="@color/widget_text_secondary"
-                android:textSize="9sp" />
+                android:textSize="10sp" />
         </LinearLayout>
     </LinearLayout>
 
@@ -900,7 +902,7 @@
             android:paddingLeft="6dp"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="26sp"
+            android:textSize="30sp"
             android:text="‹" />
         <TextView
             android:id="@+id/sch_nav_next"
@@ -911,7 +913,7 @@
             android:paddingRight="6dp"
             android:textStyle="bold"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="26sp"
+            android:textSize="30sp"
             android:text="›" />
     </LinearLayout>
 
