@@ -422,6 +422,39 @@
     #tab-today .today-events-toggle.is-on { border-color: var(--accent); color: var(--accent); }
     #tab-today .today-events-empty-msg { color: var(--text-3); }
 
+    /* ── 오늘 탭 타임라인(미정/오전/오후/밤) ── */
+    .timeline-section { margin-bottom: 18px; }
+    .timeline-section:last-child { margin-bottom: 0; }
+    .timeline-section-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 6px;
+    }
+    .timeline-section-list.empty {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 40px;
+      border: 1.5px dashed var(--line);
+      border-radius: 10px;
+      font-size: 12px;
+      color: var(--text-3);
+    }
+    .timeline-section-list.empty::before { content: '여기로 끌어다 놓기'; }
+
+    .item-drag-handle {
+      font-size: 16px;
+      color: var(--text-3);
+      padding: 2px 6px;
+      cursor: grab;
+      touch-action: none;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
     /* ── Category ── */
     .cat-select {
       display: inline-flex;
@@ -3741,7 +3774,7 @@
   // kind: 'repeat'(반복 할일) | 'onetime'(한 번짜리 할 일). 반복이든 아니든 결국 같은
   // "할 일"이므로 완전히 같은 모양의 줄로 만든다. 다른 점은 각자에게만 있는 동작뿐
   // (반복→ 완료는 done_log, 한번짜리→ ev.done / 기간이면 기간수정, 반복전환 버튼).
-  function buildTodoRow(kind, item, dateStr, refreshFn) {
+  function buildTodoRow(kind, item, dateStr, refreshFn, opts) {
     const cat = getCat(item.category);
     const isMulti = kind === 'onetime' && isMultiDay(item);
     const isDone = kind === 'repeat' ? isRepeatDoneOn(item.id, dateStr) : !!item.done;
@@ -3811,6 +3844,14 @@
     });
     li.appendChild(checkBtn);
 
+    if (opts && opts.dragHandle) {
+      const handle = document.createElement('span');
+      handle.className = 'item-drag-handle';
+      handle.textContent = '≡';
+      handle.setAttribute('aria-label', '순서/시간대 변경');
+      li.appendChild(handle);
+    }
+
     return li;
   }
 
@@ -3844,6 +3885,153 @@
     });
 
     containerEl.appendChild(ul);
+  }
+
+  // ── 오늘 탭 타임라인(미정/오전/오후/밤) ──────────────────────
+  // 시간대(timeSlot)·순서(timelineOrder)는 그 할 일 자체에 저장되는 정보라
+  // (카테고리처럼) 반복 할일이면 매번 같은 시간대·자리에 나타난다.
+  const TIMELINE_SLOTS = [
+    { key: 'unset', label: '미정' },
+    { key: 'morning', label: '오전' },
+    { key: 'afternoon', label: '오후 (~18시)' },
+    { key: 'night', label: '밤' },
+  ];
+
+  function refreshTimelineEmptyStates(rootEl) {
+    rootEl.querySelectorAll('.timeline-section-list').forEach(function (ul) {
+      ul.classList.toggle('empty', ul.children.length === 0);
+    });
+  }
+
+  function renderTodayTimeline(containerEl, repeatItems, oneTimeItems, dateStr, refreshFn) {
+    containerEl.innerHTML = '';
+
+    const all = repeatItems.map(function (it) { return { kind: 'repeat', item: it }; })
+      .concat(oneTimeItems.map(function (it) { return { kind: 'onetime', item: it }; }));
+
+    function slotOf(item) { return item.timeSlot || 'unset'; }
+    function orderOf(item) { return typeof item.timelineOrder === 'number' ? item.timelineOrder : 0; }
+
+    TIMELINE_SLOTS.forEach(function (slotDef) {
+      const itemsInSlot = all.filter(function (t) { return slotOf(t.item) === slotDef.key; });
+      itemsInSlot.sort(function (a, b) { return orderOf(a.item) - orderOf(b.item); });
+
+      const section = document.createElement('div');
+      section.className = 'timeline-section';
+      section.dataset.slot = slotDef.key;
+
+      const label = document.createElement('div');
+      label.className = 'timeline-section-label';
+      label.textContent = slotDef.label;
+      section.appendChild(label);
+
+      const ul = document.createElement('ul');
+      ul.className = 'today-items timeline-section-list';
+      ul.dataset.slotList = slotDef.key;
+
+      itemsInSlot.forEach(function (t) {
+        const li = buildTodoRow(t.kind, t.item, dateStr, refreshFn, { dragHandle: true });
+        const wrap = wrapWithSwipeToDelete(li, 'var(--surface)', function () {
+          if (t.kind === 'repeat') {
+            if (!Array.isArray(t.item.excludedDates)) t.item.excludedDates = [];
+            if (t.item.excludedDates.indexOf(dateStr) === -1) t.item.excludedDates.push(dateStr);
+          } else {
+            state.events = state.events.filter(function (e) { return e !== t.item; });
+          }
+          saveState();
+          refreshFn();
+        });
+        wrap.dataset.eventId = t.item.id;
+        const handle = li.querySelector('.item-drag-handle');
+        setupTimelineDrag(handle, wrap, containerEl, refreshFn);
+        ul.appendChild(wrap);
+      });
+
+      section.appendChild(ul);
+      containerEl.appendChild(section);
+    });
+
+    refreshTimelineEmptyStates(containerEl);
+  }
+
+  // 시간대 구역들 사이를 드래그해서 넘나들거나, 같은 구역 안에서 순서를 바꾸는 드래그.
+  // 팀 순서 변경(setupLongPressDrag)과 같은 꾹 눌러서 드래그하는 방식 — 손잡이(handleEl)에서
+  // 시작한 터치만 반응하도록 stopPropagation으로 스와이프 삭제 제스처와 완전히 분리한다.
+  function setupTimelineDrag(handleEl, wrapEl, rootEl, refreshFn) {
+    handleEl.addEventListener('touchstart', function (e) {
+      e.stopPropagation();
+      const startY = e.touches[0].clientY;
+      const startX = e.touches[0].clientX;
+      let dragging = false;
+      let clone = null;
+      let cloneStartTop = 0, cloneStartLeft = 0;
+
+      const timer = setTimeout(function () {
+        dragging = true;
+        const rect = wrapEl.getBoundingClientRect();
+        cloneStartTop = rect.top;
+        cloneStartLeft = rect.left;
+        clone = wrapEl.cloneNode(true);
+        clone.style.cssText += ';position:fixed;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;z-index:999;box-shadow:0 6px 24px rgba(0,0,0,0.18);pointer-events:none;opacity:0.95;background:var(--surface);border-radius:10px;';
+        document.body.appendChild(clone);
+        wrapEl.style.opacity = '0.2';
+        if (navigator.vibrate) navigator.vibrate(40);
+      }, 500);
+
+      function onMove(e) {
+        const touch = e.touches[0];
+        if (!dragging) {
+          if (Math.abs(touch.clientY - startY) > 8 || Math.abs(touch.clientX - startX) > 8) clearTimeout(timer);
+          return;
+        }
+        e.preventDefault();
+        clone.style.top = (cloneStartTop + touch.clientY - startY) + 'px';
+        clone.style.left = cloneStartLeft + 'px';
+
+        const hovered = document.elementFromPoint(touch.clientX, touch.clientY);
+        const list = hovered ? hovered.closest('.timeline-section-list') : null;
+        if (!list || !rootEl.contains(list)) return;
+
+        const siblings = Array.from(list.children).filter(function (c) { return c !== wrapEl; });
+        let insertBefore = null;
+        for (let s = 0; s < siblings.length; s++) {
+          const sr = siblings[s].getBoundingClientRect();
+          if (touch.clientY < sr.top + sr.height / 2) { insertBefore = siblings[s]; break; }
+        }
+        if (insertBefore) list.insertBefore(wrapEl, insertBefore);
+        else list.appendChild(wrapEl);
+        refreshTimelineEmptyStates(rootEl);
+      }
+
+      function onEnd() {
+        clearTimeout(timer);
+        document.removeEventListener('touchmove', onMove);
+        document.removeEventListener('touchend', onEnd);
+        document.removeEventListener('touchcancel', onEnd);
+        if (!dragging) return;
+        dragging = false;
+        wrapEl.style.opacity = '1';
+        if (clone && clone.parentNode) { document.body.removeChild(clone); clone = null; }
+
+        const finalList = wrapEl.parentNode;
+        if (finalList && finalList.classList.contains('timeline-section-list')) {
+          const slotKey = finalList.dataset.slotList;
+          Array.from(finalList.children).forEach(function (w, i) {
+            const ev = (state.events || []).find(function (e) { return e.id === w.dataset.eventId; });
+            if (!ev) return;
+            ev.timelineOrder = i * 10;
+            if (slotKey === 'unset') delete ev.timeSlot;
+            else ev.timeSlot = slotKey;
+          });
+          saveState();
+        }
+        refreshFn();
+      }
+
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', onEnd, { passive: true });
+      document.addEventListener('touchcancel', onEnd, { passive: true });
+    }, { passive: true });
   }
 
   // ── 오늘 탭 ──────────────────────────────────────────────
@@ -3909,18 +4097,19 @@
     const visibleOneTime = oneTimeEvents.filter(function (ev) {
       return showDoneEvents || !ev.done;
     });
-    renderTodoList(eventsEl, visibleRepeat, visibleOneTime, todayDateStr, 'var(--surface)', function () {
-      renderToday();
-      renderGrid();
-    });
-
-    if (eventsEl.children.length === 0) {
+    eventsEl.innerHTML = '';
+    if (visibleRepeat.length + visibleOneTime.length === 0) {
       const msg = document.createElement('div');
       msg.className = 'today-events-empty-msg';
       msg.textContent = (repeatTodos.length + oneTimeEvents.length) === 0
         ? '아직 할 일이 없어요.'
         : '완료한 할 일만 있어요.';
       eventsEl.appendChild(msg);
+    } else {
+      renderTodayTimeline(eventsEl, visibleRepeat, visibleOneTime, todayDateStr, function () {
+        renderToday();
+        renderGrid();
+      });
     }
 
   }
