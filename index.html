@@ -484,9 +484,7 @@
     .cat-picker { position: relative; flex-shrink: 0; }
     .cat-picker-menu {
       display: none;
-      position: absolute;
-      bottom: calc(100% + 6px);
-      right: 0;
+      position: fixed;
       min-width: 150px;
       max-height: 240px;
       overflow-y: auto;
@@ -494,7 +492,7 @@
       border: 1.5px solid var(--line);
       border-radius: 10px;
       box-shadow: 0 4px 16px rgba(0,0,0,0.16);
-      z-index: 20;
+      z-index: 50;
       padding: 4px;
     }
     .cat-picker-menu.open { display: block; }
@@ -2483,7 +2481,6 @@
       <input type="text" id="promote-text-input" maxlength="50" placeholder="예: 물 마시기, 주짓수…">
       <div class="cat-picker" id="promote-cat-picker">
         <button type="button" id="promote-cat-btn" class="cat-select"></button>
-        <div id="promote-cat-menu" class="cat-picker-menu"></div>
       </div>
       <button type="button" id="promote-important-btn" class="btn-important-toggle">☆</button>
     </div>
@@ -2689,6 +2686,12 @@
     </div>
   </div>
 </div>
+
+<!-- 반복 할일 편집 시트의 카테고리 팝업 — 시트(#promote-panel)가 overflow-y:auto라
+     그 안에 있으면 위로 열 때 시트 경계에 잘리는 문제가 있었음(카테고리 버튼이
+     시트 맨 위쪽에 있어서 위로 열 공간이 부족). body 바로 아래로 빼서
+     position:fixed로 화면 좌표 기준으로 띄우면 어떤 조상의 overflow에도 안 잘림. -->
+<div id="promote-cat-menu" class="cat-picker-menu"></div>
 
 <!-- Capacitor 다리 스크립트 — 빌드 도구 없이 쓰는 방식이라 이렇게 직접 포함함.
      웹(깃허브 페이지)에서는 그냥 로드만 되고 아무 동작 안 함(Capacitor.isNativePlatform()
@@ -6088,12 +6091,22 @@
   });
   document.getElementById('promote-text-input').addEventListener('input', syncPromoteEditorToState);
   document.getElementById('promote-cat-btn').addEventListener('click', function () {
-    document.getElementById('promote-cat-menu').classList.toggle('open');
+    const menu = document.getElementById('promote-cat-menu');
+    const willOpen = !menu.classList.contains('open');
+    if (willOpen) {
+      // 시트(overflow-y:auto) 밖으로 뺀 팝업이라, 버튼의 실제 화면 좌표를 기준으로
+      // 매번 다시 계산해서 위치를 잡아야 함(고정된 CSS 위치가 아님).
+      const rect = this.getBoundingClientRect();
+      menu.style.right = (window.innerWidth - rect.right) + 'px';
+      menu.style.bottom = (window.innerHeight - rect.top + 6) + 'px';
+    }
+    menu.classList.toggle('open', willOpen);
   });
   document.addEventListener('click', function (e) {
     const picker = document.getElementById('promote-cat-picker');
-    if (picker && !picker.contains(e.target)) {
-      document.getElementById('promote-cat-menu').classList.remove('open');
+    const menu = document.getElementById('promote-cat-menu');
+    if (picker && menu && !picker.contains(e.target) && !menu.contains(e.target)) {
+      menu.classList.remove('open');
     }
   });
   document.getElementById('promote-important-btn').addEventListener('click', function () {
