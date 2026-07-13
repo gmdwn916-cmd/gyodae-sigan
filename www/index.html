@@ -2346,7 +2346,7 @@
       <!-- 데이터 백업(내보내기/가져오기) -->
       <div id="sd-data" style="display:none">
         <div class="card">
-          <button type="button" class="btn btn-secondary" id="btn-data-export" style="width:100%">데이터 내보내기</button>
+          <a href="javascript:void(0)" class="btn btn-secondary" id="btn-data-export" style="width:100%;box-sizing:border-box;display:block;text-align:center;text-decoration:none;">데이터 내보내기</a>
           <p class="shift-color-hint">지금 갖고 있는 모든 기록을 파일 하나로 저장해요. 다른 기기나 다른 버전의 앱으로 옮길 때 써요.</p>
           <button type="button" class="btn btn-secondary" id="btn-data-import" style="width:100%;margin-top:14px">데이터 가져오기</button>
           <p class="shift-color-hint">내보내둔 백업 파일을 불러와서 복원해요. <strong>지금 있는 기록은 전부 이 파일 내용으로 덮어써져요.</strong></p>
@@ -4755,23 +4755,41 @@
 
   // 데이터 내보내기: 웹앱과 네이티브 앱(Capacitor)이 저장공간을 따로 쓰는 문제 때문에
   // 생긴 기능 — 지금 갖고 있는 state를 파일로 저장해서 다른 실행 환경으로 옮길 수 있게 함.
-  document.getElementById('btn-data-export').addEventListener('click', function () {
-    const raw = localStorage.getItem(STORAGE_KEY) || '{}';
-    const filename = '루틴백업_' + formatDateStr(todayMidnight()) + '.json';
-    const blob = new Blob([raw], { type: 'application/json' });
-    const file = new File([blob], filename, { type: 'application/json' });
+  // btn-data-export는 <button>이 아니라 <a>임 — 이 앵커 자체가 실제 사용자가 누른
+  // 요소여야 다운로드가 확실히 동작함(따로 만든 임시 앵커에 .click()을 호출하는
+  // 방식은 일부 환경(특히 홈 화면에 추가한 PWA)에서 조용히 씹혀서 아무 반응이
+  // 없는 문제가 있었음). 공유(navigator.share)도 실패하면 예외를 삼키지 않고
+  // 메시지로 보여준 뒤 다운로드로 이어감.
+  document.getElementById('btn-data-export').addEventListener('click', function (e) {
+    const msg = document.getElementById('data-io-msg');
+    msg.textContent = '';
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY) || '{}';
+      const filename = '루틴백업_' + formatDateStr(todayMidnight()) + '.json';
+      const blob = new Blob([raw], { type: 'application/json' });
 
-    if (navigator.canShare && navigator.canShare({ files: [file] })) {
-      navigator.share({ files: [file], title: '루틴 데이터 백업' }).catch(function () {});
-    } else {
+      if (navigator.share && navigator.canShare) {
+        const file = new File([blob], filename, { type: 'application/json' });
+        if (navigator.canShare({ files: [file] })) {
+          e.preventDefault();
+          navigator.share({ files: [file], title: '루틴 데이터 백업' }).catch(function (err) {
+            if (err && err.name === 'AbortError') return; // 사용자가 공유를 취소한 것 — 정상
+            msg.textContent = '공유가 안 돼서 다운로드로 대신할게요. 한 번 더 눌러 주세요.';
+          });
+          return;
+        }
+      }
+
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+      this.href = url;
+      this.download = filename;
+      msg.textContent = '파일을 내려받았어요. (다운로드 폴더 또는 알림에서 확인)';
+      setTimeout(function () { URL.revokeObjectURL(url); }, 30000);
+      // e.preventDefault()를 안 함 — 이 클릭의 기본 동작(방금 지정한 href로 다운로드)이
+      // 그대로 이어지게 둠. 새로 만든 임시 앵커가 아니라 실제 누른 이 앵커라서 확실함.
+    } catch (err) {
+      msg.textContent = '내보내기 중 문제가 생겼어요: ' + err.message;
+      e.preventDefault();
     }
   });
 
