@@ -94,8 +94,6 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         views.setOnClickPendingIntent(idFor(context, "widget_schedule_root"), openPending);
-        views.setOnClickPendingIntent(idFor(context, "sch_nav_prev"), navPendingIntent(context, ACTION_PREV, 3));
-        views.setOnClickPendingIntent(idFor(context, "sch_nav_next"), navPendingIntent(context, ACTION_NEXT, 4));
 
         int primaryText = ContextCompat.getColor(context, R.color.widget_text_primary);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
@@ -119,6 +117,29 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String raw = prefs.getString(KEY_SCHEDULE_DATA, null);
+
+        // 화살표 글자 대신, 월요일 쪽 세로 전체(헤더+두 줄)를 누르면 이전 페이지,
+        // 일요일 쪽 세로 전체를 누르면 다음 페이지로 넘어가게 함. 어느 칸이
+        // 월/일요일인지는 주 시작 요일 설정에 따라 달라지므로 JS가 넘겨준 sunCol
+        // 기준으로 계산(일요일 바로 다음 칸이 항상 월요일 — weekStart 무관하게
+        // 성립하는 항등식). 데이터가 아직 없을 때는 기본값(월=0,일=6)으로 둠.
+        int sunColForNav = 6;
+        if (raw != null) {
+            try {
+                sunColForNav = new JSONObject(raw).optInt("sunCol", 6);
+            } catch (Exception e) {
+                // 무시 — 기본값 사용
+            }
+        }
+        int mondayCol = (sunColForNav + 1) % 7;
+        PendingIntent prevPending = navPendingIntent(context, ACTION_PREV, 3);
+        PendingIntent nextPending = navPendingIntent(context, ACTION_NEXT, 4);
+        views.setOnClickPendingIntent(idFor(context, "sch_header_" + mondayCol), prevPending);
+        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + mondayCol), prevPending);
+        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + (7 + mondayCol)), prevPending);
+        views.setOnClickPendingIntent(idFor(context, "sch_header_" + sunColForNav), nextPending);
+        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + sunColForNav), nextPending);
+        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + (7 + sunColForNav)), nextPending);
 
         if (raw != null) {
             try {
