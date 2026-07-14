@@ -20,17 +20,20 @@
         android:ellipsize="end"
         android:textStyle="bold"
         android:textColor="@color/widget_text_primary"
-        android:textSize="12sp"
+        android:textSize="8sp"
         android:text="할 일 추가" />
 
-    <ImageButton
-        android:id="@+id/widget_add_button"
+    <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:src="@drawable/ic_widget_add"
-        android:background="@android:color/transparent"
-        android:scaleType="centerInside"
-        android:contentDescription="할 일 추가" />
+        android:layout_weight="1">
+        <ImageView
+            android:id="@+id/widget_add_button"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_gravity="center"
+            android:src="@drawable/ic_widget_add"
+            android:contentDescription="할 일 추가" />
+    </FrameLayout>
 
 </LinearLayout>
