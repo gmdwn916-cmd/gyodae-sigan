@@ -6,7 +6,8 @@
     android:targetCellHeight="2"
     android:updatePeriodMillis="0"
     android:initialLayout="@layout/widget_schedule"
-    android:previewLayout="@layout/widget_schedule"
+    android:previewLayout="@layout/widget_schedule_preview"
+    android:previewImage="@drawable/widget_preview_schedule"
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen">
 </appwidget-provider>
