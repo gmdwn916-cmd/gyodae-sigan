@@ -51,7 +51,10 @@ public class TodayWidgetService extends RemoteViewsService {
                     if (arr != null) {
                         for (int i = 0; i < arr.length(); i++) {
                             JSONObject it = arr.optJSONObject(i);
-                            if (it != null) next.add(it);
+                            // 완료된 항목은 목록에서 아예 안 보이게 함 — payload는
+                            // 원래 미완료 항목만 담고 있지만, 혹시 남아있는 옛 데이터를
+                            // 대비한 안전장치로 한 번 더 걸러줌.
+                            if (it != null && !it.optBoolean("done", false)) next.add(it);
                         }
                     }
                 } catch (Exception e) {

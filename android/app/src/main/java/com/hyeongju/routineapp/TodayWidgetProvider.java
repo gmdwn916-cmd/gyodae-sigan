@@ -65,10 +65,17 @@ public class TodayWidgetProvider extends AppWidgetProvider {
                 dateStr = obj.optString("date", "");
                 JSONArray items = obj.optJSONArray("items");
                 if (items != null) {
+                    // 체크한 항목은 목록에서 바로 사라지게 함(완료 표시만 하고 계속
+                    // 보여주던 이전 방식에서 바뀜) — payload 자체가 "미완료 항목만"
+                    // 담고 있으므로, 완료로 바뀌는 항목은 그 자리에서 통째로 지움.
                     for (int i = 0; i < items.length(); i++) {
                         JSONObject it = items.optJSONObject(i);
                         if (it != null && id.equals(it.optString("id", ""))) {
-                            it.put("done", newDone);
+                            if (newDone) {
+                                items.remove(i);
+                            } else {
+                                it.put("done", false);
+                            }
                             break;
                         }
                     }

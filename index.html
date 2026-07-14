@@ -4960,8 +4960,11 @@
     const DOW_KR = ['일', '월', '화', '수', '목', '금', '토'];
     const dateLabel = (todayMid.getMonth() + 1) + '월 ' + todayMid.getDate() + '일 ' + DOW_KR[todayMid.getDay()] + '요일';
 
-    const all = getRepeatTodosForDate(dateStr).map(function (it) { return { kind: 'repeat', item: it }; })
-      .concat(getEventsForDate(dateStr).map(function (it) { return { kind: 'onetime', item: it }; }));
+    // 위젯에서 체크한 항목은 목록에서 바로 사라지게 함(완료 표시만 하고 계속
+    // 보여주던 이전 방식에서 바뀜) — 그래서 애초에 완료된 항목은 payload에도
+    // 안 실어 보냄.
+    const all = getRepeatTodosForDate(dateStr).filter(function (it) { return !isRepeatDoneOn(it.id, dateStr); }).map(function (it) { return { kind: 'repeat', item: it }; })
+      .concat(getEventsForDate(dateStr).filter(function (it) { return !it.done; }).map(function (it) { return { kind: 'onetime', item: it }; }));
 
     function slotOf(t) { return t.item.timeSlot || 'unset'; }
     function orderOf(t) { return typeof t.item.timelineOrder === 'number' ? t.item.timelineOrder : 0; }
@@ -4972,11 +4975,10 @@
 
     const items = all.map(function (t) {
       const cat = getCat(t.item.category);
-      const done = t.kind === 'repeat' ? isRepeatDoneOn(t.item.id, dateStr) : !!t.item.done;
       return {
         id: t.item.id,
         text: t.kind === 'onetime' ? eventDisplayText(t.item) : t.item.text,
-        done: done,
+        done: false,
         icon: cat.icon || '',
         type: t.kind === 'repeat' ? 'repeat' : 'once',
       };
