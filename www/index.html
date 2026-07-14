@@ -5036,6 +5036,34 @@
     pushInboxWidgetToWidget();
   }
 
+  // 위젯(달력/스케줄/오늘 할일/미배치 목록)을 탭해서 앱이 열렸을 때, 그 위젯에
+  // 맞는 화면으로 바로 이동시킴 — MainActivity가 인텐트를 받아 미리
+  // SharedPreferences에 저장해둔 "어느 화면으로 가야 하는지"를 여기서 읽어감
+  // (위젯 1의 "임시 우편함"과 같은 다리 역할). 달력/스케줄 위젯은 그 위젯이
+  // 보여주고 있던 달(month, "YYYY-MM")까지 같이 넘어와서 그 달로 바로 이동함.
+  async function syncWidgetNavTarget() {
+    const bridge = getWidgetBridge();
+    if (!bridge) return;
+    try {
+      const res = await bridge.getPendingNavTarget();
+      const target = res && res.target;
+      if (!target) return;
+      if (target === 'month') {
+        if (res.month) {
+          const parts = res.month.split('-');
+          calYear = parseInt(parts[0], 10);
+          calMonth = parseInt(parts[1], 10) - 1;
+        }
+        switchTab('month');
+      } else if (target === 'today') {
+        switchTab('today');
+      } else if (target === 'inbox') {
+        openInbox();
+      }
+      await bridge.clearPendingNavTarget();
+    } catch (e) {}
+  }
+
   function renderShiftAlarmSettings() {
     const card = document.getElementById('shift-alarm-card');
     card.innerHTML = '';
@@ -7115,6 +7143,7 @@
   syncWidgetInboxItems();
   syncWidgetTodayToggles();
   pushAllWidgets();
+  syncWidgetNavTarget();
   // 위젯으로 넣은 항목은 "앱을 아예 새로 켤 때"만 반영되던 걸 보완 — 백그라운드에
   // 있던 앱을 다시 포그라운드로 불러올 때(예: 위젯 입력 후 앱 아이콘 탭)도 웹뷰의
   // visibilitychange 이벤트가 뜨므로, 그때마다 다시 동기화. 네이티브 플러그인을
@@ -7126,6 +7155,7 @@
         syncWidgetInboxItems();
         syncWidgetTodayToggles();
         pushAllWidgets();
+        syncWidgetNavTarget();
         if (document.getElementById('inbox-overlay').classList.contains('open')) {
           renderInboxList();
         }

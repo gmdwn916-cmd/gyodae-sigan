@@ -54,6 +54,7 @@ public class InboxWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_inbox);
 
         Intent openIntent = new Intent(context, MainActivity.class);
+        openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "inbox");
         PendingIntent openPending = PendingIntent.getActivity(
             context, 0, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE

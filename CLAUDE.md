@@ -552,6 +552,31 @@
   맞춤(위젯 4와 같은 이유로 4x4였다가 2x2로 바뀜, 자세한 사정은 위젯 4 항목
   참고).
 
+## 위젯 탭하면 그 화면으로 바로 이동 (2026-07-14)
+- 예전엔 위젯(2·3·4·5)을 눌러도 그냥 앱만 열리고(마지막으로 보던 화면 그대로),
+  그 위젯과 관련된 화면으로 알아서 넘어가주지 않았음 — 사용자가 "각 위젯을
+  누르면 그 페이지로 바로 가도록" 요청해서 고침. 달력 위젯·스케줄 위젯은 그
+  위젯이 보여주고 있던 달의 달력 탭으로, 오늘 위젯은 오늘 탭으로, 미배치
+  목록 위젯은 미배치 오버레이가 열린 채로 들어감.
+- **흐름**: 각 위젯의 "앱 열기" 인텐트에 목적지 정보(widget_nav="month"|"today"
+  |"inbox", 달력/스케줄 위젯은 widget_nav_month="YYYY-MM"도 같이)를 실어
+  보냄 → MainActivity.onCreate/onNewIntent(런치모드가 singleTask라 앱이 이미
+  떠 있으면 onCreate가 아니라 onNewIntent로 옴 — 둘 다에서 처리해야 함)가 그
+  값을 바로 JS에 넘기지 않고 SharedPreferences에 저장해둠(웹뷰가 아직 로딩
+  중일 수도 있는 시점에 바로 JS를 실행하는 건 타이밍이 불안정해서 피함) →
+  JS의 syncWidgetNavTarget()이 위젯 1의 "임시 우편함"과 똑같은 방식(앱 시작·
+  포그라운드 복귀 시 WidgetBridgePlugin.getPendingNavTarget()으로 읽어서
+  처리하고 clearPendingNavTarget()으로 비움)으로 그 화면으로 이동시킴
+  (switchTab('month'/'today') 또는 openInbox()). 이 패턴(네이티브가 바로 JS를
+  부르지 않고 SharedPreferences에 남겨두면 JS가 다음 동기화 시점에 가져가는
+  방식)을 계속 유지할 것 — 인텐트 시점에 바로 JS 실행을 시도하지 말 것.
+- 달력/스케줄 위젯이 "그 달"을 알아내는 방법: 이미 JS가 계산해서 저장해둔
+  월별 데이터(달력 위젯의 KEY_MONTH_DATA/KEY_DISPLAY_INDEX, 스케줄 위젯의
+  KEY_SCHEDULE_DATA/KEY_PAGE_INDEX)에서 지금 보여주고 있는 달/페이지의 날짜
+  하나(date 필드)를 꺼내 "YYYY-MM"만 잘라 씀(currentDisplayedMonth() 함수,
+  두 Provider에 각각 있음) — 근무 계산이 아니라 이미 계산된 문자열을 자르는
+  것뿐이라 "네이티브에 근무 로직을 두지 않는다"는 원칙에 어긋나지 않음.
+
 ## 용어 (통일 — 혼동 금지)
 - 할 일 = state.events[] 전체. 반복이 꺼져 있으면 한 번짜리(특정 날짜),
   반복이 켜져 있으면 반복 할일(근무/요일/직접 규칙으로 매번 계산해서 나타남).

@@ -79,10 +79,44 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         );
     }
 
+    // 위젯이 지금 보여주고 있는 달(이전/다음 달로 넘겨봤을 수 있음)을 앱을 열 때
+    // 그대로 이어서 보여주기 위해, 그 달의 날짜 하나를 뽑아 "YYYY-MM"만 돌려줌.
+    // 근무 계산이 아니라 이미 JS가 계산해서 저장해둔 데이터에서 문자열만 잘라
+    // 쓰는 것이라 네이티브에 로직을 새로 두는 게 아님.
+    private static String currentDisplayedMonth(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String raw = prefs.getString(KEY_MONTH_DATA, null);
+        if (raw == null) return null;
+        try {
+            JSONArray months = new JSONObject(raw).optJSONArray("months");
+            if (months == null || months.length() == 0) return null;
+            int idx = prefs.getInt(KEY_DISPLAY_INDEX, CENTER_INDEX);
+            if (idx < 0) idx = 0;
+            if (idx > months.length() - 1) idx = months.length() - 1;
+            JSONObject monthObj = months.optJSONObject(idx);
+            if (monthObj == null) return null;
+            JSONArray days = monthObj.optJSONArray("days");
+            if (days == null) return null;
+            for (int i = 0; i < days.length(); i++) {
+                Object dayObj = days.opt(i);
+                if (dayObj instanceof JSONObject) {
+                    String dateStr = ((JSONObject) dayObj).optString("date", "");
+                    if (dateStr.length() >= 7) return dateStr.substring(0, 7);
+                }
+            }
+        } catch (Exception e) {
+            // 무시 — 못 구하면 그냥 앱이 원래 열리던 대로 열림(오늘 기준)
+        }
+        return null;
+    }
+
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_month_calendar);
 
         Intent openIntent = new Intent(context, MainActivity.class);
+        openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "month");
+        String targetMonth = currentDisplayedMonth(context);
+        if (targetMonth != null) openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV_MONTH, targetMonth);
         PendingIntent openPending = PendingIntent.getActivity(
             context, 0, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE

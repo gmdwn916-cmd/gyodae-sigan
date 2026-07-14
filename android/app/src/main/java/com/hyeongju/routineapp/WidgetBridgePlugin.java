@@ -19,6 +19,11 @@ import org.json.JSONObject;
 // 항목으로 바꾸는 건 JS쪽(syncWidgetInboxItems)이 담당.
 @CapacitorPlugin(name = "WidgetBridge")
 public class WidgetBridgePlugin extends Plugin {
+    // MainActivity가 위젯 탭으로 열렸을 때 "어느 화면으로 바로 들어가야 하는지"를
+    // 저장해두는 곳 — 각 위젯 Provider들의 PREFS_NAME과 같은 SharedPreferences
+    // 파일("widget_bridge")을 그냥 공유해서 씀(새 파일 안 만듦).
+    static final String PREFS_NAME = "widget_bridge";
+    static final String KEY_PENDING_NAV_TARGET = "pending_nav_target";
 
     @PluginMethod
     public void getPendingItems(PluginCall call) {
@@ -166,6 +171,37 @@ public class WidgetBridgePlugin extends Plugin {
             InboxWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit().putString(InboxWidgetProvider.KEY_INBOX_DATA, json).apply();
         InboxWidgetProvider.refreshAll(getContext());
+        call.resolve();
+    }
+
+    // 위젯(달력/스케줄/오늘 할일/미배치 목록)을 탭해서 앱이 열렸을 때, "어느
+    // 화면으로 바로 들어가야 하는지"를 JS가 읽어가게 함 — MainActivity가
+    // onCreate/onNewIntent에서 인텐트의 widget_nav(/widget_nav_month) 값을
+    // 미리 여기(SharedPreferences)에 저장해둠. target: "month"(달력 탭, 그
+    // 위젯이 보여주고 있던 달로 이동)|"today"(오늘 탭)|"inbox"(미배치 열기).
+    @PluginMethod
+    public void getPendingNavTarget(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            PREFS_NAME, Context.MODE_PRIVATE);
+        String raw = prefs.getString(KEY_PENDING_NAV_TARGET, null);
+        JSObject ret = new JSObject();
+        if (raw != null) {
+            try {
+                JSONObject obj = new JSONObject(raw);
+                ret.put("target", obj.optString("target", ""));
+                if (obj.has("month")) ret.put("month", obj.optString("month", ""));
+            } catch (Exception e) {
+                // 파싱 실패 시 아무 목표도 없는 걸로 취급
+            }
+        }
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void clearPendingNavTarget(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().remove(KEY_PENDING_NAV_TARGET).apply();
         call.resolve();
     }
 

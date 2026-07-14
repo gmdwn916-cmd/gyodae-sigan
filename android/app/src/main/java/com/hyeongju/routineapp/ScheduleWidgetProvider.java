@@ -86,10 +86,40 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         );
     }
 
+    // 위젯이 지금 보여주고 있는 2주 페이지의 첫날을 기준으로 "그 달"(YYYY-MM)을
+    // 뽑아서 앱을 열 때 달력 탭이 그 달로 바로 이동하게 함 — 달력 위젯의
+    // currentDisplayedMonth()와 같은 방식(이미 JS가 계산해서 저장해둔 date
+    // 문자열에서 잘라 쓰는 것뿐, 근무 계산 아님).
+    private static String currentDisplayedMonth(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String raw = prefs.getString(KEY_SCHEDULE_DATA, null);
+        if (raw == null) return null;
+        try {
+            JSONArray pages = new JSONObject(raw).optJSONArray("pages");
+            if (pages == null || pages.length() == 0) return null;
+            int idx = prefs.getInt(KEY_PAGE_INDEX, 1);
+            if (idx < 0) idx = 0;
+            if (idx > pages.length() - 1) idx = pages.length() - 1;
+            JSONObject pageObj = pages.optJSONObject(idx);
+            if (pageObj == null) return null;
+            JSONArray days = pageObj.optJSONArray("days");
+            if (days == null || days.length() == 0) return null;
+            JSONObject firstDay = days.optJSONObject(0);
+            if (firstDay == null) return null;
+            String dateStr = firstDay.optString("date", "");
+            return dateStr.length() >= 7 ? dateStr.substring(0, 7) : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_schedule);
 
         Intent openIntent = new Intent(context, MainActivity.class);
+        openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "month");
+        String targetMonth = currentDisplayedMonth(context);
+        if (targetMonth != null) openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV_MONTH, targetMonth);
         PendingIntent openPending = PendingIntent.getActivity(
             context, 0, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
