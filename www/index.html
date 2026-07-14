@@ -4773,6 +4773,34 @@
     } catch (e) {}
   }
 
+  // 위젯 4(오늘 전체 관리)에서 체크한 것들을 반영. 위젯은 "토글"이 아니라 그
+  // 순간 위젯 자신이 계산한 최종 완료 상태(done:true/false)를 안드로이드 쪽
+  // 임시 보관함에 쌓아두고 곧바로 자기 화면을 그 상태로 다시 그림 — 여기서는
+  // 그 최종 상태를 그대로 덮어쓰기만 하면 됨(토글이 아니라 "이 상태로 만들어라"
+  // 라서 같은 요청이 실수로 중복 반영돼도 결과가 달라지지 않음).
+  async function syncWidgetTodayToggles() {
+    const bridge = getWidgetBridge();
+    if (!bridge) return;
+    try {
+      const res = await bridge.getPendingTodayToggles();
+      const toggles = (res && res.toggles) || [];
+      if (!toggles.length) return;
+      toggles.forEach(function (t) {
+        if (t.type === 'repeat') {
+          if (!Array.isArray(state.done_log)) state.done_log = [];
+          const idx = state.done_log.findIndex(function (d) { return d.date === t.date && d.id === t.id; });
+          if (t.done && idx === -1) state.done_log.push({ date: t.date, id: t.id });
+          else if (!t.done && idx !== -1) state.done_log.splice(idx, 1);
+        } else {
+          const ev = (state.events || []).find(function (e) { return e.id === t.id; });
+          if (ev) ev.done = !!t.done;
+        }
+      });
+      saveState();
+      await bridge.clearPendingTodayToggles();
+    } catch (e) {}
+  }
+
   // ── 이번 달 달력 위젯 ──
   // 근무 계산은 여기(앱)에서 renderGrid()와 완전히 같은 규칙으로 전부 끝내고,
   // 이미 정리된 결과(요일 순서·달에 속하는지 여부까지 반영)만 위젯으로 넘김 —
@@ -4910,12 +4938,68 @@
     try { await bridge.setScheduleData({ json: JSON.stringify(payload) }); } catch (e) {}
   }
 
+  // ── 오늘 전체 관리 위젯(위젯 4, 체크 가능) ──
+  // 위젯 2·3과 같은 원칙(근무 계산은 전부 여기서 끝냄)에 더해, 오늘의 반복
+  // 할일 + 한 번짜리 할 일을 오늘 탭(renderTodayTimeline)과 똑같은 순서(시간대
+  // → 그 안에서 timelineOrder)로 정렬해서 넘김 — 위젯 목록 순서가 앱 오늘 탭과
+  // 어긋나지 않게. 완료 여부(done)를 각 항목에 실어 보내서 위젯이 체크 표시를
+  // 그릴 수 있게 함 — 이 위젯만 유일하게 "쓰기"(체크)가 있는 위젯이라, 위젯에서
+  // 누른 체크는 임시 보관함에 쌓였다가 위 syncWidgetTodayToggles()가 반영한다.
+  const TODAY_WIDGET_SLOT_RANK = { unset: 0, morning: 1, afternoon: 2, night: 3 };
+
+  function buildTodayWidgetPayload() {
+    if (!state || !state.cycleDays || !state.baseDate) return null;
+
+    const todayMid = todayMidnight();
+    const dateStr = formatDateStr(todayMid);
+    const baseMid = parseLocalDate(state.baseDate);
+    const diff = Math.round((todayMid - baseMid) / 86400000);
+    const dayIdx0 = ((diff % state.cycleDays) + state.cycleDays) % state.cycleDays;
+    const { name: shiftName } = getEffectiveShiftName(dateStr, dayIdx0);
+
+    const DOW_KR = ['일', '월', '화', '수', '목', '금', '토'];
+    const dateLabel = (todayMid.getMonth() + 1) + '월 ' + todayMid.getDate() + '일 ' + DOW_KR[todayMid.getDay()] + '요일';
+
+    const all = getRepeatTodosForDate(dateStr).map(function (it) { return { kind: 'repeat', item: it }; })
+      .concat(getEventsForDate(dateStr).map(function (it) { return { kind: 'onetime', item: it }; }));
+
+    function slotOf(t) { return t.item.timeSlot || 'unset'; }
+    function orderOf(t) { return typeof t.item.timelineOrder === 'number' ? t.item.timelineOrder : 0; }
+    all.sort(function (a, b) {
+      const sr = TODAY_WIDGET_SLOT_RANK[slotOf(a)] - TODAY_WIDGET_SLOT_RANK[slotOf(b)];
+      return sr !== 0 ? sr : orderOf(a) - orderOf(b);
+    });
+
+    const items = all.map(function (t) {
+      const cat = getCat(t.item.category);
+      const done = t.kind === 'repeat' ? isRepeatDoneOn(t.item.id, dateStr) : !!t.item.done;
+      return {
+        id: t.item.id,
+        text: t.kind === 'onetime' ? eventDisplayText(t.item) : t.item.text,
+        done: done,
+        icon: cat.icon || '',
+        type: t.kind === 'repeat' ? 'repeat' : 'once',
+      };
+    });
+
+    return { date: dateStr, dateLabel: dateLabel, shiftName: shiftName || '', color: getShiftColor(shiftName) || '', items: items };
+  }
+
+  async function pushTodayWidgetToWidget() {
+    const bridge = getWidgetBridge();
+    if (!bridge) return;
+    const payload = buildTodayWidgetPayload();
+    if (!payload) return;
+    try { await bridge.setTodayWidgetData({ json: JSON.stringify(payload) }); } catch (e) {}
+  }
+
   // 위젯이 하나 더 늘 때마다 아래 각 저장 시점에서 일일이 또 호출을 추가하지
   // 않도록, 위젯 관련 push는 전부 이 함수 하나로 모음(호출부는 pushAllWidgets()
   // 하나만 부르면 됨).
   function pushAllWidgets() {
     pushMonthCalendarToWidget();
     pushScheduleToWidget();
+    pushTodayWidgetToWidget();
   }
 
   function renderShiftAlarmSettings() {
@@ -7000,6 +7084,7 @@
     openOnboarding();
   }
   syncWidgetInboxItems();
+  syncWidgetTodayToggles();
   pushAllWidgets();
   // 위젯으로 넣은 항목은 "앱을 아예 새로 켤 때"만 반영되던 걸 보완 — 백그라운드에
   // 있던 앱을 다시 포그라운드로 불러올 때(예: 위젯 입력 후 앱 아이콘 탭)도 웹뷰의
@@ -7010,9 +7095,13 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) {
         syncWidgetInboxItems();
+        syncWidgetTodayToggles();
         pushAllWidgets();
         if (document.getElementById('inbox-overlay').classList.contains('open')) {
           renderInboxList();
+        }
+        if (document.getElementById('tab-today').classList.contains('active')) {
+          renderToday();
         }
       }
     });

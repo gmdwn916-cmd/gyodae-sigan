@@ -128,6 +128,62 @@ public class WidgetBridgePlugin extends Plugin {
         call.resolve();
     }
 
+    // 오늘 전체 관리 위젯(위젯 4)용 — 오늘의 근무·반복 할일·한 번짜리 할 일을
+    // JS가 전부 계산해서 순서까지 정해 넘겨준 결과를 저장하고 다시 그리게 함.
+    // 이 위젯은 목록(ListView) 기반이라 텍스트 몇 개를 세팅하는 다른 위젯과
+    // 달리 TodayWidgetProvider.refreshAll()이 목록 갱신(notifyAppWidgetViewDataChanged)
+    // 까지 같이 처리한다.
+    @PluginMethod
+    public void setTodayWidgetData(PluginCall call) {
+        String json = call.getString("json");
+        if (json == null) {
+            call.reject("json missing");
+            return;
+        }
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            TodayWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(TodayWidgetProvider.KEY_TODAY_DATA, json).apply();
+        TodayWidgetProvider.refreshAll(getContext());
+        call.resolve();
+    }
+
+    // 위젯 4에서 체크를 누르면 그 자리에서 바로 화면은 바뀌지만(낙관적 갱신),
+    // 진짜 데이터(done_log/ev.done)에 반영하는 건 여기 쌓인 "이 항목을 이
+    // 상태로 만들어라"(토글이 아니라 최종 상태) 목록을 JS가 앱을 열 때 읽어가서
+    // 처리한다 — 위젯 1의 "임시 우편함"과 같은 다리 역할.
+    @PluginMethod
+    public void getPendingTodayToggles(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            TodayWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
+        String raw = prefs.getString(TodayWidgetProvider.KEY_PENDING_TOGGLES, "[]");
+        JSObject ret = new JSObject();
+        JSArray toggles = new JSArray();
+        try {
+            JSONArray arr = new JSONArray(raw);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject t = arr.getJSONObject(i);
+                JSObject jt = new JSObject();
+                jt.put("id", t.optString("id", ""));
+                jt.put("date", t.optString("date", ""));
+                jt.put("type", t.optString("type", ""));
+                jt.put("done", t.optBoolean("done", false));
+                toggles.put(jt);
+            }
+        } catch (Exception e) {
+            // 파싱 실패 시 빈 목록으로 — 다음에 위젯에서 새로 쌓으면 됨
+        }
+        ret.put("toggles", toggles);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void clearPendingTodayToggles(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            TodayWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(TodayWidgetProvider.KEY_PENDING_TOGGLES, "[]").apply();
+        call.resolve();
+    }
+
     // 데이터 내보내기(백업)용 — 네이티브 앱 안의 웹뷰는 일반 브라우저와 달리
     // "파일 다운로드"를 자체적으로 처리하는 기능이 없어서, blob 링크를 눌러도
     // 아무 일도 안 일어남. 그래서 네이티브에서는 이 경로 대신 안드로이드가

@@ -313,8 +313,52 @@
     앱을 열지 않음(그 칸의 할 일을 눌러도 마찬가지) — 의도된 트레이드오프.
 - 위젯 1·2·3이 늘어나면서, 여러 저장 시점마다 위젯마다 따로 push 호출을 추가하는
   게 번거로워져서 pushAllWidgets() 함수 하나로 묶음(pushMonthCalendarToWidget()
-  + pushScheduleToWidget() 순서로 호출) — 앞으로 위젯이 더 늘어도 이 함수 안에만
-  추가하면 됨, 각 저장 시점 코드는 안 건드려도 됨.
+  + pushScheduleToWidget() + pushTodayWidgetToWidget() 순서로 호출) — 앞으로
+  위젯이 더 늘어도 이 함수 안에만 추가하면 됨, 각 저장 시점 코드는 안 건드려도 됨.
+
+## 오늘 전체 관리 위젯 (네이티브 전용, 2026-07-14 — 4개 위젯 세트 마지막, 유일하게 "쓰기" 있음)
+- 오늘 날짜·요일·근무를 위젯 2·3처럼 크게 보여주고, 그 아래 오늘의 반복 할일 +
+  한 번짜리 할 일을 스크롤 가능한 목록으로 보여줌. 목록의 각 줄을 탭하면 위젯
+  안에서 바로 완료 체크가 토글됨 — 위젯 1~3은 전부 "읽기 전용"이었는데 이
+  위젯만 유일하게 "쓰기"가 있어서 기술적으로 가장 복잡함.
+  - **목록 안 줄마다 따로 탭 반응**: 위젯 2·3처럼 칸을 미리 정해진 개수만큼
+    그려두는 방식으로는 "개수가 매번 다르고 스크롤도 되는 목록"을 못 만들어서,
+    안드로이드의 "컬렉션 위젯" 방식(RemoteViewsService + RemoteViewsFactory,
+    ListView)을 이 위젯에서 처음 씀. TodayWidgetService/내부의
+    TodayRemoteViewsFactory가 목록 줄을 실제로 채우고, TodayWidgetProvider는
+    헤더(날짜·근무)만 그림. 목록 전체에 "눌리면 이런 신호를 보내라"는 공통
+    틀(PendingIntentTemplate, ACTION_TOGGLE)을 걸어두고, 각 줄마다
+    TodayRemoteViewsFactory가 그 줄의 항목 id·종류·눌렀을 때 될 상태를
+    fillInIntent로 붙여서, 탭 시 그 둘이 합쳐져 TodayWidgetProvider.
+    handleToggle()이 어떤 항목을 어떻게 바꿀지 알게 됨. 이 템플릿용
+    PendingIntent는 다른 위젯들과 달리 FLAG_MUTABLE로 만들어야 함(fillInIntent가
+    안에 끼워져야 하므로) — FLAG_IMMUTABLE로 하면 정보가 안 합쳐짐.
+  - **위젯→앱 동기화(이 위젯에서 처음 생긴 흐름)**: 줄을 탭하면 ①
+    handleToggle()이 저장해둔 오늘 데이터 안의 그 항목 done 값을 그 자리에서
+    바로 바꾸고 notifyAppWidgetViewDataChanged로 위젯을 다시 그려서 즉시 체크된
+    것처럼 보이게 함(낙관적 갱신) ② 동시에 "이 항목을 이 상태로 만들어라"
+    (id/date/type/done)를 안드로이드 SharedPreferences의 임시 보관함
+    (today_widget_pending_toggles)에 쌓음 — 위젯 1의 "임시 우편함"과 같은
+    다리 역할. **토글이 아니라 최종 상태를 보내는 게 핵심** — 같은 요청이
+    실수로 중복 반영돼도 결과가 달라지지 않아 안전함(반대로 "뒤집어라"였으면
+    중복 반영 시 원래대로 되돌아가는 사고가 날 수 있음). JS쪽
+    syncWidgetTodayToggles()가 앱 시작/포그라운드 복귀 시(위젯 1·2·3과 같은
+    지점, syncWidgetInboxItems 바로 옆에서 같이 호출) 이 보관함을 읽어서
+    실제 done_log(반복 할일)·ev.done(한 번짜리)에 반영하고 보관함을 비운 뒤,
+    pushAllWidgets()로 최신 상태를 위젯들에 다시 보냄. 오늘 탭이 화면에 떠
+    있는 상태로 복귀하면 renderToday()도 같이 불러서 화면도 바로 갱신됨.
+  - buildTodayWidgetPayload()가 오늘의 반복 할일(getRepeatTodosForDate)과
+    한 번짜리 할 일(getEventsForDate)을 합쳐서, 오늘 탭(renderTodayTimeline)과
+    완전히 같은 순서(시간대 미정→오전→오후→밤, 그 안에서 timelineOrder)로
+    정렬해 넘김 — 위젯 목록 순서가 앱 오늘 탭과 어긋나지 않게 함. 각 항목은
+    {id, text, done, icon(카테고리 이모지), type:'repeat'|'once'}.
+  - 완료된 항목은 위젯 목록에서 글자에 취소선을 긋고(TextView.setPaintFlags)
+    흐린 색으로, 체크 아이콘도 채워진 동그라미(widget_check_on)로 바꿔서
+    구분 — 항목을 목록에서 숨기지는 않음(스케줄 위젯의 "완료된 항목은 안
+    보이게"와는 다른 성격 — 이 위젯은 체크 자체가 목적이라 방금 체크한 항목이
+    바로 사라지면 확인이 안 됨).
+  - 위젯에서 새 항목 추가는 없음(그건 위젯 1의 역할) — 이 위젯은 "오늘 보고
+    체크"만.
 
 ## 용어 (통일 — 혼동 금지)
 - 할 일 = state.events[] 전체. 반복이 꺼져 있으면 한 번짜리(특정 날짜),
