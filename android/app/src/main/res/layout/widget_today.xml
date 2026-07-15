@@ -23,16 +23,41 @@
             android:textStyle="bold"
             android:textColor="@color/widget_text_primary"
             android:textSize="18sp" />
-        <TextView
-            android:id="@+id/today_shift"
+        <!-- 근무 표시칸 — 모서리를 둥글게 하려고 밑그림(ImageView, 둥근 사각형)
+             위에 글자(TextView, 배경 없음)를 겹침. 자세한 이유는
+             widget_badge_base_light.xml 주석 참고.
+             **(2026-07-16 재수정)** 처음엔 FrameLayout(wrap_content) 안에
+             ImageView를 match_parent로 넣었는데, 실제 기기에서 이 칸(글자
+             포함) 전체가 아예 안 보이는 문제가 있었음 — wrap_content인
+             부모 안에 match_parent 자식만 있으면(다른 형제가 없어서 부모의
+             크기를 정해줄 기준이 없음) 크기가 0으로 무너지는 것으로 보임.
+             RelativeLayout으로 바꿔서, ImageView가 "내 형제(today_shift)의
+             테두리에 맞춰라"(alignLeft/Top/Right/Bottom)는 확실한 기준으로
+             크기를 잡게 함 — 그림을 글자보다 먼저 적어서 글자 뒤에 깔림. -->
+        <RelativeLayout
             android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:paddingLeft="8dp"
-            android:paddingRight="8dp"
-            android:paddingTop="3dp"
-            android:paddingBottom="3dp"
-            android:textStyle="bold"
-            android:textSize="13sp" />
+            android:layout_height="wrap_content">
+            <ImageView
+                android:id="@+id/today_shift_bg"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_alignLeft="@id/today_shift"
+                android:layout_alignTop="@id/today_shift"
+                android:layout_alignRight="@id/today_shift"
+                android:layout_alignBottom="@id/today_shift"
+                android:scaleType="fitXY"
+                android:src="@drawable/widget_badge_base_light" />
+            <TextView
+                android:id="@+id/today_shift"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingLeft="8dp"
+                android:paddingRight="8dp"
+                android:paddingTop="3dp"
+                android:paddingBottom="3dp"
+                android:textStyle="bold"
+                android:textSize="13sp" />
+        </RelativeLayout>
     </LinearLayout>
 
     <ListView
@@ -53,5 +78,19 @@
         android:textColor="@color/widget_text_secondary"
         android:textSize="13sp"
         android:text="오늘 할 일이 없어요" />
+
+    <!-- 맨 밑 두 줄 자리(목록 대신 큼지막한 + 버튼, 2026-07-16 추가, 미배치
+         위젯과 같은 패턴) — 목록(today_list)은 위에서 이 자리만큼을 자동으로
+         빼고 채워짐(같은 부모 LinearLayout 안의 형제라 weight=1인 목록·빈
+         문구 쪽이 이 고정 높이를 뺀 나머지를 차지). -->
+    <TextView
+        android:id="@+id/today_add_button"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center"
+        android:textStyle="bold"
+        android:textSize="30sp"
+        android:textColor="#007AFF"
+        android:text="+" />
 
 </LinearLayout>

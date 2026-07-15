@@ -8,7 +8,6 @@ import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.inputmethod.EditorInfo;
 import android.view.inputmethod.InputMethodManager;
-import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
@@ -25,7 +24,6 @@ public class QuickAddActivity extends Activity {
         setContentView(R.layout.activity_quick_add);
 
         final EditText input = findViewById(R.id.quick_add_input);
-        Button confirmBtn = findViewById(R.id.quick_add_confirm);
 
         input.requestFocus();
         // windowSoftInputMode="stateAlwaysVisible"(매니페스트)만으로는 기종에 따라
@@ -35,7 +33,6 @@ public class QuickAddActivity extends Activity {
             if (imm != null) imm.showSoftInput(input, InputMethodManager.SHOW_IMPLICIT);
         });
 
-        confirmBtn.setOnClickListener(v -> save(input));
         input.setOnEditorActionListener((v, actionId, event) -> {
             boolean isEnterDown = event != null
                 && event.getKeyCode() == KeyEvent.KEYCODE_ENTER

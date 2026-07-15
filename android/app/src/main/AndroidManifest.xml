@@ -15,6 +15,7 @@
             android:label="@string/title_activity_main"
             android:theme="@style/AppTheme.NoActionBarLaunch"
             android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
             android:exported="true">
 
             <intent-filter>
@@ -82,6 +83,17 @@
                 android:resource="@xml/widget_schedule_info" />
         </receiver>
 
+        <!-- 스케줄 위젯에서 날짜 칸(월/일요일 넘기기 칸 제외)을 누르면 뜨는
+             작은 화면 — 그 날짜 근무·할일 보기 + 새 할일 입력 -->
+        <activity
+            android:name=".DayQuickViewActivity"
+            android:theme="@style/QuickAddDialogTheme"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:windowSoftInputMode="stateAlwaysVisible"
+            android:exported="false" />
+
         <!-- 오늘 전체 관리 위젯(체크 가능) -->
         <receiver
             android:name=".TodayWidgetProvider"
@@ -97,6 +109,17 @@
         <service
             android:name=".TodayWidgetService"
             android:permission="android.permission.BIND_REMOTEVIEWS"
+            android:exported="false" />
+
+        <!-- 오늘 할일 위젯의 + 버튼에서 뜨는 입력창(할일추가 위젯과 같은
+             모양·동작, 저장 위치만 오늘 날짜) -->
+        <activity
+            android:name=".TodayQuickAddActivity"
+            android:theme="@style/QuickAddDialogTheme"
+            android:taskAffinity=""
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:windowSoftInputMode="stateAlwaysVisible"
             android:exported="false" />
 
         <!-- 미배치 위젯(읽기 전용) -->

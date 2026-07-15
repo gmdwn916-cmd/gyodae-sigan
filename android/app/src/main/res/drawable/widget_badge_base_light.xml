@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 오늘 할일 위젯 상단의 근무 표시칸(today_shift) 배경 밑그림 — 라이트 모드용.
+     RemoteViews는 setBackgroundColor를 부르면 그 순간 배경이 통째로 각진
+     ColorDrawable로 바뀌어버려서(모서리가 둥근 모양을 유지한 채 색만 못
+     바꿈), 대신 이 둥근 사각형 밑그림을 ImageView(today_shift_bg)에 깔아두고
+     TodayWidgetProvider가 setColorFilter로 그 위에 실제 근무색을 입힘 —
+     그러면 모서리는 항상 둥글게 유지되면서 색만 근무마다 바뀜. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#FFFFFF" />
+    <corners android:radius="6dp" />
+</shape>

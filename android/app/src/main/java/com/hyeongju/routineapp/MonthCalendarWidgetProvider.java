@@ -114,6 +114,14 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_month_calendar);
 
         Intent openIntent = new Intent(context, MainActivity.class);
+        // 다른 위젯들(스케줄/오늘/미배치)도 전부 "MainActivity를 requestCode 0으로
+        // 연다"는 같은 모양의 인텐트를 썼었는데, 안드로이드는 PendingIntent를
+        // requestCode+인텐트(추가로 넣은 값(extras)은 안 봄)로 같은 것인지 판단해서,
+        // 이 넷이 전부 "같은 PendingIntent"로 취급되고 있었음 — 그래서 위젯 중
+        // 아무거나 눌러도 실제로는 가장 마지막에 갱신된 위젯(미배치)이 심어둔 목적지로만
+        // 열리는 버그가 있었음(2026-07-15 수정). action을 위젯마다 다르게 붙여서
+        // 서로 다른 PendingIntent로 구분되게 함.
+        openIntent.setAction("com.hyeongju.routineapp.OPEN_APP_MONTH");
         openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "month");
         String targetMonth = currentDisplayedMonth(context);
         if (targetMonth != null) openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV_MONTH, targetMonth);
@@ -231,6 +239,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
 
                                 int dateId = idFor(context, "cell_date_" + i);
                                 int shiftId = idFor(context, "cell_shift_" + i);
+                                int cellId = idFor(context, "cell_container_" + i);
 
                                 views.setTextViewText(dateId, String.valueOf(dayNum));
 
@@ -256,6 +265,9 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
 
                                 if (dateStr.equals(todayStr)) {
                                     views.setTextColor(dateId, 0xFF007AFF);
+                                    // 스케줄 위젯과 같은 방식 — 날짜 숫자만이 아니라 그 날
+                                    // 칸 전체에 테두리를 둘러서 표시.
+                                    views.setInt(cellId, "setBackgroundResource", R.drawable.widget_today_cell_border);
                                 }
                             }
                         }

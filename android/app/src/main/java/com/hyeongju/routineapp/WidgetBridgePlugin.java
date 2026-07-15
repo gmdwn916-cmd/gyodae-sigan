@@ -52,6 +52,40 @@ public class WidgetBridgePlugin extends Plugin {
         call.resolve();
     }
 
+    // 스케줄 위젯의 날짜 칸 팝업(DayQuickViewActivity)에서 입력한 "이 날짜에
+    // 바로 추가"할 항목들 — 위젯 1의 "임시 우편함"과 같은 다리 역할이지만,
+    // 텍스트만이 아니라 날짜도 같이 담아 넘김({text, date} 객체 배열).
+    @PluginMethod
+    public void getPendingDatedItems(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            DayQuickViewActivity.PREFS_NAME, Context.MODE_PRIVATE);
+        String raw = prefs.getString(DayQuickViewActivity.KEY_PENDING_DATED_ITEMS, "[]");
+        JSObject ret = new JSObject();
+        JSArray items = new JSArray();
+        try {
+            JSONArray arr = new JSONArray(raw);
+            for (int i = 0; i < arr.length(); i++) {
+                JSONObject it = arr.getJSONObject(i);
+                JSObject ji = new JSObject();
+                ji.put("text", it.optString("text", ""));
+                ji.put("date", it.optString("date", ""));
+                items.put(ji);
+            }
+        } catch (Exception e) {
+            // 파싱 실패 시 빈 목록으로 — 다음에 위젯에서 새로 쌓으면 됨
+        }
+        ret.put("items", items);
+        call.resolve(ret);
+    }
+
+    @PluginMethod
+    public void clearPendingDatedItems(PluginCall call) {
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            DayQuickViewActivity.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(DayQuickViewActivity.KEY_PENDING_DATED_ITEMS, "[]").apply();
+        call.resolve();
+    }
+
     // 이번 달 달력 위젯용 — JS가 근무 계산을 전부 마친 결과(월 라벨, 요일 헤더,
     // 날짜별 근무색)를 그대로 저장해두고 위젯을 즉시 다시 그리게 함. 이 플러그인은
     // 그 데이터가 무슨 뜻인지 전혀 모름(그냥 JSON 그대로 저장) — 근무 계산 로직은
@@ -171,6 +205,17 @@ public class WidgetBridgePlugin extends Plugin {
             InboxWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit().putString(InboxWidgetProvider.KEY_INBOX_DATA, json).apply();
         InboxWidgetProvider.refreshAll(getContext());
+        call.resolve();
+    }
+
+    // 할일추가 위젯(위젯 1)용 — 이 위젯은 앱과 주고받는 데이터가 아예 없어서
+    // setXXXData 같은 계기가 없음. 그래서 앱이 열릴 때마다 "색만 다시 판단해서
+    // 다시 그려라"는 신호만 보내는 용도로 따로 둠(라이트/다크/시스템 설정이
+    // 바뀌어도 위젯 색이 안 바뀌던 버그 수정, 위젯 2·3·4·5와 같은 갱신 시점에
+    // 맞춤).
+    @PluginMethod
+    public void refreshQuickAddWidget(PluginCall call) {
+        QuickAddWidgetProvider.refreshAll(getContext());
         call.resolve();
     }
 

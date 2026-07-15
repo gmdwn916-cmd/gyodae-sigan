@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.content.res.Configuration;
 import android.graphics.Color;
 import android.net.Uri;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import androidx.core.content.ContextCompat;
@@ -35,14 +36,33 @@ public class TodayWidgetProvider extends AppWidgetProvider {
     static final String EXTRA_ITEM_ID = "item_id";
     static final String EXTRA_ITEM_TYPE = "item_type";
     static final String EXTRA_NEW_DONE = "new_done";
+    // 목록 줄에서 체크칸이 아닌 나머지 부분을 눌렀을 때 씀(2026-07-16) — 같은
+    // 신호 틀(PendingIntentTemplate) 하나를 공유하는 컬렉션 위젯 특성상 목적지가
+    // 다른 별도의 클릭(액티비티를 여는 것)을 만들 수 없어서, 똑같이 이 방송
+    // (ACTION_TOGGLE)을 타되 이 표시가 있으면 체크 대신 앱을 열도록 분기함.
+    static final String EXTRA_OPEN_APP = "open_app";
 
     @Override
     public void onReceive(Context context, Intent intent) {
         if (ACTION_TOGGLE.equals(intent.getAction())) {
-            handleToggle(context, intent);
+            if (intent.getBooleanExtra(EXTRA_OPEN_APP, false)) {
+                openAppToToday(context);
+            } else {
+                handleToggle(context, intent);
+            }
             return;
         }
         super.onReceive(context, intent);
+    }
+
+    // 체크칸 없는 줄 영역을 눌렀을 때 오늘 탭으로 앱을 엶(위젯 헤더를 누르는
+    // 것과 같은 목적지). 방송 수신자 안에서 화면을 열려면 NEW_TASK 플래그가
+    // 필요함.
+    private void openAppToToday(Context context) {
+        Intent openIntent = new Intent(context, MainActivity.class);
+        openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "today");
+        openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        context.startActivity(openIntent);
     }
 
     // 위젯 목록의 한 줄을 탭했을 때: ① 저장해둔 오늘 데이터 안의 그 항목 done
@@ -133,6 +153,11 @@ public class TodayWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_today);
 
         Intent openIntent = new Intent(context, MainActivity.class);
+        // 위젯마다 다른 action을 붙여서 서로 다른 PendingIntent로 구분되게 함(달력
+        // 위젯 항목의 2026-07-15 수정 참고 — 안 붙이면 다른 위젯들과 하나의
+        // PendingIntent로 뭉쳐져서 아무 위젯이나 눌러도 마지막에 갱신된 위젯의
+        // 목적지로만 열리는 버그가 있었음).
+        openIntent.setAction("com.hyeongju.routineapp.OPEN_APP_TODAY");
         openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "today");
         PendingIntent openPending = PendingIntent.getActivity(
             context, 0, openIntent,
@@ -180,14 +205,21 @@ public class TodayWidgetProvider extends AppWidgetProvider {
         views.setTextColor(idFor(context, "today_date"), primaryText);
         views.setTextViewText(idFor(context, "today_shift"), "");
         views.setTextColor(idFor(context, "today_shift"), secondaryText);
-        views.setInt(idFor(context, "today_shift"), "setBackgroundColor", 0x00000000);
+        views.setViewVisibility(idFor(context, "today_shift_bg"), View.GONE);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String raw = prefs.getString(KEY_TODAY_DATA, null);
+        // 아래 + 버튼(TodayQuickAddActivity로 넘길 오늘 날짜)용으로 같이 뽑아둠 —
+        // 데이터가 아직 없으면(위젯을 처음 추가해서 아직 한 번도 push 안 됐을
+        // 때) 빈 채로 두고, 버튼을 누른 순간에만 기기의 오늘 날짜로 대신 채움
+        // (아래 참고, 이건 근무 계산이 아니라 단순 오늘 날짜라 네이티브에서
+        // 계산해도 되는 예외).
+        String todayDate = "";
         if (raw != null) {
             try {
                 JSONObject obj = new JSONObject(raw);
                 views.setTextViewText(idFor(context, "today_date"), obj.optString("dateLabel", ""));
+                todayDate = obj.optString("date", "");
 
                 String shiftName = obj.optString("shiftName", "");
                 String color = obj.optString("color", "");
@@ -198,18 +230,53 @@ public class TodayWidgetProvider extends AppWidgetProvider {
                             int base = Color.parseColor(color);
                             // 앱의 근무 배지(applyShiftBadgeColor)와 같은 느낌:
                             // 배경은 옅게(약 15% 불투명도), 글자는 근무색 그대로.
+                            // 모서리를 둥글게 유지하려고 setBackgroundColor(각지게
+                            // 바뀌어버림) 대신, 둥근 밑그림(today_shift_bg)을 보이게
+                            // 하고 그 위에 setColorFilter로 색만 입힘(2026-07-16).
                             int tintedBg = (base & 0x00FFFFFF) | 0x26000000;
-                            views.setInt(idFor(context, "today_shift"), "setBackgroundColor", tintedBg);
+                            int badgeBaseRes = isDark ? R.drawable.widget_badge_base_dark : R.drawable.widget_badge_base_light;
+                            views.setImageViewResource(idFor(context, "today_shift_bg"), badgeBaseRes);
+                            views.setInt(idFor(context, "today_shift_bg"), "setColorFilter", tintedBg);
+                            views.setViewVisibility(idFor(context, "today_shift_bg"), View.VISIBLE);
                             views.setTextColor(idFor(context, "today_shift"), base | 0xFF000000);
                         } catch (IllegalArgumentException e) {
                             // 색상 파싱 실패 시 배경 없이 글자만 표시
                         }
                     }
                 }
+
             } catch (Exception e) {
                 // 데이터가 깨져 있으면 위에서 이미 비워둔 빈 헤더로 둠
             }
         }
+
+        // 맨 밑의 큼지막한 + 버튼(2026-07-16 추가, 같은 날 재수정) — 처음엔
+        // 스케줄 위젯의 날짜 팝업(DayQuickViewActivity)을 오늘 날짜로 재사용해서
+        // 날짜·근무·할일 목록까지 같이 보여줬는데, 사용자가 "다른거 보여주지
+        // 말고 할일추가 위젯처럼만 띄워줘"로 요청해서 TodayQuickAddActivity
+        // (QuickAddActivity와 똑같이 입력칸 하나뿐인 화면)로 바꿈 — 저장 위치만
+        // 다름: 미배치가 아니라 그 날짜(오늘)에 바로 배치된 할 일로 들어감
+        // (pending_dated_items → syncWidgetDatedItems() 경로는 그대로 재사용).
+        // requestCode(2)와 action에 "_FROM_TODAY_WIDGET" 접미사를 붙여서 스케줄
+        // 위젯이 같은 날짜로 만드는 DayQuickViewActivity 인텐트와 절대 안
+        // 겹치게 함(다른 컴포넌트라 원래도 안 겹치지만, 이 프로젝트의 습관대로
+        // 이중 안전장치). 위젯 1(QuickAddWidgetProvider)과 같은 이유로
+        // NEW_TASK|MULTIPLE_TASK 플래그도 줌 — TodayQuickAddActivity의
+        // taskAffinity=""와 짝을 이뤄야 앱이 이미 켜져 있어도 입력창만 별도
+        // 작업으로 뜨고 앱 화면까지 같이 안 끌려나옴.
+        if (todayDate.isEmpty()) {
+            todayDate = new java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+                .format(new java.util.Date());
+        }
+        Intent addIntent = new Intent(context, TodayQuickAddActivity.class);
+        addIntent.setAction("com.hyeongju.routineapp.OPEN_DAY_" + todayDate + "_FROM_TODAY_WIDGET");
+        addIntent.putExtra(TodayQuickAddActivity.EXTRA_DATE, todayDate);
+        addIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        PendingIntent addPending = PendingIntent.getActivity(
+            context, 2, addIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        views.setOnClickPendingIntent(idFor(context, "today_add_button"), addPending);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }

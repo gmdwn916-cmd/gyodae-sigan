@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Paint;
+import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
@@ -26,6 +27,15 @@ public class TodayWidgetService extends RemoteViewsService {
     }
 
     private static class TodayRemoteViewsFactory implements RemoteViewsFactory {
+        // 할 일이 몇 개 안 돼서 목록이 위젯 칸을 다 못 채우면, 그 아래 남는
+        // 빈자리는 어떤 목록 줄에도 안 속해서 눌러도 반응이 없었음(2026-07-16
+        // 사용자 신고) — 실제 항목 뒤에 "빈 줄"을 이만큼 더 만들어서 그 자리도
+        // 항상 눌리는 진짜 목록 줄로 채움(안 그러면 그 빈자리는 그냥 ListView의
+        // 아무것도 없는 공간이라 아무 반응도 못 만듦). 웬만큼 큰 위젯 크기까지
+        // 커버하도록 넉넉히 잡음 — 화면에 안 보이는 만큼은 그려지지 않아 비용도
+        // 거의 없음.
+        private static final int FILLER_COUNT = 12;
+
         private final Context context;
         private List<JSONObject> items = new ArrayList<>();
 
@@ -71,12 +81,34 @@ public class TodayWidgetService extends RemoteViewsService {
 
         @Override
         public int getCount() {
-            return items.size();
+            // 할 일이 아예 0개면 개수도 0 그대로 둬야 함 — TodayWidgetProvider가
+            // setEmptyView로 걸어둔 "오늘 할 일이 없어요" 문구(today_empty)는
+            // 개수가 정확히 0일 때만 뜨는 방식이라, 여기서 빈 줄까지 더해버리면
+            // (0+12) 그 문구가 영영 안 뜨게 됨. 할 일이 1개 이상 있을 때만 빈
+            // 줄을 덧붙임.
+            return items.isEmpty() ? 0 : items.size() + FILLER_COUNT;
         }
 
         @Override
         public RemoteViews getViewAt(int position) {
             RemoteViews row = new RemoteViews(context.getPackageName(), R.layout.widget_today_item);
+
+            // 실제 항목 뒤에 붙는 빈 줄 — 체크칸은 숨기고(자리만 차지, 안 보임)
+            // 글자도 비운 채로, 줄 전체를 누르면 오늘 탭이 열리게만 함(토글 대상
+            // 항목 자체가 없으니 체크 반응은 없음).
+            if (position >= items.size()) {
+                row.setTextViewText(idFor("item_text"), "");
+                row.setViewVisibility(idFor("item_check"), View.INVISIBLE);
+                Intent fillerOpenIntent = new Intent();
+                fillerOpenIntent.putExtra(TodayWidgetProvider.EXTRA_OPEN_APP, true);
+                // row_root뿐 아니라 item_text에도 똑같이 걸어야 함 — 위
+                // "체크칸을 제외한 줄의 나머지 부분" 주석에서 확인했듯 자식은
+                // 부모의 fillInIntent를 물려받지 않음.
+                row.setOnClickFillInIntent(idFor("row_root"), fillerOpenIntent);
+                row.setOnClickFillInIntent(idFor("item_text"), fillerOpenIntent);
+                return row;
+            }
+
             JSONObject it = items.get(position);
             String id = it.optString("id", "");
             String text = it.optString("text", "");
@@ -93,15 +125,32 @@ public class TodayWidgetService extends RemoteViewsService {
             row.setImageViewResource(idFor("item_check"),
                 done ? R.drawable.widget_check_on : R.drawable.widget_check_off);
 
-            // 이 줄이 탭됐을 때 어떤 항목의 무엇을 바꿔야 하는지 알려주는 꼬리표.
-            // "done을 뒤집어라"가 아니라 "눌렀을 때 이 상태(!done)가 될 것이다"를
-            // 미리 담아 보냄 — TodayWidgetProvider.handleToggle()이 이 값을 그대로
-            // 최종 상태로 저장하므로 중복 처리돼도 결과가 달라지지 않음.
+            // 체크칸(item_check)이 탭됐을 때 어떤 항목의 무엇을 바꿔야 하는지 알려주는
+            // 꼬리표. "done을 뒤집어라"가 아니라 "눌렀을 때 이 상태(!done)가 될
+            // 것이다"를 미리 담아 보냄 — TodayWidgetProvider.handleToggle()이 이
+            // 값을 그대로 최종 상태로 저장하므로 중복 처리돼도 결과가 달라지지
+            // 않음. 예전엔 줄 전체(row_root)가 눌려도 체크됐는데, 텍스트를 눌렀을
+            // 때도 체크가 토글돼서 불편하다는 요청으로 체크칸(item_check)에만
+            // 반응하도록 좁힘 — 텍스트(item_text)는 이제 눌러도 아무 반응 없음.
             Intent fillInIntent = new Intent();
             fillInIntent.putExtra(TodayWidgetProvider.EXTRA_ITEM_ID, id);
             fillInIntent.putExtra(TodayWidgetProvider.EXTRA_ITEM_TYPE, type);
             fillInIntent.putExtra(TodayWidgetProvider.EXTRA_NEW_DONE, !done);
-            row.setOnClickFillInIntent(idFor("row_root"), fillInIntent);
+            row.setOnClickFillInIntent(idFor("item_check"), fillInIntent);
+
+            // 체크칸을 제외한 줄의 나머지 부분(row_root의 여백 + item_text, 글자
+            // 없는 빈 공백 포함)을 누르면 앱을 오늘 탭으로 염(2026-07-16, 그리고
+            // 같은 날 "빈 공백 부분은 안 눌린다"는 재확인으로 item_text에도 같은
+            // fillInIntent를 직접 달아줌 — 컬렉션 위젯은 자식이 부모의
+            // fillInIntent를 자동으로 물려받지 않고, 각자 자기 몫의 fillInIntent가
+            // 있어야만 반응하는 것으로 확인됨. row_root만 걸어두면 item_check가
+            // 차지한 칸을 뺀 "여백(패딩)" 부분만 반응하고, 그 안의 item_text(글자
+            // 있는 곳과 글자 없는 빈 공백 전부 포함하는 넓은 칸)는 자기 몫이 없어서
+            // 안 눌렸음.
+            Intent openFillInIntent = new Intent();
+            openFillInIntent.putExtra(TodayWidgetProvider.EXTRA_OPEN_APP, true);
+            row.setOnClickFillInIntent(idFor("row_root"), openFillInIntent);
+            row.setOnClickFillInIntent(idFor("item_text"), openFillInIntent);
 
             return row;
         }

@@ -54,6 +54,14 @@ public class InboxWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_inbox);
 
         Intent openIntent = new Intent(context, MainActivity.class);
+        // 위젯마다 다른 action을 붙여서 서로 다른 PendingIntent로 구분되게 함(달력
+        // 위젯 항목의 2026-07-15 수정 참고 — 안 붙이면 다른 위젯들과 하나의
+        // PendingIntent로 뭉쳐져서 아무 위젯이나 눌러도 마지막에 갱신된 위젯의
+        // 목적지로만 열리는 버그가 있었음. 이 위젯은 매번 이 목적지 하나뿐이라
+        // 원래도 문제가 덜 드러났지만, 다른 위젯들이 전부 "미배치"로 끌려가던
+        // 원인이 바로 이 위젯이 매번 갱신 순서상 마지막이라 그 목적지로 다른
+        // 위젯들의 PendingIntent까지 덮어썼기 때문이었음).
+        openIntent.setAction("com.hyeongju.routineapp.OPEN_APP_INBOX");
         openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "inbox");
         PendingIntent openPending = PendingIntent.getActivity(
             context, 0, openIntent,
@@ -83,6 +91,26 @@ public class InboxWidgetProvider extends AppWidgetProvider {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
         );
         views.setPendingIntentTemplate(idFor(context, "inbox_list"), openPendingForList);
+
+        // 맨 밑의 큼지막한 + 버튼(2026-07-16 추가) — 목록은 안 보여주고 이
+        // 버튼만 눌러서 QuickAddActivity(위젯 1과 완전히 같은 입력창, 새로
+        // 만들지 않고 그대로 재사용)를 띄움 — 거기서 쓴 글자는 위젯 1과 똑같은
+        // "임시 우편함"(pending_inbox_items)에 쌓였다가 앱이 열릴 때
+        // syncWidgetInboxItems()가 미배치로 옮김. requestCode(2)가 이 Provider
+        // 안의 다른 PendingIntent(0, 1)와도, 위젯 1의 QuickAddActivity 인텐트
+        // (requestCode 0)와도 겹치지 않게 다르고, 그래도 만약을 대비해 action도
+        // 따로 붙여 완전히 구분함(이 프로젝트에서 위젯 인텐트 충돌을 겪고
+        // 배운 습관). FLAG_ACTIVITY_NEW_TASK|MULTIPLE_TASK도 위젯 1과 동일하게
+        // 줌 — QuickAddActivity의 taskAffinity=""와 같이 써야 앱이 이미 켜져
+        // 있어도 입력창만 별도 작업으로 뜨고 앱 화면까지 같이 안 끌려나옴.
+        Intent addIntent = new Intent(context, QuickAddActivity.class);
+        addIntent.setAction("com.hyeongju.routineapp.OPEN_QUICK_ADD_FROM_INBOX_WIDGET");
+        addIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
+        PendingIntent addPending = PendingIntent.getActivity(
+            context, 2, addIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        views.setOnClickPendingIntent(idFor(context, "inbox_add_button"), addPending);
 
         int primaryText = ContextCompat.getColor(context, R.color.widget_text_primary);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);

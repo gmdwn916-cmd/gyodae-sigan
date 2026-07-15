@@ -86,6 +86,18 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         );
     }
 
+    // "7월 16일 (수)" 형태로 만듦 — dateStr(YYYY-MM-DD)에서 월/일만 뽑고,
+    // 요일 이름은 이미 JS가 계산해 넘겨준 headers 배열(그 칸의 열 번호에 해당하는
+    // 값)을 그대로 씀. 근무 계산이 아니라 문자열 가공이라 네이티브에 둬도 되는
+    // 예외(다른 위젯들의 currentDisplayedMonth()와 같은 성격).
+    private static String buildDateLabel(String dateStr, int dayNum, String weekdayName) {
+        if (dateStr == null || dateStr.length() < 7) return dateStr;
+        String month = dateStr.substring(5, 7);
+        String label = (month.startsWith("0") ? month.substring(1) : month) + "월 " + dayNum + "일";
+        if (weekdayName != null && !weekdayName.isEmpty()) label += " (" + weekdayName + ")";
+        return label;
+    }
+
     // 위젯이 지금 보여주고 있는 2주 페이지의 첫날을 기준으로 "그 달"(YYYY-MM)을
     // 뽑아서 앱을 열 때 달력 탭이 그 달로 바로 이동하게 함 — 달력 위젯의
     // currentDisplayedMonth()와 같은 방식(이미 JS가 계산해서 저장해둔 date
@@ -117,6 +129,12 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_schedule);
 
         Intent openIntent = new Intent(context, MainActivity.class);
+        // 위젯마다 다른 action을 붙여서 서로 다른 PendingIntent로 구분되게 함 —
+        // 안 붙이면 다른 위젯들의 "MainActivity 열기" 인텐트와 requestCode+인텐트가
+        // 같은 것으로 취급돼(extras는 구분 기준에 안 들어감) 전부 하나로 뭉쳐지고,
+        // 가장 마지막에 갱신된 위젯의 목적지로만 열리는 버그가 있었음(2026-07-15
+        // 수정, 달력 위젯 항목 참고).
+        openIntent.setAction("com.hyeongju.routineapp.OPEN_APP_SCHEDULE");
         openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "month");
         String targetMonth = currentDisplayedMonth(context);
         if (targetMonth != null) openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV_MONTH, targetMonth);
@@ -161,28 +179,17 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String raw = prefs.getString(KEY_SCHEDULE_DATA, null);
 
-        // 화살표 글자 대신, 월요일 쪽 세로 전체(헤더+두 줄)를 누르면 이전 페이지,
-        // 일요일 쪽 세로 전체를 누르면 다음 페이지로 넘어가게 함. 어느 칸이
-        // 월/일요일인지는 주 시작 요일 설정에 따라 달라지므로 JS가 넘겨준 sunCol
-        // 기준으로 계산(일요일 바로 다음 칸이 항상 월요일 — weekStart 무관하게
-        // 성립하는 항등식). 데이터가 아직 없을 때는 기본값(월=0,일=6)으로 둠.
-        int sunColForNav = 6;
-        if (raw != null) {
-            try {
-                sunColForNav = new JSONObject(raw).optInt("sunCol", 6);
-            } catch (Exception e) {
-                // 무시 — 기본값 사용
-            }
-        }
-        int mondayCol = (sunColForNav + 1) % 7;
+        // 좌우 넘기기 영역(2026-07-16 세 번째 조정 — 위치(왼쪽 끝/오른쪽 끝)
+        // 기준으로 단순화): 예전엔 "월요일 칸"·"일요일 칸"처럼 요일 이름 기준
+        // (mondayCol/sunColForNav, weekStart에 따라 달라짐)으로 넘기기 칸을
+        // 정했는데, 사용자가 "제일 왼쪽 칸/제일 오른쪽 칸"이라고 위치로 다시
+        // 요청해서 요일 이름과 상관없이 항상 열 번호 0(왼쪽 끝)/6(오른쪽 끝)
+        // 고정으로 바꿈 — 더 이상 sunCol을 안 읽어도 됨. 헤더 칸(sch_header_0/6)은
+        // 그대로 넘기기 전용.
         PendingIntent prevPending = navPendingIntent(context, ACTION_PREV, 3);
         PendingIntent nextPending = navPendingIntent(context, ACTION_NEXT, 4);
-        views.setOnClickPendingIntent(idFor(context, "sch_header_" + mondayCol), prevPending);
-        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + mondayCol), prevPending);
-        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + (7 + mondayCol)), prevPending);
-        views.setOnClickPendingIntent(idFor(context, "sch_header_" + sunColForNav), nextPending);
-        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + sunColForNav), nextPending);
-        views.setOnClickPendingIntent(idFor(context, "sch_cell_" + (7 + sunColForNav)), nextPending);
+        views.setOnClickPendingIntent(idFor(context, "sch_header_0"), prevPending);
+        views.setOnClickPendingIntent(idFor(context, "sch_header_6"), nextPending);
 
         if (raw != null) {
             try {
@@ -214,6 +221,7 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
                                 Object dayObj = days.opt(i);
                                 if (!(dayObj instanceof JSONObject)) continue;
                                 JSONObject day = (JSONObject) dayObj;
+                                String dateStr = day.optString("date", "");
                                 int dayNum = day.optInt("dayNum", 0);
                                 boolean isToday = day.optBoolean("isToday", false);
                                 String shiftName = day.optString("shiftName", "");
@@ -250,6 +258,50 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
                                 if (todos != null) {
                                     for (int t = 0; t < todos.length() && t < MAX_TODOS_PER_CELL; t++) {
                                         views.setTextViewText(idFor(context, "sch_todo_" + i + "_" + t), todos.optString(t, ""));
+                                    }
+                                }
+
+                                // 팝업/넘기기 영역 재조정(2026-07-16 네 번째): 모든 칸에서
+                                // "날짜 숫자(sch_date_N)"와 "근무 배지(sch_shift_N)"는
+                                // 항상 팝업으로 통일(위/아래 줄 다 똑같이, 왼쪽 끝(col 0)·
+                                // 오른쪽 끝(col 6)도 예외 없음) — 처음엔 숫자만 팝업이고
+                                // 나머지 전체가 넘기기였는데, 사용자가 "숫자랑 밑에 근무
+                                // 까지는 영역으로"(=팝업으로) 요청해서 근무 배지도 팝업
+                                // 쪽으로 넘어옴. 그 결과 왼쪽·오른쪽 끝 칸에서 넘기기로
+                                // 남는 부분은 할일 줄(sch_todo_N_0~2)뿐 — 이 줄들은 따로
+                                // 클릭을 안 걸어서 자식이 없는 자리로 남고, 그 자리는
+                                // cellId(칸 전체, 부모)가 받음. sch_date_N·sch_shift_N이
+                                // sch_cell_N 안에 중첩된 자식 뷰라 안드로이드 표준 터치
+                                // 처리로 그 둘 위는 항상 자식(팝업)이 받고, 자식이 없는
+                                // 나머지 자리(할일 줄 + 여백)는 부모(cellId)가 받음 —
+                                // 위젯 안 목록(RemoteViewsFactory)과 달리 보통 레이아웃이라
+                                // fillInIntent 같은 별도 처리 없이 이 분리가 그대로 됨.
+                                // 가운데 칸은 cellId도 그냥 팝업이라 전체가 다 팝업.
+                                int col = i % 7;
+                                if (!dateStr.isEmpty()) {
+                                    Intent dayIntent = new Intent(context, DayQuickViewActivity.class);
+                                    dayIntent.setAction("com.hyeongju.routineapp.OPEN_DAY_" + dateStr);
+                                    dayIntent.putExtra(DayQuickViewActivity.EXTRA_DATE, dateStr);
+                                    String weekdayName = headers != null ? headers.optString(col, "") : "";
+                                    dayIntent.putExtra(DayQuickViewActivity.EXTRA_DATE_LABEL,
+                                        buildDateLabel(dateStr, dayNum, weekdayName));
+                                    if (!shiftName.isEmpty()) {
+                                        dayIntent.putExtra(DayQuickViewActivity.EXTRA_SHIFT_NAME, shiftName);
+                                        if (!color.isEmpty()) dayIntent.putExtra(DayQuickViewActivity.EXTRA_SHIFT_COLOR, color);
+                                    }
+                                    if (todos != null) dayIntent.putExtra(DayQuickViewActivity.EXTRA_TODOS, todos.toString());
+                                    PendingIntent dayPending = PendingIntent.getActivity(
+                                        context, 200 + i, dayIntent,
+                                        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+                                    );
+                                    views.setOnClickPendingIntent(dateId, dayPending);
+                                    views.setOnClickPendingIntent(shiftId, dayPending);
+                                    if (col == 0) {
+                                        views.setOnClickPendingIntent(cellId, prevPending);
+                                    } else if (col == 6) {
+                                        views.setOnClickPendingIntent(cellId, nextPending);
+                                    } else {
+                                        views.setOnClickPendingIntent(cellId, dayPending);
                                     }
                                 }
                             }

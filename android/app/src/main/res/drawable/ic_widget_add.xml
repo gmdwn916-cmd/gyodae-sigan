@@ -4,7 +4,10 @@
     android:height="24dp"
     android:viewportWidth="24"
     android:viewportHeight="24">
+    <!-- 2026-07-16: 예전엔 24x24 중 가운데 14x14에만 그려서(위아래 5씩 투명
+         여백) 아이콘 크기 계산이 계속 복잡해졌음 — 거의 꽉 채운 20x20으로
+         키워서(2씩만 여백) 이미지뷰 크기 = 보이는 십자가 크기에 가깝게 만듦. -->
     <path
         android:fillColor="#007AFF"
-        android:pathData="M11,5 h2 v6 h6 v2 h-6 v6 h-2 v-6 h-6 v-2 h6 z" />
+        android:pathData="M10,2 h4 v8 h8 v4 h-8 v8 h-4 v-8 h-8 v-4 h8 z" />
 </vector>

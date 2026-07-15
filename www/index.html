@@ -26,6 +26,14 @@
        두 모드 공통이며, 배경에 옅게 섞는 비율(--tint-*)만 모드별로 다르다. */
     :root {
       color-scheme: light dark;
+      /* 키보드가 떠 있을 때 그만큼(px)을 담아두는 변수 — JS의 visualViewport
+         감시 코드가 채워 넣음(맨 아래 script 참고). 키보드가 없으면 0. */
+      --keyboard-inset: 0px;
+      /* 하단 고정 바(#bottom-fixed)의 실제 렌더링된 높이 — JS의
+         ResizeObserver가 매번 실측해서 채워 넣음(기기마다 안전영역 등으로
+         다를 수 있어서 156px 같은 숫자로 못박아두면 안 맞는 기기가 있었음).
+         JS가 아직 못 채웠을 최초 순간 대비 기본값만 156px로 둠. */
+      --bottom-fixed-height: 156px;
       --bg: #ffffff;            /* 앱 배경 */
       --surface: #ffffff;       /* 카드 표면 */
       --surface-2: #f4f5f7;     /* 표면 위 한 단계 (칩, 인셋 행) */
@@ -141,11 +149,42 @@
       color: var(--text-1);
     }
 
+    /* 미배치 항목을 배치할 달/날짜를 고르는 중임을 알려주는 얇은 띠(연간/달력
+       탭을 탭 하나로 배치하는 흐름 전용, 2026-07-16) */
+    #placement-hint-bar {
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      position: sticky;
+      top: 0;
+      z-index: 11;
+      background: var(--accent);
+      color: #fff;
+      padding: 10px 16px;
+      font-size: 14px;
+      font-weight: 600;
+    }
+    #placement-hint-bar #btn-placement-cancel {
+      background: rgba(255,255,255,0.25);
+      border: none;
+      border-radius: 8px;
+      color: #fff;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 5px 10px;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
     /* ── Tab content ── */
     .tab-content {
       flex: 1;
       display: none;
-      padding: 20px 16px 156px;
+      /* 156px 고정값 대신 실측한 --bottom-fixed-height를 씀 — 기기마다
+         하단 고정 바의 실제 높이가 달라서(안전영역 등) 156px로는 내용
+         끝부분이 그 바에 가려지는 기기가 있었음(2026-07-16). */
+      padding: 20px 16px var(--bottom-fixed-height, 156px);
       overflow-y: auto;
     }
 
@@ -154,7 +193,15 @@
     /* ── 하단 고정 영역(빠른 추가 바 + 내비게이션) ── */
     #bottom-fixed {
       position: fixed;
-      bottom: 0;
+      /* 2026-07-16: 그냥 0이면(키보드가 떠도 이 값 그대로) 기기에 따라
+         웹뷰가 키보드를 위해 화면을 실제로 줄여주는 시점이 CSS의 100vh/
+         fixed 계산과 안 맞아서, 이 바와 날짜 상세 패널(day-detail-overlay)
+         사이에 틈이 벌어지고 그 틈으로 뒤의 달력 탭이 보이는 문제가 있었음
+         (android:windowSoftInputMode="adjustResize"만으로는 100% 안 잡힘).
+         그래서 실제 키보드 높이를 JS(visualViewport)로 재서 이 값을 매번
+         갱신해두고, 이 바를 그만큼 키보드 위로 직접 밀어 올림 — 아래
+         #day-detail-overlay도 똑같은 변수를 쓰므로 항상 서로 딱 맞물림. */
+      bottom: var(--keyboard-inset, 0px);
       left: 50%;
       transform: translateX(-50%);
       width: 100%;
@@ -527,7 +574,12 @@
       top: 0;
       left: 0;
       right: 0;
-      bottom: 156px;
+      /* 156px 고정값 대신 실측한 --bottom-fixed-height를 씀(기기마다 실제
+         높이가 달라서 156px로는 안 맞는 기기가 있었음), 키보드가 떠서
+         #bottom-fixed가 위로 밀려 올라간 만큼(--keyboard-inset)도 같이
+         더해서 키보드가 떠 있어도 그 바로 위까지 정확히 맞물림(자세한
+         이유는 #bottom-fixed 쪽 주석 참고). */
+      bottom: calc(var(--bottom-fixed-height, 156px) + var(--keyboard-inset, 0px));
       background: rgba(0,0,0,0.4);
       z-index: 40;
       align-items: flex-end;
@@ -542,7 +594,9 @@
       max-width: 480px;
       border-radius: 20px 20px 0 0;
       padding: 20px 20px calc(36px + env(safe-area-inset-bottom, 0));
-      max-height: min(80vh, calc(100vh - 156px));
+      /* 여기도 156px 고정값 대신 실측한 --bottom-fixed-height를 씀(2026-07-16,
+         같은 이유는 #day-detail-overlay 쪽 주석 참고). */
+      max-height: min(80vh, calc(100vh - var(--bottom-fixed-height, 156px)));
       overflow-y: auto;
     }
 
@@ -616,7 +670,13 @@
       margin-bottom: 8px;
     }
 
-    #dd-events-list { max-height: 110px; overflow-y: auto; }
+    /* 2026-07-16: 원래 max-height:110px로 이 목록 안에서만 따로 스크롤되게
+       해뒀었는데, 그러면 항목이 3개만 넘어도 목록 칸 자체가 작게 굳어서
+       스크롤해야 나머지가 보였음(할 일이 적을 때도 칸 크기가 안 늘어남).
+       날짜 상세 패널(#day-detail-panel) 자체가 이미 전체 스크롤이 되므로,
+       이 안쪽 목록의 높이 제한은 없애고 내용만큼 자연스럽게 늘어나게 함 —
+       다시 여기에 max-height를 넣지 말 것(넣으면 같은 문제가 재발함). */
+    #dd-events-list { }
     #dd-events-section .dd-section-label { color: #d97000; }
 
     .dd-routine-item {
@@ -1029,6 +1089,7 @@
       background: rgba(0,122,255,0.14);
     }
 
+
     .year-month-label {
       font-size: 14px;
       font-weight: 700;
@@ -1089,13 +1150,20 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       gap: 0;
-      align-items: start;
+      /* 2026-07-16: start(각 칸이 자기 내용 높이만큼만 차지)였던 걸 stretch로
+         바꿈 — 오늘 칸에 할 일이 적어서(예: 3줄이 아니라 0~1줄) 그 주(week)의
+         다른 칸보다 내용이 짧으면, 오늘 칸 테두리가 그 짧은 내용까지만
+         둘러지고 그 아래(같은 줄의 다른 칸들이 차지한 나머지 높이)는 테두리
+         없이 빈칸처럼 보였음. stretch로 모든 칸이 그 줄에서 제일 큰 칸 높이
+         까지 항상 늘어나게 해서, 오늘 칸 테두리가 항상 그 줄 전체 높이를
+         두르게 함. */
+      align-items: stretch;
     }
 
     .grid-cell {
       background: var(--surface);
       border-radius: 8px;
-      padding: 5px 4px 5px;
+      padding: 4px 4px 4px;
       cursor: pointer;
       min-height: 56px;
       display: flex;
@@ -1110,9 +1178,15 @@
 
     .grid-cell:active { background: var(--surface-2); }
 
+    /* border 대신 outline을 씀(2026-07-16) — border는 box-sizing:border-box라도
+       칸 높이를 그만큼(위아래 합쳐 3px) 더 키워서, 오늘이 든 주(week)만 다른
+       주보다 줄 높이가 미묘하게 더 커 보이는 원인이었음. outline은 레이아웃
+       박스 크기에 전혀 영향을 안 주고 위에 겹쳐 그려지기만 해서, offset을
+       음수로 줘서 안쪽으로 당기면 모양은 그대로인데 높이는 안 늘어남. */
     .grid-cell.today {
       background: rgba(0,122,255,0.12);
-      border: 1.5px solid #007aff;
+      outline: 1.5px solid #007aff;
+      outline-offset: -1.5px;
     }
 
     .grid-cell.other-month { opacity: 0.38; }
@@ -1128,18 +1202,26 @@
       color: var(--text-1);
       line-height: 1.2;
       flex-shrink: 0;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
       width: 100%;
     }
 
     .grid-cell.is-holiday .cell-date { color: #ff3b30; }
     .grid-cell.today .cell-date { color: #007aff; }
 
+    /* 근무 이름 한 줄의 높이를 .cell-shift-band(아래, 여러 날 이어지는 경우)와
+       정확히 똑같이(16px) 고정함(2026-07-16) — 예전엔 이 배지만 높이가
+       정해져 있지 않아서(padding으로만 크기가 정해짐), 어떤 날은 이어진
+       근무 띠(.cell-shift-band, 16px 고정)가 뜨고 어떤 날은 이 배지가 뜨는
+       상황이 섞이면 그 두 종류의 "근무 줄" 높이가 서로 달라 날짜 칸마다
+       줄 높이가 들쭉날쭉해 보였음. */
     .cell-shift-badge {
       font-size: 10px;
       font-weight: 600;
+      height: 16px;
+      line-height: 16px;
       border-radius: 4px;
-      padding: 1px 5px;
+      padding: 0 5px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -1177,15 +1259,15 @@
 
     .cell-event-list {
       width: 100%;
-      margin-top: 3px;
+      margin-top: 2px;
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      gap: 0px;
     }
 
     .cell-event-item {
       font-size: 9px;
-      line-height: 1.3;
+      line-height: 1.2;
       color: #ff9500;
       white-space: nowrap;
       overflow: hidden;
@@ -1735,8 +1817,8 @@
       margin-right: 6px;
       margin-top: 2px;
     }
-    /* ── 인박스 / 배치 / 반복 승격 / 기간 수정 오버레이(공통 바텀시트 패턴) ── */
-    #inbox-overlay, #place-overlay, #promote-overlay, #period-edit-overlay, #bulk-shift-overlay {
+    /* ── 인박스 / 반복 승격 / 기간 수정 오버레이(공통 바텀시트 패턴) ── */
+    #inbox-overlay, #promote-overlay, #period-edit-overlay, #bulk-shift-overlay {
       display: none;
       position: fixed;
       inset: 0;
@@ -1746,9 +1828,9 @@
       justify-content: center;
     }
 
-    #inbox-overlay.open, #place-overlay.open, #promote-overlay.open, #period-edit-overlay.open, #bulk-shift-overlay.open { display: flex; }
+    #inbox-overlay.open, #promote-overlay.open, #period-edit-overlay.open, #bulk-shift-overlay.open { display: flex; }
 
-    #inbox-panel, #place-panel, #promote-panel, #period-edit-panel, #bulk-shift-panel {
+    #inbox-panel, #promote-panel, #period-edit-panel, #bulk-shift-panel {
       background: var(--bg);
       width: 100%;
       max-width: 480px;
@@ -1758,7 +1840,7 @@
       padding: 20px 16px calc(20px + env(safe-area-inset-bottom, 0));
     }
 
-    #inbox-panel h2, #place-panel h2, #promote-panel h2, #period-edit-panel h2, #bulk-shift-panel h2 {
+    #inbox-panel h2, #promote-panel h2, #period-edit-panel h2, #bulk-shift-panel h2 {
       font-size: 16px;
       font-weight: 700;
       color: var(--text-1);
@@ -1815,7 +1897,7 @@
       text-align: center;
     }
 
-    #promote-panel .btn.active, #place-panel .btn.active {
+    #promote-panel .btn.active {
       background: #007aff;
       color: #fff;
       border-color: #007aff;
@@ -2211,6 +2293,10 @@
   <header>
     <h1>교대근무 루틴</h1>
   </header>
+  <div id="placement-hint-bar">
+    <span id="placement-hint-text"></span>
+    <button type="button" id="btn-placement-cancel">취소</button>
+  </div>
 
   <!-- ── 루틴 탭 ── -->
   <div class="tab-content" id="tab-routine">
@@ -2433,24 +2519,6 @@
   </div>
 </div>
 
-<!-- ── 배치 날짜 선택 오버레이 ── -->
-<div id="place-overlay">
-  <div id="place-panel">
-    <div class="cal-nav" style="padding:0 0 8px">
-      <button class="btn-cal-nav" id="btn-place-cal-prev">‹</button>
-      <span id="place-cal-title"></span>
-      <button class="btn-cal-nav" id="btn-place-cal-next">›</button>
-    </div>
-    <div class="grid-header" id="place-grid-header"></div>
-    <div id="place-day-grid-wrap">
-      <div class="day-grid" id="place-cal-grid"></div>
-    </div>
-    <div class="btn-row" style="padding-top:8px">
-      <button class="btn btn-secondary" id="btn-place-cancel">취소</button>
-    </div>
-  </div>
-</div>
-
 <!-- ── 반복 할 일 만들기/전환/편집 (공용 시트) ── -->
 <div id="promote-overlay">
   <div id="promote-panel">
@@ -2566,7 +2634,7 @@
       <input type="text" id="dd-shift-new-input" placeholder="새 근무명…" maxlength="20">
       <div class="btn-row">
         <button class="btn btn-secondary" id="btn-dd-shift-once">이번 날짜만</button>
-        <button class="btn btn-primary" id="btn-dd-shift-pattern">앞으로 <span id="dd-shift-dnum-label">D○</span>마다</button>
+        <button class="btn btn-primary" id="btn-dd-shift-pattern">앞으로 이 자리마다</button>
       </div>
       <div class="dd-shift-note">설정탭의 기본 근무 패턴은 바뀌지 않아요.</div>
       <button class="dd-shift-cancel-btn" id="btn-dd-shift-cancel">취소</button>
@@ -2807,6 +2875,44 @@
     if (systemDarkQuery.addEventListener) { systemDarkQuery.addEventListener('change', onSystemThemeChange); }
     else if (systemDarkQuery.addListener) { systemDarkQuery.addListener(onSystemThemeChange); }
   }
+
+  // 키보드가 뜨면 화면에서 실제로 가려지는 높이를 재서 --keyboard-inset에
+  // 담아둠(2026-07-16) — 하단 고정 바(#bottom-fixed)와 날짜 상세 오버레이
+  // (#day-detail-overlay)가 이 값을 같이 써서 항상 서로 딱 맞물리게 함.
+  // window.innerHeight(키보드 유무와 무관하게 거의 고정)와 visualViewport의
+  // 실제 보이는 높이 차이가 곧 키보드가 가린 높이 — vh 단위나 안드로이드의
+  // adjustResize만으로는 이 두 요소가 어긋나는 기기가 있어서 직접 재는 방식으로
+  // 확실하게 맞춤.
+  if (window.visualViewport) {
+    const vv = window.visualViewport;
+    const updateKeyboardInset = function () {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      document.documentElement.style.setProperty('--keyboard-inset', inset + 'px');
+    };
+    vv.addEventListener('resize', updateKeyboardInset);
+    vv.addEventListener('scroll', updateKeyboardInset);
+    updateKeyboardInset();
+  }
+
+  // 2026-07-16 재수정: 위 키보드 보정만으로는 사용자가 재확인한 스크린샷에서
+  // 여전히 틈이 그대로였음 — 원인을 다시 보니, 애초에 하단 고정 바
+  // (#bottom-fixed)의 실제 높이를 "156px"이라고 코드에 숫자로 못박아둔 게
+  // 진짜 문제였음(빠른 입력칸+아이콘 줄, 하단 탭 5개 줄, 기기별 하단
+  // 안전영역(제스처 내비게이션 여백 등)을 다 더한 진짜 높이가 기기마다 달라서,
+  // 156px보다 실제로 더 큰 기기에서는 키보드가 없어도 그 차이만큼 항상 틈이
+  // 남아 있었던 것 — 키보드 유무와 무관한 문제라 키보드 보정으로는 못 고쳤음).
+  // 그래서 156px라는 숫자를 아예 안 쓰고, #bottom-fixed의 실제 렌더링된
+  // 높이를 JS로 직접 재서 --bottom-fixed-height에 담아두고, 날짜 상세
+  // 오버레이가 156px 대신 이 값을 쓰게 바꿈 — 기기가 뭐든 항상 정확히 맞음.
+  (function () {
+    const bar = document.getElementById('bottom-fixed');
+    if (!bar || !window.ResizeObserver) return;
+    const updateBarHeight = function () {
+      document.documentElement.style.setProperty('--bottom-fixed-height', bar.offsetHeight + 'px');
+    };
+    new ResizeObserver(updateBarHeight).observe(bar);
+    updateBarHeight();
+  })();
 
   const _now = new Date();
   let calYear = _now.getFullYear();
@@ -3875,6 +3981,12 @@
     // 날짜 상세가 떠 있는 채로 다른 탭으로 넘어가면 뒤에 남아있지 않도록 같이 닫음
     // ("닫기" 버튼을 없앤 대신 다른 페이지로 이동해도 자동으로 닫히게 함).
     closeDayDetail();
+    // 미배치 목록이 펼쳐진 채로 다른 탭으로 넘어가는 것도 마찬가지로 같이 닫음
+    // (2026-07-16 — 특히 미배치가 펼쳐진 채로 앱이 백그라운드에 있을 때 달력/
+    // 스케줄 위젯을 눌러 그 탭으로 들어오면, 예전엔 미배치 목록이 펼쳐진
+    // 채로 같이 나타났었음). 배치 모드 자체(안내 띠)는 안 건드림 — 목록
+    // 오버레이만 닫힘, 배치는 계속 진행 중일 수 있음.
+    closeInbox();
 
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('nav button').forEach(el => el.classList.remove('active'));
@@ -4212,16 +4324,18 @@
     if (singleEvents.length > 0) {
       const evList = document.createElement('div');
       evList.className = 'cell-event-list';
-      singleEvents.slice(0, 2).forEach(function (ev) {
+      // 2026-07-16: 2줄 → 3줄까지 보이게(사용자 요청) — cell-date/cell-shift-badge/
+      // cell-event-list의 여백을 같이 좁혀서 3번째 줄이 들어갈 자리를 만듦.
+      singleEvents.slice(0, 3).forEach(function (ev) {
         const evEl = document.createElement('div');
         evEl.className = 'cell-event-item';
         evEl.textContent = ev.text;
         evList.appendChild(evEl);
       });
-      if (singleEvents.length > 2) {
+      if (singleEvents.length > 3) {
         const moreEl = document.createElement('div');
         moreEl.className = 'cell-event-more';
-        moreEl.textContent = '+' + (singleEvents.length - 2) + '개 더';
+        moreEl.textContent = '+' + (singleEvents.length - 3) + '개 더';
         evList.appendChild(moreEl);
       }
       cell.appendChild(evList);
@@ -4279,6 +4393,16 @@
       }
 
       box.addEventListener('click', function () {
+        if (pendingPlaceMode === 'month' && pendingPlaceInboxId) {
+          const idx = (state.inbox || []).findIndex(function (it) { return it.id === pendingPlaceInboxId; });
+          if (idx !== -1) {
+            state.inbox[idx].targetMonth = formatYearMonth(yearViewYear, m);
+            saveState();
+            renderInboxBadge();
+          }
+          cancelPlacementMode();
+          return;
+        }
         calYear = yearViewYear;
         calMonth = m;
         switchTab('month');
@@ -4377,6 +4501,12 @@
 
       cell.addEventListener('click', function () {
         if (bulkShiftSuppressClick) { bulkShiftSuppressClick = false; return; }
+        if (pendingPlaceMode === 'date' && pendingPlaceInboxId) {
+          const placingId = pendingPlaceInboxId;
+          cancelPlacementMode();
+          placeInboxItem(placingId, cellDateStr);
+          return;
+        }
         openDayDetail(dayIdx0, cellDateStr);
       });
       setupBulkShiftLongPress(cell, cellDateStr);
@@ -4805,6 +4935,31 @@
     } catch (e) {}
   }
 
+  // 스케줄 위젯의 날짜 칸 팝업(DayQuickViewActivity)에서 입력한, "이 날짜에
+  // 바로 추가"할 항목들을 반영 — 미배치가 아니라 placeInboxItem()과 같은 모양의
+  // 진짜 배치된(날짜 있는) 한 번짜리 할 일로 바로 만듦.
+  async function syncWidgetDatedItems() {
+    const bridge = getWidgetBridge();
+    if (!bridge) return;
+    try {
+      const res = await bridge.getPendingDatedItems();
+      const items = (res && res.items) || [];
+      if (!items.length) return;
+      if (!Array.isArray(state.events)) state.events = [];
+      items.forEach(function (item) {
+        const text = (item.text || '').trim();
+        const dateStr = item.date || '';
+        if (!text || !dateStr) return;
+        state.events.push({ id: genId('e'), date: dateStr, endDate: dateStr, text: text, done: false });
+      });
+      saveState();
+      renderToday();
+      renderGrid();
+      renderDDTodos();
+      await bridge.clearPendingDatedItems();
+    } catch (e) {}
+  }
+
   // 위젯 4(오늘 전체 관리)에서 체크한 것들을 반영. 위젯은 "토글"이 아니라 그
   // 순간 위젯 자신이 계산한 최종 완료 상태(done:true/false)를 안드로이드 쪽
   // 임시 보관함에 쌓아두고 곧바로 자기 화면을 그 상태로 다시 그림 — 여기서는
@@ -5049,6 +5204,18 @@
     try { await bridge.setInboxWidgetData({ json: JSON.stringify(payload) }); } catch (e) {}
   }
 
+  // 할일추가 위젯(위젯 1)은 앱과 주고받는 데이터가 없어서 다른 위젯들처럼
+  // setXXXData가 곧 다시 그리는 계기가 되어주지 못함 — 그래서 라이트/다크
+  // 설정을 바꿔도 앱을 다시 열어도 최초 배치 때 색이 그대로 남아있던 버그가
+  // 있었음(2026-07-15 수정). 데이터 없이 "지금 시스템 설정 기준으로 색만
+  // 다시 판단해서 다시 그려라"는 신호만 보냄 — 다른 위젯들과 같은 시점
+  // (pushAllWidgets)에 맞춰서 항상 최신 라이트/다크가 반영되게 함.
+  async function pushQuickAddWidgetRefresh() {
+    const bridge = getWidgetBridge();
+    if (!bridge) return;
+    try { await bridge.refreshQuickAddWidget(); } catch (e) {}
+  }
+
   // 위젯이 하나 더 늘 때마다 아래 각 저장 시점에서 일일이 또 호출을 추가하지
   // 않도록, 위젯 관련 push는 전부 이 함수 하나로 모음(호출부는 pushAllWidgets()
   // 하나만 부르면 됨).
@@ -5057,6 +5224,7 @@
     pushScheduleToWidget();
     pushTodayWidgetToWidget();
     pushInboxWidgetToWidget();
+    pushQuickAddWidgetRefresh();
   }
 
   // 위젯(달력/스케줄/오늘 할일/미배치 목록)을 탭해서 앱이 열렸을 때, 그 위젯에
@@ -5515,8 +5683,7 @@
     document.getElementById('dd-date-title').classList.toggle('is-holiday', !!ddHoliday);
     document.getElementById('dd-holiday-name').textContent = ddHoliday ? ddHoliday.name : '';
     document.getElementById('dd-lunar-date').textContent = getLunarDateLabel(dateStr);
-    document.getElementById('dd-day-info').textContent =
-      'D' + day.dayIndex + (effShiftName ? ' · ' + effShiftName : '');
+    document.getElementById('dd-day-info').textContent = effShiftName || '';
     renderDDShift(effShiftName, effIsOverride, effOverrideType);
 
     showDoneDDEvents = false;
@@ -5568,7 +5735,7 @@
   function renderDDShift(shiftName, isOverride, overrideType) {
     const badge = document.getElementById('dd-shift-override-badge');
     if (isOverride) {
-      badge.textContent = overrideType === 'date' ? '날짜만' : 'D마다';
+      badge.textContent = overrideType === 'date' ? '날짜만' : '이 자리마다';
       badge.style.display = '';
     } else {
       badge.style.display = 'none';
@@ -5589,8 +5756,6 @@
   document.getElementById('btn-dd-change-shift').addEventListener('click', function () {
     const { name } = getEffectiveShiftName(detailDateStr, detailDayIdx0);
     document.getElementById('dd-shift-new-input').value = name || '';
-    const day = state.days[detailDayIdx0];
-    document.getElementById('dd-shift-dnum-label').textContent = 'D' + day.dayIndex;
     document.getElementById('dd-shift-edit-row').style.display = '';
     document.getElementById('dd-shift-new-input').focus();
   });
@@ -5607,10 +5772,8 @@
       state.shiftOverrides.push({ date: detailDateStr, shiftName: newShift });
     }
     saveState();
-    const day = state.days[detailDayIdx0];
     const { name: newName, isOverride: newIsOverride, overrideType: newOverrideType } = getEffectiveShiftName(detailDateStr, detailDayIdx0);
-    document.getElementById('dd-day-info').textContent =
-      'D' + day.dayIndex + (newName ? ' · ' + newName : '');
+    document.getElementById('dd-day-info').textContent = newName || '';
     renderDDShift(newName, newIsOverride, newOverrideType);
     renderGrid();
     renderToday();
@@ -5627,8 +5790,7 @@
     }
     saveState();
     const { name: newName, isOverride: newIsOverride, overrideType: newOverrideType } = getEffectiveShiftName(detailDateStr, detailDayIdx0);
-    document.getElementById('dd-day-info').textContent =
-      'D' + day.dayIndex + (newName ? ' · ' + newName : '');
+    document.getElementById('dd-day-info').textContent = newName || '';
     renderDDShift(newName, newIsOverride, newOverrideType);
     renderGrid();
     renderToday();
@@ -5675,25 +5837,6 @@
         if (dx < 0) { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } }
         else        { calMonth--; if (calMonth < 0)  { calMonth = 11; calYear--; } }
         renderGrid();
-      }
-    }, { passive: true });
-  })();
-
-  // 배치 달력 스와이프 (좌우로 50px 이상, 수직보다 수평이 클 때만 월 이동)
-  (function () {
-    var sx = 0, sy = 0;
-    var placeTab = document.getElementById('place-overlay');
-    placeTab.addEventListener('touchstart', function (e) {
-      sx = e.touches[0].clientX;
-      sy = e.touches[0].clientY;
-    }, { passive: true });
-    placeTab.addEventListener('touchend', function (e) {
-      var dx = e.changedTouches[0].clientX - sx;
-      var dy = e.changedTouches[0].clientY - sy;
-      if (Math.abs(dx) >= 50 && Math.abs(dx) > Math.abs(dy)) {
-        if (dx < 0) { placeCalMonth++; if (placeCalMonth > 11) { placeCalMonth = 0; placeCalYear++; } }
-        else        { placeCalMonth--; if (placeCalMonth < 0)  { placeCalMonth = 11; placeCalYear--; } }
-        renderPlaceCal();
       }
     }, { passive: true });
   })();
@@ -5888,16 +6031,27 @@
     });
     row.appendChild(text);
     row.appendChild(del);
-    row.addEventListener('click', function () { openPlace(item.id); });
+    // 수정 중(입력칸으로 바뀐 상태)에 입력칸을 탭한 것까지 배치 모드 진입으로
+    // 새는 것을 막음 — startInlineTextEdit가 text를 <input>으로 갈아끼우므로
+    // 그 입력칸을 눌러 커서를 옮기는 것도 이 row의 클릭으로 버블링됨.
+    row.addEventListener('click', function (e) {
+      if (e.target.tagName === 'INPUT') return;
+      startInboxPlacement(item.id);
+    });
     setupInboxItemDrag(row, item);
     return row;
   }
 
-  // 미배치 항목을 꾹 눌러서 드래그: 창이 사라지고 뒤의 연간/달력 화면이 드러남.
-  // 연간 탭 월 박스에 놓으면 그 달로 태그(대략 배치), 달력 탭 날짜 칸에 놓으면 그 날로 확정 배치.
+  // 미배치 항목을 꾹 누르고 있다가: 움직이면 드래그(창이 사라지고 뒤의 연간/
+  // 달력 화면이 드러남 — 연간 탭 월 박스에 놓으면 그 달로 태그(대략 배치),
+  // 달력 탭 날짜 칸에 놓으면 그 날로 확정 배치), 움직이지 않고 떼면 그 자리에서
+  // 바로 내용 수정(startInlineTextEdit, 반복 할일 텍스트 수정과 같은 함수
+  // 재사용). 짧게 탭하면(500ms 안에 뗌) 위 row의 click 리스너가 배치 모드로
+  // 들어감(startInboxPlacement) — 셋이 하나의 상태 기계로 안 부딪히게 나뉨.
   function setupInboxItemDrag(row, item) {
     let timer = null;
     let activated = false;
+    let dragStarted = false;
     let startX = 0, startY = 0;
     let hoverEl = null;
 
@@ -5910,6 +6064,14 @@
       if (!activated) {
         if (Math.abs(t.clientX - startX) > 8 || Math.abs(t.clientY - startY) > 8) clearTimeout(timer);
         return;
+      }
+      if (!dragStarted) {
+        if (Math.abs(t.clientX - startX) > 8 || Math.abs(t.clientY - startY) > 8) {
+          dragStarted = true;
+          closeInbox();
+        } else {
+          return;
+        }
       }
       e.preventDefault();
       const el = document.elementFromPoint(t.clientX, t.clientY);
@@ -5925,13 +6087,24 @@
       }
     }
 
-    function onEnd() {
+    function onEnd(e) {
       clearTimeout(timer);
       document.removeEventListener('touchmove', onMove);
       document.removeEventListener('touchend', onEnd);
       document.removeEventListener('touchcancel', onEnd);
       if (!activated) return;
+      // 꾹 누르는 동안 우리가 이미 처리(수정 또는 드래그)했으니, 뒤이어
+      // 브라우저가 만드는 가짜 click까지 겹쳐서 배치 모드로 새는 것을 막음.
+      if (e.cancelable) e.preventDefault();
       activated = false;
+
+      if (!dragStarted) {
+        // 움직이지 않고 꾹 눌렀다 뗌 → 내용 수정
+        const textEl = row.querySelector('.inbox-item-text');
+        if (textEl) startInlineTextEdit(textEl, item, renderInboxList);
+        return;
+      }
+      dragStarted = false;
       const target = hoverEl;
       clearHover();
 
@@ -5955,14 +6128,14 @@
       startX = t.clientX;
       startY = t.clientY;
       activated = false;
+      dragStarted = false;
       timer = setTimeout(function () {
         activated = true;
-        closeInbox();
         if (navigator.vibrate) navigator.vibrate(40);
       }, 500);
       document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('touchend', onEnd, { passive: true });
-      document.addEventListener('touchcancel', onEnd, { passive: true });
+      document.addEventListener('touchend', onEnd, { passive: false });
+      document.addEventListener('touchcancel', onEnd, { passive: false });
     }, { passive: true });
   }
 
@@ -6006,6 +6179,7 @@
   }
 
   function openInbox() {
+    cancelPlacementMode();
     renderInboxList();
     document.getElementById('inbox-overlay').classList.add('open');
   }
@@ -6020,93 +6194,38 @@
     if (e.target === this) closeInbox();
   });
 
-  // ── 배치: 인박스 항목에 날짜 지정 ───────────────────────────
-  let placeCalYear = _now.getFullYear();
-  let placeCalMonth = _now.getMonth();
-  let placingInboxId = null;
+  // ── 배치: 미배치 항목을 탭해서 달/날짜 고르기 ───────────────────────
+  // 예전엔 항목을 탭하면 작은 배치용 캘린더 팝업이 따로 떴는데, 늘 보던
+  // 연간/달력 화면을 그대로 쓰도록 바꿈(2026-07-16). 연간 탭에서 탭하면 그
+  // 화면이 다시 드러나고 월 박스를 고르면 그 달로 태그(대략 배치) — 연간
+  // 탭이 아닌 곳(달력 탭 포함)에서 탭하면 달력 탭이 뜨고 날짜 칸을 고르면
+  // 그 날로 확정 배치됨.
+  let pendingPlaceInboxId = null;
+  let pendingPlaceMode = null; // 'month' | 'date'
 
-  function openPlace(inboxId) {
+  function startInboxPlacement(inboxId) {
     if (!state || !state.cycleDays || !state.baseDate) {
       alert('먼저 설정 탭에서 교대 주기를 설정해 주세요.');
       return;
     }
-    placingInboxId = inboxId;
-    const today = new Date();
-    placeCalYear = today.getFullYear();
-    placeCalMonth = today.getMonth();
-    renderPlaceCal();
-    document.getElementById('place-overlay').classList.add('open');
+    const onYearTab = document.getElementById('tab-year').classList.contains('active');
+    pendingPlaceInboxId = inboxId;
+    pendingPlaceMode = onYearTab ? 'month' : 'date';
+    closeInbox();
+    if (pendingPlaceMode === 'date') switchTab('month');
+    document.getElementById('placement-hint-text').textContent =
+      pendingPlaceMode === 'month' ? '넣을 달을 선택하세요' : '넣을 날짜를 선택하세요';
+    document.getElementById('placement-hint-bar').style.display = 'flex';
   }
 
-  function closePlace() {
-    document.getElementById('place-overlay').classList.remove('open');
-    placingInboxId = null;
+  function cancelPlacementMode() {
+    if (!pendingPlaceMode) return;
+    pendingPlaceInboxId = null;
+    pendingPlaceMode = null;
+    document.getElementById('placement-hint-bar').style.display = 'none';
   }
 
-  function renderPlaceCal() {
-    document.getElementById('place-cal-title').textContent = placeCalYear + '년 ' + (placeCalMonth + 1) + '월';
-
-    const weekStart = (state && state.weekStart === 1) ? 1 : 0;
-    const headerEl = document.getElementById('place-grid-header');
-    headerEl.innerHTML = '';
-    const HEADERS = weekStart === 1
-      ? ['일','월','화','수','목','금','토']
-      : ['월','화','수','목','금','토','일'];
-    HEADERS.forEach(function (h, i) {
-      const cell = document.createElement('div');
-      cell.className = 'grid-header-cell';
-      if (weekStart === 0 && i === 5) cell.classList.add('sat');
-      else if (weekStart === 0 && i === 6) cell.classList.add('sun');
-      else if (weekStart === 1 && i === 0) cell.classList.add('sun');
-      else if (weekStart === 1 && i === 6) cell.classList.add('sat');
-      cell.textContent = h;
-      headerEl.appendChild(cell);
-    });
-
-    const grid = document.getElementById('place-cal-grid');
-    grid.innerHTML = '';
-
-    const todayMid = todayMidnight();
-    const firstOfMonth = new Date(placeCalYear, placeCalMonth, 1);
-    const daysInMonth = new Date(placeCalYear, placeCalMonth + 1, 0).getDate();
-    const startWd = weekStart === 1
-      ? firstOfMonth.getDay()
-      : (firstOfMonth.getDay() + 6) % 7;
-
-    const cells = [];
-    for (let d = 1 - startWd; d <= 0; d++) { cells.push({ date: new Date(placeCalYear, placeCalMonth, d), inMonth: false }); }
-    for (let d = 1; d <= daysInMonth; d++) { cells.push({ date: new Date(placeCalYear, placeCalMonth, d), inMonth: true }); }
-    const trailing = (7 - (cells.length % 7)) % 7;
-    for (let d = 1; d <= trailing; d++) { cells.push({ date: new Date(placeCalYear, placeCalMonth + 1, d), inMonth: false }); }
-
-    cells.forEach(function ({ date, inMonth }) {
-      const dateMid = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const isToday = dateMid.getTime() === todayMid.getTime();
-      const cellDateStr = formatDateStr(dateMid);
-      const dayIdx0 = dayIndex0ForDate(cellDateStr);
-
-      const cell = document.createElement('div');
-      cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '');
-
-      const dateEl = document.createElement('div');
-      dateEl.className = 'cell-date';
-      dateEl.textContent = date.getDate();
-      cell.appendChild(dateEl);
-
-      if (dayIdx0 !== null) {
-        const { name: shiftName } = getEffectiveShiftName(cellDateStr, dayIdx0);
-        if (shiftName) {
-          appendShiftIndicator(cell, cellDateStr, shiftName);
-        }
-      }
-
-      cell.addEventListener('click', function () {
-        placeInboxItem(placingInboxId, cellDateStr);
-      });
-
-      grid.appendChild(cell);
-    });
-  }
+  document.getElementById('btn-placement-cancel').addEventListener('click', cancelPlacementMode);
 
   function placeInboxItem(inboxId, dateStr) {
     const idx = (state.inbox || []).findIndex(function (it) { return it.id === inboxId; });
@@ -6116,28 +6235,12 @@
     if (!Array.isArray(state.events)) state.events = [];
     state.events.push({ id: genId('e'), date: dateStr, endDate: dateStr, text: item.text, done: false });
     saveState();
-    closePlace();
     renderInboxList();
     renderInboxBadge();
     renderToday();
     renderGrid();
     renderDDTodos();
   }
-
-  document.getElementById('btn-place-cancel').addEventListener('click', closePlace);
-  document.getElementById('place-overlay').addEventListener('click', function (e) {
-    if (e.target === this) closePlace();
-  });
-  document.getElementById('btn-place-cal-prev').addEventListener('click', function () {
-    placeCalMonth--;
-    if (placeCalMonth < 0) { placeCalMonth = 11; placeCalYear--; }
-    renderPlaceCal();
-  });
-  document.getElementById('btn-place-cal-next').addEventListener('click', function () {
-    placeCalMonth++;
-    if (placeCalMonth > 11) { placeCalMonth = 0; placeCalYear++; }
-    renderPlaceCal();
-  });
 
   // ── 반복 할 일 만들기 / 전환 / 편집 (공용 시트) ─────────────────
   let repeatEditorTargetEvent = null; // 편집 중인 기존 반복 할일 (없으면 새로 만들기/전환)
@@ -7195,6 +7298,7 @@
     openOnboarding();
   }
   syncWidgetInboxItems();
+  syncWidgetDatedItems();
   syncWidgetTodayToggles();
   pushAllWidgets();
   syncWidgetNavTarget();
@@ -7207,6 +7311,7 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) {
         syncWidgetInboxItems();
+        syncWidgetDatedItems();
         syncWidgetTodayToggles();
         pushAllWidgets();
         syncWidgetNavTarget();

@@ -1,37 +1,74 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- 2026-07-16 세 번째 재설계: 5칸으로 여백을 잘게 쪼갠 비율 방식(위/글자/
+     간격/십자가/아래여백)을 써봤는데, 실제 기기(정사각형이 아닌 칸)에서
+     보니 십자가가 중앙으로 안 보이고 오히려 안 예뻐 보임 — 사용자 피드백으로
+     단순한 2칸 구조로 되돌림. 글씨(위, 작게 고정 크기) + 십자가(아래, 남는
+     공간 전부, 그 안에서 항상 정중앙)만 있음. 다시 여백을 여러 칸으로
+     잘게 쪼개는 방향으로 돌아가지 말 것 — 단순한 게 더 나음.
+
+     십자가 칸의 ImageView는 layout_width/height 둘 다 match_parent로 그
+     칸(직사각형일 수 있음)을 꽉 채우되, android:scaleType="centerInside"를
+     반드시 줄 것 — 이게 없으면 ImageView가 직사각형 칸에 맞춰 십자가 그림
+     자체를 옆으로 늘리거나 눌러버림(정사각형이 아닌 칸에서). centerInside는
+     그림의 원래 가로세로 비율(정사각형)은 유지한 채 칸 안에 맞는 크기로
+     줄여서 정중앙에 놓아줌 — 그래서 칸이 정사각형이든 세로로 길든 십자가는
+     항상 비율 안 깨지고 정중앙에 옴.
+
+     글씨 크기는 textSize="8sp" 고정값 — 위젯이 40dp 폭일 때 "할 일 추가"
+     다섯 글자가 잘리지 않고 다 들어가는 걸로 예전에 이미 확인된 안전한
+     크기라 다시 씀(2026-07-14 기록 참고). 글씨 칸 weight를 바꿔도 이
+     textSize는 그대로 둘 것 — 글씨가 잘리고 안 잘리고는 폭(가로) 문제라
+     세로 비율(weight)과는 무관함.
+
+     빈 칸(여백) 자리는 plain <View>가 아니라 빈 <TextView>로 만들 것 —
+     처음에 <View>로 만들었더니 위젯이 아예 "추가할 수 없음" 오류로 죽었음
+     (안드로이드 위젯(RemoteViews)은 그릴 수 있는 뷰 종류가 정해져 있고
+     android.view.View 자체는 그 목록에 없음). 지금은 여백 칸이 아예 없어서
+     해당 없지만, 나중에 다시 빈 칸이 필요해지면 이 규칙을 지킬 것. -->
+
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_quick_add_root"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:gravity="center_horizontal"
     android:background="@drawable/widget_background"
     android:paddingLeft="2dp"
     android:paddingRight="2dp">
 
+    <!-- 글자: 다른 건 그대로, paddingBottom만 줄여서 조금 더 아래로
+         내림(2026-07-16, "글씨 조금만 밑으로" 요청). 십자가 칸(weight 45,
+         ImageView 패딩)은 안 건드림. -->
     <TextView
         android:id="@+id/quick_add_label"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1"
-        android:gravity="center"
+        android:layout_weight="15"
+        android:gravity="bottom|center_horizontal"
         android:includeFontPadding="false"
         android:maxLines="1"
         android:ellipsize="end"
         android:textStyle="bold"
         android:textColor="@color/widget_text_primary"
-        android:textSize="8sp"
+        android:textSize="10sp"
         android:text="할 일 추가" />
 
+    <!-- 십자가: 남는 공간 전부, 그 안에서 정중앙에서 아주 살짝 위로(2026-07-16,
+         "십자가를 아주 조금만 위로" 요청 — 아래쪽 여백을 위쪽보다 살짝 더 줘서
+         centerInside 중심을 위로 미세하게 밀어냄). 이 칸 자체(weight 45)는
+         안 건드림. -->
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="1">
+        android:layout_weight="45">
         <ImageView
             android:id="@+id/widget_add_button"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:layout_gravity="center"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingTop="1dp"
+            android:paddingBottom="5dp"
+            android:paddingLeft="3dp"
+            android:paddingRight="3dp"
+            android:scaleType="centerInside"
             android:src="@drawable/ic_widget_add"
             android:contentDescription="할 일 추가" />
     </FrameLayout>

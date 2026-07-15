@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 스케줄 위젯에서 날짜 칸(월/일요일 넘기기 칸 제외)을 누르면 뜨는 작은 화면
+     (2026-07-16 신규) — QuickAddActivity와 같은 "다이얼로그처럼 뜨는 작은
+     화면" 패턴을 그대로 씀. 그 날짜의 근무·할 일은 위젯이 이미 화면에 그리고
+     있던 정보를 그대로 인텐트로 받아서 보여주기만 함(따로 다시 계산 안 함).
+     체크·수정 기능은 없음(보기 전용) — 입력칸에 글자 쓰고 엔터 치면 그 날짜에
+     바로 새 할 일이 추가됨(미배치 아님). -->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="300dp"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="20dp"
+    android:background="@drawable/quick_add_bg">
+
+    <TextView
+        android:id="@+id/dqv_date_label"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textStyle="bold"
+        android:textSize="17sp"
+        android:textColor="@color/widget_text_primary" />
+
+    <TextView
+        android:id="@+id/dqv_shift_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:paddingLeft="8dp"
+        android:paddingRight="8dp"
+        android:paddingTop="3dp"
+        android:paddingBottom="3dp"
+        android:textStyle="bold"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
+    <TextView
+        android:id="@+id/dqv_todos"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="14dp"
+        android:textSize="14sp"
+        android:lineSpacingExtra="4dp"
+        android:textColor="@color/widget_text_primary" />
+
+    <EditText
+        android:id="@+id/dqv_input"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="16dp"
+        android:hint="할 일을 입력하세요"
+        android:imeOptions="actionDone"
+        android:singleLine="true"
+        android:maxLength="50"
+        android:textSize="16sp" />
+
+</LinearLayout>
