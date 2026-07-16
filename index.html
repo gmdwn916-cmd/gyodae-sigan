@@ -5266,6 +5266,11 @@
       card.innerHTML = '<div class="shift-color-empty">이 기능은 설치된 앱에서만 동작해요. 웹 브라우저에서는 알람이 울리지 않아요.</div>';
       return;
     }
+    // 사용자가 실제로 이 화면(근무유형별 알람)을 보고 있는 지금 시점에만
+    // "화면 강제로 띄우기" 권한을 확인·안내함 — 앱을 열 때마다 자동으로
+    // 하지 않음(위 ensureFullScreenIntentIfNeeded 주석 참고, 앱이 안 열리는
+    // 것처럼 보이던 버그의 원인이었음).
+    ensureFullScreenIntentIfNeeded();
     // 기본 순환 패턴의 근무 이름뿐 아니라, 날짜별/D번호별로 "근무 변경"해서
     // 임시로 붙인 근무 이름(예: 당직)도 여기 다 나오게 함(renderShiftColorSettings
     // 과 같은 수집 방식) — 사용자가 "변경한 근무도 알람 설정이 가능하게" 요청
@@ -5460,9 +5465,9 @@
   // 부품(ShiftAlarmPlugin/Receiver/Activity, CLAUDE.md의 "근무유형별 알람" 항목
   // 참고)으로 예약·재생 둘 다 옮김 — 이 함수는 "언제 울려야 하는지"만 계산해서
   // 넘기고, 실제로 화면을 띄우고 소리·진동을 반복하는 건 전부 네이티브 쪽 몫.
-  // 알람 켜진 항목이 있을 때만, 세션에 한 번만 "화면 강제로 띄우기" 권한을
-  // 확인·안내함(안드로이드 14+에서만 실제로 뭔가 함, 아래 함수 참고) — 껐다
-  // 켰다 할 때마다 설정 화면으로 계속 튕겨나가면 성가시니 세션당 한 번으로 제한.
+  // "화면 강제로 띄우기" 권한 확인·안내는 세션당 한 번만(아래
+  // ensureFullScreenIntentIfNeeded 참고) — 껐다 켰다 할 때마다 설정 화면으로
+  // 계속 튕겨나가면 성가시니 세션당 한 번으로 제한.
   let _fullScreenIntentChecked = false;
 
   async function scheduleShiftAlarms() {
@@ -5503,11 +5508,25 @@
     } catch (e) {}
     state._scheduledAlarmIds = items.map(function (n) { return n.id; });
     saveState();
+  }
 
-    if (items.length && !_fullScreenIntentChecked) {
-      _fullScreenIntentChecked = true;
-      try { await alarmPlugin.ensureFullScreenIntentAllowed(); } catch (e) {}
-    }
+  // **2026-07-16, 버그 수정**: "화면 강제로 띄우기" 권한 확인·안내
+  // (ensureFullScreenIntentAllowed, 안 켜져 있으면 설정 화면으로 바로 이동시킴)를
+  // 예전엔 scheduleShiftAlarms() 안에서 곧바로 호출했었는데, 그 함수가 **앱을
+  // 켤 때마다(초기화 시점) 항상 자동으로도 실행되는 함수라서** — 이미 알람이
+  // 켜져 있는 상태로 앱을 다시 열면, 화면이 뜨기도 전에 곧바로 설정 화면으로
+  // 튕겨나가버려서 "앱이 안 열린다"는 것처럼 보이는 버그가 있었음(실제
+  // 사용자 신고 — 마치 권한 문제로 앱이 안 뜨는 것처럼 보였지만, 사실은 앱은
+  // 정상이고 설정 화면이 그 위로 떴던 것). **다시는 이런 자동 화면 전환을
+  // 앱을 열자마자 하지 말 것** — 이 권한 확인은 사용자가 실제로 "근무유형별
+  // 알람" 설정 화면을 보고 있을 때만(아래에서 renderShiftAlarmSettings()가
+  // 호출) 하도록 옮김. scheduleShiftAlarms() 자체는 이제 이 확인을 안 함.
+  async function ensureFullScreenIntentIfNeeded() {
+    if (_fullScreenIntentChecked) return;
+    const alarmPlugin = getShiftAlarmPlugin();
+    if (!alarmPlugin) return;
+    _fullScreenIntentChecked = true;
+    try { await alarmPlugin.ensureFullScreenIntentAllowed(); } catch (e) {}
   }
 
   // ── 카테고리 관리 (사용자가 직접 추가·수정·삭제) ──────────────

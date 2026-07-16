@@ -211,9 +211,19 @@
     진동 전체 켜기/끄기" 항목 참고)도 이때 같이 SharedPreferences에 저장됨.
     ensureFullScreenIntentAllowed()도 이 플러그인에 있음 — 안드로이드
     14(API 34)부터는 "화면 강제로 띄우기" 권한이 자동으로 안 켜져 있어서,
-    이 메서드가 확인해보고 안 켜져 있으면 그 설정 화면으로 바로 안내함(JS의
-    scheduleShiftAlarms()가 알람이 1개 이상 켜져 있을 때 세션당 한 번만
-    호출 — 계속 설정 화면으로 튕겨나가면 성가시므로).
+    이 메서드가 확인해보고 안 켜져 있으면 그 설정 화면으로 바로 안내함.
+    **호출 위치 버그(수정 완료, 2026-07-16)**: 처음엔 scheduleShiftAlarms()
+    안에서 곧바로 불렀는데, 그 함수는 **앱을 켤 때마다(초기화 시점) 항상
+    자동으로도 실행되는 함수**라서 — 이미 알람이 켜져 있는 상태로 앱을
+    다시 열면 화면이 뜨기도 전에 곧바로 설정 화면으로 튕겨나가버려서
+    "앱이 안 열린다"는 것처럼 보이는 버그가 있었음(실제 사용자 신고 —
+    앱은 정상이고 설정 화면이 그 위로 뜬 것뿐이었음). JS의
+    ensureFullScreenIntentIfNeeded()로 분리해서 **renderShiftAlarmSettings()
+    (사용자가 실제로 "근무유형별 알람" 설정 화면을 보고 있을 때)에서만
+    부르도록 고침** — 세션당 한 번(_fullScreenIntentChecked)은 그대로 유지.
+    **다시 앱 초기화 경로(scheduleShiftAlarms() 등 앱을 열 때마다 자동으로
+    도는 함수)에서 이 확인을 부르지 말 것** — 항상 사용자가 그 설정과
+    관련된 화면을 보고 있을 때만 부를 것.
   - 알림 채널("shift-alarm")은 여전히 MainActivity.ensureAlarmChannel()에서
     네이티브로 직접 만듦 — 다만 **이제 소리·진동이 전혀 없는 조용한
     채널**(channel.setSound(null,null), enableVibration(false))로 바뀜.
