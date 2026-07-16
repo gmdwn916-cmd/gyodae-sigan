@@ -52,19 +52,25 @@ public class ShiftAlarmPlugin extends Plugin {
 
         cancelAllInternal();
 
+        // 이 함수는 앱을 켤 때마다 항상 자동으로 돎(사용자가 뭘 누르지 않아도
+        // 실행됨) — 그래서 알람 하나 예약하다가 생기는 문제(기기별 특이 동작
+        // 등)가 앱 전체를 못 열게 만드는 일이 없도록, 항목 하나하나를 각각
+        // 방어적으로 처리함(2026-07-16, 앱이 안 열리는 문제를 고치며 추가) —
+        // 예전엔 JSON 형식 오류만 잡고 있어서, 안드로이드 쪽에서 알람을 실제로
+        // 거는 도중 생기는 다른 문제는 그대로 앱을 통째로 죽였을 수 있음.
         JSONArray newIds = new JSONArray();
-        try {
-            for (int i = 0; i < items.length(); i++) {
+        for (int i = 0; i < items.length(); i++) {
+            try {
                 JSONObject item = items.getJSONObject(i);
                 int id = item.getInt("id");
                 long epochMillis = item.getLong("epochMillis");
                 String shiftName = item.optString("shiftName", "");
                 ShiftAlarmScheduler.scheduleOne(getContext(), id, epochMillis, shiftName);
                 newIds.put(id);
+            } catch (Exception e) {
+                // 이 항목 하나만 건너뛰고 나머지는 계속 진행 — 알람 하나가
+                // 문제여도 앱 자체나 다른 알람까지 못 쓰게 되면 안 됨
             }
-        } catch (JSONException e) {
-            call.reject("invalid items", e);
-            return;
         }
 
         SharedPreferences prefs = getContext().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -117,7 +123,11 @@ public class ShiftAlarmPlugin extends Plugin {
         try {
             JSONArray ids = new JSONArray(raw);
             for (int i = 0; i < ids.length(); i++) {
-                ShiftAlarmScheduler.cancelOne(getContext(), ids.getInt(i));
+                try {
+                    ShiftAlarmScheduler.cancelOne(getContext(), ids.getInt(i));
+                } catch (Exception e) {
+                    // 이 알람 취소 하나만 실패, 나머지는 계속 진행
+                }
             }
         } catch (JSONException e) {
             // 무시 — 저장된 목록이 깨져 있으면 취소할 것도 알 수 없음

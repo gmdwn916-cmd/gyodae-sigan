@@ -38,41 +38,48 @@ public class ShiftAlarmActivity extends Activity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // 화면이 꺼져 있거나 잠겨 있어도 이 화면이 그 위로 뜨게 함 — 전화
-        // 수신 화면·진짜 알람시계 앱들이 쓰는 것과 같은 방식. API 27(O_MR1)
-        // 부터는 이 방식(런타임 API)을 쓰고, 그보다 낮으면 예전 방식(윈도우
-        // 플래그)을 씀 — 매니페스트에 선언하는 속성이 아니라 코드에서 해야
-        // 함(그런 매니페스트 속성 자체가 없음, 혼동 주의).
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            setShowWhenLocked(true);
-            setTurnScreenOn(true);
-            KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
-            if (km != null) km.requestDismissKeyguard(this, null);
-        } else {
-            getWindow().addFlags(
-                WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
-                | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
-                | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
-            );
+        // 이 화면(새 기능) 안에서 뭔가 예상 못 한 문제가 생겨도 이 화면 하나만
+        // 조용히 닫히고 끝나야지, 앱 전체가 죽어버리면 안 됨(2026-07-16, 방어
+        // 코드 추가) — 그래서 화면을 준비하는 과정 전체를 try-catch로 감쌈.
+        try {
+            // 화면이 꺼져 있거나 잠겨 있어도 이 화면이 그 위로 뜨게 함 — 전화
+            // 수신 화면·진짜 알람시계 앱들이 쓰는 것과 같은 방식. API 27(O_MR1)
+            // 부터는 이 방식(런타임 API)을 쓰고, 그보다 낮으면 예전 방식(윈도우
+            // 플래그)을 씀 — 매니페스트에 선언하는 속성이 아니라 코드에서 해야
+            // 함(그런 매니페스트 속성 자체가 없음, 혼동 주의).
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+                setShowWhenLocked(true);
+                setTurnScreenOn(true);
+                KeyguardManager km = (KeyguardManager) getSystemService(Context.KEYGUARD_SERVICE);
+                if (km != null) km.requestDismissKeyguard(this, null);
+            } else {
+                getWindow().addFlags(
+                    WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+                    | WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON
+                    | WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD
+                );
+            }
+            getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+
+            setContentView(R.layout.activity_shift_alarm);
+
+            alarmId = getIntent().getIntExtra(ShiftAlarmReceiver.EXTRA_ALARM_ID, 0);
+            shiftName = getIntent().getStringExtra(ShiftAlarmReceiver.EXTRA_SHIFT_NAME);
+            if (shiftName == null) shiftName = "";
+
+            TextView titleView = findViewById(R.id.alarm_shift_name);
+            titleView.setText(shiftName.isEmpty() ? "근무 알람" : (shiftName + " 근무일이에요"));
+
+            TextView timeView = findViewById(R.id.alarm_time);
+            timeView.setText(DateFormat.format("HH:mm", Calendar.getInstance()));
+
+            findViewById(R.id.alarm_stop_button).setOnClickListener(v -> stopAlarm());
+            findViewById(R.id.alarm_snooze_button).setOnClickListener(v -> snoozeAlarm());
+
+            startRinging();
+        } catch (Throwable t) {
+            finish();
         }
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-
-        setContentView(R.layout.activity_shift_alarm);
-
-        alarmId = getIntent().getIntExtra(ShiftAlarmReceiver.EXTRA_ALARM_ID, 0);
-        shiftName = getIntent().getStringExtra(ShiftAlarmReceiver.EXTRA_SHIFT_NAME);
-        if (shiftName == null) shiftName = "";
-
-        TextView titleView = findViewById(R.id.alarm_shift_name);
-        titleView.setText(shiftName.isEmpty() ? "근무 알람" : (shiftName + " 근무일이에요"));
-
-        TextView timeView = findViewById(R.id.alarm_time);
-        timeView.setText(DateFormat.format("HH:mm", Calendar.getInstance()));
-
-        findViewById(R.id.alarm_stop_button).setOnClickListener(v -> stopAlarm());
-        findViewById(R.id.alarm_snooze_button).setOnClickListener(v -> snoozeAlarm());
-
-        startRinging();
     }
 
     private void startRinging() {

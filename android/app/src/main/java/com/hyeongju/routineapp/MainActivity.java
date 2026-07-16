@@ -29,7 +29,14 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(WidgetBridgePlugin.class);
-        registerPlugin(ShiftAlarmPlugin.class);
+        // 알람 기능(2026-07-16 추가) 관련 초기화가 뭔가 잘못돼도 앱 자체는
+        // 반드시 열려야 하므로, 이 부분만 방어적으로 try-catch로 감쌈 — 새
+        // 기능 하나의 문제로 앱 전체가 안 열리는 사고를 막기 위함.
+        try {
+            registerPlugin(ShiftAlarmPlugin.class);
+        } catch (Throwable t) {
+            // 무시 — 알람 기능만 못 쓰게 될 뿐, 앱은 정상적으로 열림
+        }
         super.onCreate(savedInstanceState);
         // 개발 중 계속 새 APK를 설치해서 테스트하는데, 안드로이드는 APK를 새로
         // 설치해도 앱 데이터/캐시는 그대로 유지해서 웹뷰가 예전 index.html을
@@ -37,7 +44,11 @@ public class MainActivity extends BridgeActivity {
         // 방식으로 오던 원인이 이것). 캐시를 아예 안 쓰게 해서 항상 방금 설치한
         // 최신 코드로 실행되게 함.
         this.bridge.getWebView().getSettings().setCacheMode(WebSettings.LOAD_NO_CACHE);
-        ensureAlarmChannel();
+        try {
+            ensureAlarmChannel();
+        } catch (Throwable t) {
+            // 무시 — 알림 채널 생성 실패는 알람 기능에만 영향, 앱은 정상적으로 열림
+        }
         savePendingNavTarget(getIntent());
     }
 

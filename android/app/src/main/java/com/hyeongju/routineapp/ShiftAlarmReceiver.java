@@ -24,40 +24,44 @@ public class ShiftAlarmReceiver extends BroadcastReceiver {
 
     @Override
     public void onReceive(Context context, Intent intent) {
-        int alarmId = intent.getIntExtra(EXTRA_ALARM_ID, 0);
-        String shiftName = intent.getStringExtra(EXTRA_SHIFT_NAME);
-        if (shiftName == null) shiftName = "";
-
-        Intent fullScreenIntent = new Intent(context, ShiftAlarmActivity.class);
-        fullScreenIntent.putExtra(EXTRA_ALARM_ID, alarmId);
-        fullScreenIntent.putExtra(EXTRA_SHIFT_NAME, shiftName);
-        fullScreenIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
-            | Intent.FLAG_ACTIVITY_CLEAR_TOP
-            | Intent.FLAG_ACTIVITY_NO_HISTORY);
-        // 알람 id마다 다른 requestCode를 줘서 서로 다른 알람의 인텐트가 안
-        // 겹치게 함(이 프로젝트에서 위젯 인텐트를 만들 때 항상 지키는 습관과
-        // 같은 이유 — requestCode/action이 같으면 나중 것이 앞의 것을 덮어씀).
-        PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
-            context, alarmId, fullScreenIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_widget_add)
-            .setContentTitle("근무 알람")
-            .setContentText(shiftName.isEmpty() ? "근무일이에요" : (shiftName + " 근무일이에요"))
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setOngoing(true)
-            .setAutoCancel(false)
-            .setFullScreenIntent(fullScreenPendingIntent, true)
-            .setContentIntent(fullScreenPendingIntent);
-
-        NotificationManagerCompat nm = NotificationManagerCompat.from(context);
+        // 알람이 울리는 이 코드에서 뭔가 예상 못 한 문제가 생겨도 앱 전체가
+        // 죽으면 안 되므로(2026-07-16, 앱이 안 열리는 문제를 고치며 추가)
+        // 전체를 방어적으로 감쌈.
         try {
+            int alarmId = intent.getIntExtra(EXTRA_ALARM_ID, 0);
+            String shiftName = intent.getStringExtra(EXTRA_SHIFT_NAME);
+            if (shiftName == null) shiftName = "";
+
+            Intent fullScreenIntent = new Intent(context, ShiftAlarmActivity.class);
+            fullScreenIntent.putExtra(EXTRA_ALARM_ID, alarmId);
+            fullScreenIntent.putExtra(EXTRA_SHIFT_NAME, shiftName);
+            fullScreenIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK
+                | Intent.FLAG_ACTIVITY_CLEAR_TOP
+                | Intent.FLAG_ACTIVITY_NO_HISTORY);
+            // 알람 id마다 다른 requestCode를 줘서 서로 다른 알람의 인텐트가 안
+            // 겹치게 함(이 프로젝트에서 위젯 인텐트를 만들 때 항상 지키는 습관과
+            // 같은 이유 — requestCode/action이 같으면 나중 것이 앞의 것을 덮어씀).
+            PendingIntent fullScreenPendingIntent = PendingIntent.getActivity(
+                context, alarmId, fullScreenIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+            );
+
+            NotificationCompat.Builder builder = new NotificationCompat.Builder(context, CHANNEL_ID)
+                .setSmallIcon(R.drawable.ic_widget_add)
+                .setContentTitle("근무 알람")
+                .setContentText(shiftName.isEmpty() ? "근무일이에요" : (shiftName + " 근무일이에요"))
+                .setPriority(NotificationCompat.PRIORITY_HIGH)
+                .setCategory(NotificationCompat.CATEGORY_ALARM)
+                .setOngoing(true)
+                .setAutoCancel(false)
+                .setFullScreenIntent(fullScreenPendingIntent, true)
+                .setContentIntent(fullScreenPendingIntent);
+
+            NotificationManagerCompat nm = NotificationManagerCompat.from(context);
             nm.notify(alarmId, builder.build());
-        } catch (SecurityException e) {
-            // 알림 권한이 아직 없으면 조용히 무시 — 권한을 받으면 다음 예약부터 정상 동작
+        } catch (Exception e) {
+            // 알림 권한이 없거나 그 밖의 문제가 있으면 이번 알람 한 번만 조용히
+            // 안 울리고 넘어감 — 앱 자체나 다음 알람에는 영향 없음
         }
     }
 }
