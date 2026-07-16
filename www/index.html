@@ -752,6 +752,40 @@
       will-change: transform;
     }
 
+    /* 할 일 줄에서는 이 버튼을 더 안 쓰지만(반복/중요/드래그 없앰), 반복 할일
+       편집 시트의 중요(★) 토글(#promote-important-btn)이 이 클래스를 그대로
+       가져다 쓰고 있어서 base 스타일은 남겨둠 — 지우면 그 버튼이 브라우저
+       기본 버튼 모양으로 깨짐. */
+    .btn-important-toggle {
+      background: none;
+      border: none;
+      font-size: 18px;
+      line-height: 1;
+      color: var(--text-3);
+      cursor: pointer;
+      padding: 2px 4px;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-important-toggle.is-on { color: #ff9500; }
+
+    /* 반복 할일 편집 시트 입력 줄에서만: 텍스트칸·카테고리 버튼과 높이·테두리를
+       맞춰서 하나의 컨트롤 묶음처럼 보이게 함(목록 줄의 별표 아이콘 스타일은 안 건드림). */
+    #promote-important-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 40px;
+      height: 40px;
+      box-sizing: border-box;
+      padding: 0;
+      border: 1.5px solid var(--line);
+      border-radius: 10px;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    #promote-important-btn.is-on { border-color: #ff9500; }
+
     /* 달력·오늘 탭의 일정 칩 */
     .cell-event-chip {
       font-size: 8px;
@@ -1875,6 +1909,13 @@
     }
     .promote-header-row h2 { margin-bottom: 0; }
 
+    #promote-source-date-info {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      flex-shrink: 0;
+    }
+
     .inbox-item-row {
       display: flex;
       align-items: center;
@@ -2536,12 +2577,14 @@
   <div id="promote-panel">
     <div class="promote-header-row">
       <h2 id="promote-title">반복 할 일 만들기</h2>
+      <span id="promote-source-date-info"></span>
     </div>
     <div class="bulk-input-row">
       <input type="text" id="promote-text-input" maxlength="50" placeholder="예: 물 마시기, 주짓수…">
       <div class="cat-picker" id="promote-cat-picker">
         <button type="button" id="promote-cat-btn" class="cat-select"></button>
       </div>
+      <button type="button" id="promote-important-btn" class="btn-important-toggle">☆</button>
     </div>
     <div class="btn-row" id="promote-mode-row">
       <button class="btn btn-secondary" id="btn-promote-mode-interval">기간</button>
@@ -6436,12 +6479,14 @@
   let promoteShiftGridSelected = new Set(); // 근무×요일 표에서 켜진 칸들 ("근무이름|요일번호" 문자열)
   let promoteShiftAllNames = []; // 현재 설정에 있는 근무 이름 전체 목록(표의 세로 행)
   let promoteCategoryId = 'etc'; // 카테고리 팝업에서 고른 카테고리(select 대신 버튼+팝업 목록 사용)
-  // 이 화면(반복으로 전환/만들기) 안의 중요(★) 토글 버튼은 지워짐(2026-07-16,
-  // 사용자 요청) — 대신 만든 뒤 "반복 할일" 탭 목록에서 줄을 눌러 나오는
-  // 메뉴(반복/중요/수정)의 "중요"로 표시하면 됨. 이 변수는 그대로 남겨서
-  // 기존에 중요 표시가 있던 반복 할일을 이 화면에서 편집해도 그 표시가
-  // 사라지지 않게만 함(읽기만 하고 이 화면에서 바꿀 방법은 없음).
-  let promoteImportant = false;
+  let promoteImportant = false; // 편집 시트 오른쪽 끝 별표(중요) 토글
+
+  function renderPromoteImportantButton() {
+    const btn = document.getElementById('promote-important-btn');
+    btn.classList.toggle('is-on', promoteImportant);
+    btn.textContent = promoteImportant ? '★' : '☆';
+    btn.setAttribute('aria-label', promoteImportant ? '중요 표시 해제' : '중요 표시');
+  }
 
   function renderPromoteCatButton() {
     const cat = getCat(promoteCategoryId);
@@ -6686,10 +6731,23 @@
     const initialCategory = existing ? existing.category : 'etc';
     const initialRule = existing ? existing.repeat : null;
     promoteImportant = existing ? !!existing.important : (repeatEditorSourceEvent ? !!repeatEditorSourceEvent.important : false);
+    renderPromoteImportantButton();
 
     document.getElementById('promote-title').textContent =
       existing ? '반복 할 일 편집' : (repeatEditorSourceEvent ? '반복으로 전환' : '반복 할 일 만들기');
 
+    const sourceDateInfoEl = document.getElementById('promote-source-date-info');
+    if (repeatEditorSourceEvent) {
+      const DOW_KR = ['일','월','화','수','목','금','토'];
+      const d = parseLocalDate(repeatEditorSourceEvent.date);
+      const idx0 = dayIndex0ForDate(repeatEditorSourceEvent.date);
+      const shiftName = idx0 !== null ? getEffectiveShiftName(repeatEditorSourceEvent.date, idx0).name : '';
+      sourceDateInfoEl.textContent = (d.getMonth() + 1) + '월 ' + d.getDate() + '일 (' + DOW_KR[d.getDay()] + ')' + (shiftName ? ' ' + shiftName : '');
+      sourceDateInfoEl.style.display = '';
+    } else {
+      sourceDateInfoEl.textContent = '';
+      sourceDateInfoEl.style.display = 'none';
+    }
     document.getElementById('promote-text-input').value = initialText;
 
     document.getElementById('promote-warn').textContent = '';
@@ -6847,6 +6905,12 @@
       menu.classList.remove('open');
     }
   });
+  document.getElementById('promote-important-btn').addEventListener('click', function () {
+    promoteImportant = !promoteImportant;
+    renderPromoteImportantButton();
+    syncPromoteEditorToState();
+  });
+
   // ── 기간 할 일 수정 ──────────────────────────────────────────
   let periodEditingId = null;
 
