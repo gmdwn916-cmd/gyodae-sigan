@@ -1,9 +1,11 @@
 package com.hyeongju.routineapp;
 
+import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Paint;
+import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
@@ -23,24 +25,40 @@ import java.util.List;
 public class TodayWidgetService extends RemoteViewsService {
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent) {
-        return new TodayRemoteViewsFactory(getApplicationContext());
+        int appWidgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID, AppWidgetManager.INVALID_APPWIDGET_ID);
+        return new TodayRemoteViewsFactory(getApplicationContext(), appWidgetId);
     }
 
     private static class TodayRemoteViewsFactory implements RemoteViewsFactory {
         // 할 일이 몇 개 안 돼서 목록이 위젯 칸을 다 못 채우면, 그 아래 남는
         // 빈자리는 어떤 목록 줄에도 안 속해서 눌러도 반응이 없었음(2026-07-16
-        // 사용자 신고) — 실제 항목 뒤에 "빈 줄"을 이만큼 더 만들어서 그 자리도
-        // 항상 눌리는 진짜 목록 줄로 채움(안 그러면 그 빈자리는 그냥 ListView의
-        // 아무것도 없는 공간이라 아무 반응도 못 만듦). 웬만큼 큰 위젯 크기까지
-        // 커버하도록 넉넉히 잡음 — 화면에 안 보이는 만큼은 그려지지 않아 비용도
-        // 거의 없음.
-        private static final int FILLER_COUNT = 12;
+        // 사용자 신고) — 실제 항목 뒤에 "빈 줄"을 만들어서 그 자리도 항상 눌리는
+        // 진짜 목록 줄로 채움(안 그러면 그 빈자리는 그냥 ListView의 아무것도
+        // 없는 공간이라 아무 반응도 못 만듦).
+        // **몇 개를 채울지는 고정값이 아니라 이 위젯의 실제 크기를 보고 계산함**
+        // (2026-07-16 후속 수정) — 처음엔 무조건 12개를 붙였는데, 위젯 크기에
+        // 비해 항목이 몇 개 없으면 빈 줄이 위젯 높이보다 훨씬 많아져서 목록 전체가
+        // "당겨서 스크롤"되는 상태가 돼버림(할 일이 거의 없는데도 드래그가 되는
+        // 게 사용자에게 어색하게 느껴짐, 사용자 신고). 그래서 AppWidgetManager.
+        // getAppWidgetOptions()로 이 위젯의 실제 높이(dp)를 읽어서, "지금 보이는
+        // 화면을 딱 채울 만큼만" 빈 줄을 계산함 — 그러면 항목이 적을 때는 화면을
+        // 넘지 않아서 스크롤(드래그) 자체가 안 되고, 항목이 많아서 원래도 화면을
+        // 넘던 경우엔 지금처럼 자연스럽게 스크롤됨. 줄 높이(ROW_HEIGHT_DP)와
+        // 헤더 높이(HEADER_HEIGHT_DP)는 실제 레이아웃 치수의 어림값 — 정확한
+        // 픽셀 계산이 아니라 "대략 얼마나 빈 줄이 필요한지" 가늠하는 용도.
+        private static final int ROW_HEIGHT_DP = 32;
+        private static final int HEADER_HEIGHT_DP = 34;
+        private static final int DEFAULT_HEIGHT_DP = 250;
+        private static final int MAX_FILLER = 30;
 
         private final Context context;
+        private final int appWidgetId;
         private List<JSONObject> items = new ArrayList<>();
 
-        TodayRemoteViewsFactory(Context context) {
+        TodayRemoteViewsFactory(Context context, int appWidgetId) {
             this.context = context;
+            this.appWidgetId = appWidgetId;
         }
 
         @Override
@@ -84,9 +102,28 @@ public class TodayWidgetService extends RemoteViewsService {
             // 할 일이 아예 0개면 개수도 0 그대로 둬야 함 — TodayWidgetProvider가
             // setEmptyView로 걸어둔 "오늘 할 일이 없어요" 문구(today_empty)는
             // 개수가 정확히 0일 때만 뜨는 방식이라, 여기서 빈 줄까지 더해버리면
-            // (0+12) 그 문구가 영영 안 뜨게 됨. 할 일이 1개 이상 있을 때만 빈
-            // 줄을 덧붙임.
-            return items.isEmpty() ? 0 : items.size() + FILLER_COUNT;
+            // 그 문구가 영영 안 뜨게 됨. 할 일이 1개 이상 있을 때만 빈 줄을 덧붙임.
+            return items.isEmpty() ? 0 : items.size() + computeFillerCount();
+        }
+
+        // 이 위젯이 지금 실제로 몇 dp 높이인지를 보고, 화면을 딱 채울 만큼만
+        // 빈 줄 개수를 계산 — 항목이 이미 그 높이를 넘으면 0(자연스럽게 스크롤),
+        // 모자라면 남는 만큼만(그 이상은 절대 안 채움, 그래야 드래그가 안 됨).
+        private int computeFillerCount() {
+            if (items.isEmpty() || appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return 0;
+            try {
+                Bundle options = AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId);
+                int heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 0);
+                if (heightDp <= 0) heightDp = options.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+                if (heightDp <= 0) heightDp = DEFAULT_HEIGHT_DP;
+                int availableRows = Math.max(0, (heightDp - HEADER_HEIGHT_DP) / ROW_HEIGHT_DP);
+                int filler = availableRows - items.size();
+                if (filler < 0) filler = 0;
+                if (filler > MAX_FILLER) filler = MAX_FILLER;
+                return filler;
+            } catch (Exception e) {
+                return 0;
+            }
         }
 
         @Override
