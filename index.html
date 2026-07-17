@@ -2716,6 +2716,7 @@
       <label id="bulk-shift-count"></label>
       <input type="text" id="bulk-shift-input" placeholder="새 근무명…" maxlength="20">
     </div>
+    <div class="shift-color-swatches" id="bulk-shift-swatches"></div>
     <div class="onboard-warn" id="bulk-shift-warn"></div>
     <div class="btn-row" style="padding-top:8px">
       <button class="btn btn-secondary" id="btn-bulk-shift-cancel">취소</button>
@@ -4808,11 +4809,48 @@
     });
   }
 
+  // 근무 일괄 수정 시트에서 지금 고른 색(2026-07-17 추가) — 날짜 상세
+  // "근무 변경" 팝업의 "+ 새 근무 만들기"와 같은 이유로, 여기서 새로 만드는
+  // 근무도 색을 바로 고를 수 있게 함. 스와치를 누르면(또는 직접 고르기 색을
+  // 바꾸면) 그 자리에서 바로 선택되고 별도 확인 버튼은 없음 — 실제 적용은
+  // 여전히 "적용" 버튼을 눌러야 함(여러 날짜를 한꺼번에 바꾸는 되돌리기 힘든
+  // 동작이라 이름 입력과 마찬가지로 확인 버튼이 필요하다고 판단).
+  let bulkShiftSelectedColor = SHIFT_COLOR_PRESETS[0];
+
+  function renderBulkShiftSwatches() {
+    const wrap = document.getElementById('bulk-shift-swatches');
+    wrap.innerHTML = '';
+    SHIFT_COLOR_PRESETS.forEach(function (preset) {
+      const swatch = document.createElement('button');
+      swatch.type = 'button';
+      swatch.className = 'shift-color-swatch' + (preset === bulkShiftSelectedColor ? ' active' : '');
+      swatch.style.background = preset;
+      swatch.title = preset;
+      swatch.addEventListener('click', function () {
+        bulkShiftSelectedColor = preset;
+        renderBulkShiftSwatches();
+      });
+      wrap.appendChild(swatch);
+    });
+    const colorInput = document.createElement('input');
+    colorInput.type = 'color';
+    colorInput.className = 'shift-color-input';
+    colorInput.value = bulkShiftSelectedColor;
+    colorInput.title = '직접 선택';
+    colorInput.addEventListener('change', function () {
+      bulkShiftSelectedColor = colorInput.value;
+      renderBulkShiftSwatches();
+    });
+    wrap.appendChild(colorInput);
+  }
+
   function openBulkShiftSheet() {
     if (bulkShiftSelectedDates.size === 0) return;
     document.getElementById('bulk-shift-count').textContent = bulkShiftSelectedDates.size + '개 날짜 선택됨';
     document.getElementById('bulk-shift-input').value = '';
     document.getElementById('bulk-shift-warn').textContent = '';
+    bulkShiftSelectedColor = SHIFT_COLOR_PRESETS[0];
+    renderBulkShiftSwatches();
     document.getElementById('bulk-shift-overlay').classList.add('open');
     document.getElementById('bulk-shift-input').focus();
   }
@@ -4835,11 +4873,24 @@
     const newShift = document.getElementById('bulk-shift-input').value.trim();
     const warn = document.getElementById('bulk-shift-warn');
     if (!newShift) { warn.textContent = '근무명을 입력해 주세요.'; return; }
+    // 이미 있는 근무 이름인지는 날짜 예외를 실제로 넣기 전에 미리 확인해야
+    // 함(2026-07-17) — 넣은 뒤에 확인하면 방금 넣은 그 예외 때문에 항상
+    // "이미 있음"으로 나와서 새 이름인지 구분이 안 됨.
+    const isNewName = getAllShiftTypeNames().indexOf(newShift) === -1;
     if (!Array.isArray(state.shiftOverrides)) state.shiftOverrides = [];
     state.shiftOverrides = state.shiftOverrides.filter(function (o) { return !bulkShiftSelectedDates.has(o.date); });
     bulkShiftSelectedDates.forEach(function (dateStr) {
       state.shiftOverrides.push({ date: dateStr, shiftName: newShift });
     });
+    // 새로 만든 이름일 때만 고른 색을 저장하고 "근무 편집" 목록에는 안 보이게
+    // 함(day-detail의 "+ 새 근무 만들기"와 동일한 방식) — 이미 있던 이름을
+    // 그대로 골랐을 뿐이면 그 근무의 기존 색·등록 상태를 그대로 두고 안 건드림.
+    if (isNewName) {
+      if (!state.shiftColors) state.shiftColors = {};
+      state.shiftColors[newShift] = bulkShiftSelectedColor;
+      if (!Array.isArray(state.adhocShiftNames)) state.adhocShiftNames = [];
+      if (state.adhocShiftNames.indexOf(newShift) === -1) state.adhocShiftNames.push(newShift);
+    }
     saveState();
     closeBulkShiftSheet();
     renderToday();
