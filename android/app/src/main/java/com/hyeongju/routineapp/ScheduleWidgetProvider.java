@@ -7,7 +7,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.graphics.Color;
 import android.widget.RemoteViews;
 
@@ -151,12 +150,11 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         // 예전 상태로 남아 어긋날 수 있음(예: 라이트로 바뀐 흰 배경 위에 다크 모드
         // 때 심어둔 흰 글자가 그대로 남아 안 보이는 사고). 배경도 글자색과 완전히
         // 같은 순간·같은 판단(isDark)으로 우리가 직접 골라 심어서 항상 맞게 함.
-        boolean isDark = (context.getResources().getConfiguration().uiMode
-            & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDark = WidgetThemeHelper.isDarkMode(context);
         views.setInt(idFor(context, "widget_schedule_root"), "setBackgroundResource",
             isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
 
-        int primaryText = ContextCompat.getColor(context, R.color.widget_text_primary);
+        int primaryText = WidgetThemeHelper.primaryTextColor(context);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
 
         // 자료가 없거나 깨져 있어도 안전하게 빈 상태로 시작

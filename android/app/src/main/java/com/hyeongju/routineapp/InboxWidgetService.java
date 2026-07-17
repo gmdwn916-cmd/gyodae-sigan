@@ -70,6 +70,11 @@ public class InboxWidgetService extends RemoteViewsService {
         public RemoteViews getViewAt(int position) {
             RemoteViews row = new RemoteViews(context.getPackageName(), R.layout.widget_inbox_item);
             row.setTextViewText(idFor("inbox_item_text"), texts.get(position));
+            // 이 줄의 XML 기본 textColor(@color/widget_text_primary)는 실제 기기
+            // 시스템 다크모드만 보고 자동으로 해석되므로, 앱 안 테마 설정을
+            // 따르게 하려면 여기서 직접 색을 심어야 함(2026-07-17 추가 — 다른
+            // 위젯들은 이미 다 이렇게 하고 있었는데 이 줄만 빠져 있었음).
+            row.setTextColor(idFor("inbox_item_text"), WidgetThemeHelper.primaryTextColor(context));
             // 모든 줄이 항상 같은 동작(앱 열기)이라 특별한 값을 안 실은 빈
             // fillInIntent만 붙임 — 그래도 이게 있어야 탭에 반응함(RemoteViews
             // 컬렉션 위젯의 제약).

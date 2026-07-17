@@ -7,7 +7,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.net.Uri;
 import android.widget.RemoteViews;
 
@@ -112,7 +111,7 @@ public class InboxWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(idFor(context, "inbox_add_button"), addPending);
 
-        int primaryText = ContextCompat.getColor(context, R.color.widget_text_primary);
+        int primaryText = WidgetThemeHelper.primaryTextColor(context);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
         views.setTextViewText(idFor(context, "inbox_title"), "미배치 목록");
         views.setTextColor(idFor(context, "inbox_title"), primaryText);
@@ -123,8 +122,7 @@ public class InboxWidgetProvider extends AppWidgetProvider {
         // 위젯 2·3·4와 동일한 이유(런처가 실시간으로 다시 그리는 배경과, 우리가
         // push 시점에 확정해 심는 글자색이 서로 다른 시점의 테마를 따르면서
         // 어긋나는 사고 방지).
-        boolean isDark = (context.getResources().getConfiguration().uiMode
-            & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDark = WidgetThemeHelper.isDarkMode(context);
         views.setInt(idFor(context, "widget_inbox_root"), "setBackgroundResource",
             isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
 

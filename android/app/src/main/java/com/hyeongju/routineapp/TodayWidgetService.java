@@ -128,8 +128,9 @@ public class TodayWidgetService extends RemoteViewsService {
             row.setTextViewText(textId, (icon.isEmpty() ? "" : icon + " ") + text);
             row.setInt(textId, "setPaintFlags",
                 done ? (Paint.STRIKE_THRU_TEXT_FLAG | Paint.ANTI_ALIAS_FLAG) : Paint.ANTI_ALIAS_FLAG);
-            row.setTextColor(textId, ContextCompat.getColor(context,
-                done ? R.color.widget_text_secondary : R.color.widget_text_primary));
+            row.setTextColor(textId, done
+                ? ContextCompat.getColor(context, R.color.widget_text_secondary)
+                : WidgetThemeHelper.primaryTextColor(context));
             row.setImageViewResource(idFor("item_check"),
                 done ? R.drawable.widget_check_on : R.drawable.widget_check_off);
             // 빈 줄(위 position >= items.size() 분기)이 체크칸을 INVISIBLE로

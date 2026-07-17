@@ -7,7 +7,6 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.Configuration;
 import android.graphics.Color;
 import android.widget.RemoteViews;
 
@@ -141,8 +140,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         // 그대로 남아 안 보이는 사고) 서로 어긋날 수 있음. 그래서 배경도 글자색과
         // 완전히 같은 순간·같은 판단(isDark)으로 우리가 직접 골라서 심어버림 —
         // 이러면 최소한 배경과 글자는 항상 같은 상태로 맞아 있음이 보장됨.
-        boolean isDark = (context.getResources().getConfiguration().uiMode
-            & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDark = WidgetThemeHelper.isDarkMode(context);
         views.setInt(idFor(context, "widget_month_root"), "setBackgroundResource",
             isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
 
@@ -172,7 +170,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
             views.setOnClickPendingIntent(idFor(context, "cell_container_" + (row * 7 + sunColForNav)), nextPending);
         }
 
-        int primaryText = ContextCompat.getColor(context, R.color.widget_text_primary);
+        int primaryText = WidgetThemeHelper.primaryTextColor(context);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
 
         // 자료가 없거나 깨져 있어도 안전하게 빈 칸으로 시작

@@ -219,6 +219,27 @@ public class WidgetBridgePlugin extends Plugin {
         call.resolve();
     }
 
+    // 앱 안 설정(설정 탭 "테마")에서 라이트/다크/시스템을 고를 때마다 JS의
+    // applyTheme()이 부름(2026-07-17 추가) — 위젯은 원래 항상 휴대폰 시스템의
+    // 다크모드 설정만 보고 밝기를 정했는데, 앱 안에서 "다크"로 바꿔도 휴대폰
+    // 시스템 설정이 라이트면 위젯은 안 바뀌는 것처럼 보인다는 신고로 추가함.
+    // mode가 "light"/"dark"면 그 값을 다섯 위젯 전부에 최우선으로 적용하고,
+    // 그 밖(시스템 선택, 빈 문자열)이면 위젯이 다시 휴대폰 시스템 설정을
+    // 따르게 함(WidgetThemeHelper.isDarkMode 참고).
+    @PluginMethod
+    public void setThemeOverride(PluginCall call) {
+        String mode = call.getString("mode", "");
+        SharedPreferences prefs = getContext().getSharedPreferences(
+            WidgetThemeHelper.PREFS_NAME, Context.MODE_PRIVATE);
+        prefs.edit().putString(WidgetThemeHelper.KEY_THEME_OVERRIDE, mode == null ? "" : mode).apply();
+        MonthCalendarWidgetProvider.refreshAll(getContext());
+        ScheduleWidgetProvider.refreshAll(getContext());
+        TodayWidgetProvider.refreshAll(getContext());
+        InboxWidgetProvider.refreshAll(getContext());
+        QuickAddWidgetProvider.refreshAll(getContext());
+        call.resolve();
+    }
+
     // 위젯(달력/스케줄/오늘 할일/미배치 목록)을 탭해서 앱이 열렸을 때, "어느
     // 화면으로 바로 들어가야 하는지"를 JS가 읽어가게 함 — MainActivity가
     // onCreate/onNewIntent에서 인텐트의 widget_nav(/widget_nav_month) 값을

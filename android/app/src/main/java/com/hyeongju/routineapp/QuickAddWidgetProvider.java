@@ -6,10 +6,7 @@ import android.appwidget.AppWidgetProvider;
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
-import android.content.res.Configuration;
 import android.widget.RemoteViews;
-
-import androidx.core.content.ContextCompat;
 
 public class QuickAddWidgetProvider extends AppWidgetProvider {
     @Override
@@ -52,11 +49,10 @@ public class QuickAddWidgetProvider extends AppWidgetProvider {
         // 위젯 2·3·4와 같은 이유로 배경도 글자색과 같은 순간에 우리가 직접
         // 판단해서 심음(라이트/다크가 어긋나 안 보이는 사고 방지) — 이 위젯도
         // 이제 글씨(라벨)가 생겨서 같은 버그 대상이 됨.
-        boolean isDark = (context.getResources().getConfiguration().uiMode
-            & Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES;
+        boolean isDark = WidgetThemeHelper.isDarkMode(context);
         views.setInt(R.id.widget_quick_add_root, "setBackgroundResource",
             isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
-        views.setTextColor(R.id.quick_add_label, ContextCompat.getColor(context, R.color.widget_text_primary));
+        views.setTextColor(R.id.quick_add_label, WidgetThemeHelper.primaryTextColor(context));
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }

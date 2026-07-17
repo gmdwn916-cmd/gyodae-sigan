@@ -416,7 +416,7 @@
       font-size: 15px;
       line-height: 1.55;
       color: var(--text-1);
-      padding: 7px 0;
+      padding: 7px 4px;
     }
 
     /* 구분선은 li가 아니라 swipe-delete-wrap(overflow:hidden 컨테이너) 자신의 테두리로
@@ -443,7 +443,7 @@
     }
     #tab-today .today-items li {
       gap: 12px;
-      padding: 10px 0;
+      padding: 10px 4px;
       color: var(--text-1);
     }
     #tab-today .today-items > .swipe-delete-wrap { border-bottom: 1px solid var(--divider); }
@@ -1088,7 +1088,7 @@
 
     .grid-cell {
       background: var(--surface);
-      border-radius: 8px;
+      border-radius: 0;
       padding: 4px 4px 4px;
       cursor: pointer;
       min-height: 56px;
@@ -1117,9 +1117,18 @@
 
     .grid-cell.other-month { opacity: 0.38; }
 
+    /* 일괄 수정 드래그로 고른 범위 표시(2026-07-17 재조정) — 예전엔 칸마다
+       각자 파란 테두리(오늘 표시와 같은 색)를 둘러서 칸 하나하나가 "체크된"
+       것처럼 보였는데, 사용자 요청으로 "드래그한 범위 전체"만 테두리로
+       감싸는 모양으로 바꿈(칸과 칸이 맞닿는 안쪽 경계에는 테두리를 안 그리고,
+       범위의 바깥쪽 가장자리에만 그림) — 실제 테두리는 CSS가 아니라
+       updateBulkShiftSelectionUI()가 이웃 칸의 선택 여부를 보고 매번
+       box-shadow를 계산해서 인라인으로 심음(칸마다 필요한 변의 조합이 너무
+       다양해서 클래스 조합만으로는 안 됨, 근무 이어붙이기 때처럼). 색도 오늘
+       표시(파랑 #007aff)와 헷갈리지 않게 보라(#5e5ce6, 팀 근무 버튼과 같은
+       색)로 다르게 씀 — 배경 옅은 톤만 CSS에 남기고 테두리는 전부 인라인. */
     .grid-cell.bulk-shift-selected {
-      box-shadow: inset 0 0 0 2px #007aff;
-      background: rgba(0,122,255,0.14);
+      background: rgba(94,92,230,0.14);
     }
 
     .cell-date {
@@ -1130,10 +1139,26 @@
       flex-shrink: 0;
       margin-bottom: 1px;
       width: 100%;
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+      overflow: hidden;
     }
 
     .grid-cell.is-holiday .cell-date { color: #ff3b30; }
     .grid-cell.today .cell-date { color: #007aff; }
+
+    /* 공휴일 이름(추석, 추석 연휴 등)을 날짜 숫자 옆에 작게(2026-07-17 추가) —
+       getKoreanHoliday()가 이미 계산해두는 이름(대체공휴일 포함)을 그대로 씀. */
+    .cell-holiday-name {
+      font-size: 8px;
+      font-weight: 600;
+      color: #ff3b30;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+    }
 
     /* 근무 표시는 이제 항상 이 하나의 모양만 씀(2026-07-17, 네 번째 재조정 —
        달력 위젯처럼 보이게 해달라는 요청) — 모서리를 각지게(둥근 부분 없이)
@@ -2243,7 +2268,7 @@
       height: 32px;
       padding: 0;
       background: rgba(94,92,230,0.10);
-      border: none;
+      border: 1.5px solid #5e5ce6;
       border-radius: 50%;
       color: #5e5ce6;
       opacity: 0.8;
@@ -2748,7 +2773,7 @@
       </div>
       <div class="dd-day-info-row">
         <div id="dd-day-info" class="dd-day-info"></div>
-        <span class="dd-shift-override-badge" id="dd-shift-override-badge" style="display:none">이번만</span>
+        <span class="dd-shift-override-badge" id="dd-shift-override-badge" style="display:none">한번만</span>
         <button class="btn-dd-change-shift-inline" id="btn-dd-change-shift">근무 변경</button>
       </div>
     </div>
@@ -2984,6 +3009,22 @@
       document.documentElement.removeAttribute('data-theme');
     }
     updateThemeColorMeta();
+    pushWidgetThemeOverride(mode);
+  }
+
+  // 설정 탭 "테마"에서 고른 값을 위젯에도 그대로 전달(2026-07-17 추가) — 위젯은
+  // 원래 항상 휴대폰 시스템의 다크모드 설정만 보고 밝기를 정해서, 앱 안에서만
+  // "다크"로 바꾸면(휴대폰 시스템은 라이트인 채로) 위젯이 안 따라오는 것처럼
+  // 보이는 문제가 있었음 — "시스템"을 고른 경우엔 빈 문자열을 보내서 위젯이
+  // 계속 휴대폰 시스템 설정을 따르게 함(예전과 동일). 웹(브라우저)에서는
+  // isNativeApp()이 아니라 getWidgetBridge()가 null을 돌려줘서 조용히 아무 일도
+  // 안 함.
+  async function pushWidgetThemeOverride(mode) {
+    const bridge = getWidgetBridge();
+    if (!bridge) return;
+    try {
+      await bridge.setThemeOverride({ mode: (mode === 'light' || mode === 'dark') ? mode : '' });
+    } catch (e) {}
   }
 
   if (window.matchMedia) {
@@ -3577,6 +3618,22 @@
     }
     // 우선순위 3: 기본 패턴
     return { name: day ? day.shiftType.name : '', isOverride: false, overrideType: null };
+  }
+
+  // getEffectiveShiftName의 "날짜 예외"(우선순위 1)만 건너뛴 버전(2026-07-17
+  // 추가) — 이 자리(dayIndex)에 원래 반복돼야 할 이름(D번호 예외가 있으면
+  // 그것, 없으면 기본 패턴)만 돌려줌. "근무 변경" 화면을 열 때 "...마다" 버튼
+  // 미리보기에 씀 — 그 날짜에 "괌"처럼 하루짜리 날짜 예외가 있어도, "...마다"는
+  // 반복 패턴 자체를 바꾸는 버튼이라 그 하루짜리 예외가 아니라 원래 이 자리가
+  // 반복해서 쓰던 이름을 기본값으로 보여줘야 함(사용자 요청 — "괌마다"처럼
+  // 뜨는 게 아니라 원래 설정된 근무 이름이 떠야 함).
+  function getBaseShiftName(dayIdx0) {
+    const day = state && state.days && state.days[dayIdx0];
+    if (day && state && Array.isArray(state.dayOverrides)) {
+      const dov = state.dayOverrides.find(function (o) { return o.dayIndex === day.dayIndex; });
+      if (dov !== undefined) return dov.shiftName;
+    }
+    return day ? day.shiftType.name : '';
   }
 
   // 날짜 예외(근무 일괄변경/근무 변경으로 만들어진 override)만 조회. 기본
@@ -4694,16 +4751,25 @@
       const dayIdx0 = ((diff % state.cycleDays) + state.cycleDays) % state.cycleDays;
       const cellDateStr = formatDateStr(dateMid);
 
+      const holidayInfo = getKoreanHoliday(cellDateStr);
       const cell = document.createElement('div');
       cell.className = 'grid-cell' + (!inMonth ? ' other-month' : '') + (isToday ? ' today' : '') +
         (bulkShiftSelectedDates.has(cellDateStr) ? ' bulk-shift-selected' : '') +
-        (getKoreanHoliday(cellDateStr) ? ' is-holiday' : '');
+        (holidayInfo ? ' is-holiday' : '');
       cell.dataset.dateStr = cellDateStr;
       const { name: shiftName } = getEffectiveShiftName(cellDateStr, dayIdx0);
 
       const dateEl = document.createElement('div');
       dateEl.className = 'cell-date';
-      dateEl.textContent = date.getDate();
+      const dateNumEl = document.createElement('span');
+      dateNumEl.textContent = date.getDate();
+      dateEl.appendChild(dateNumEl);
+      if (holidayInfo) {
+        const holidayNameEl = document.createElement('span');
+        holidayNameEl.className = 'cell-holiday-name';
+        holidayNameEl.textContent = holidayInfo.name;
+        dateEl.appendChild(holidayNameEl);
+      }
       cell.appendChild(dateEl);
 
       if (shiftName) {
@@ -4798,9 +4864,33 @@
 
   // 드래그 도중에는 화면을 통째로 다시 그리지 않고 선택 표시만 갱신한다.
   // (달력 전체를 다시 그리면 손가락이 눌린 칸 자체가 없어져서 손을 뗄 때 신호가 전달 안 됨)
+  // 칸마다 따로 테두리를 두르지 않고, 선택된 범위의 바깥쪽 가장자리에만
+  // 테두리가 그려지게 함(2026-07-17) — 7칸씩 한 줄인 격자이므로, 각 칸의
+  // 앞뒤(같은 줄의 좌우)·위아래(±7칸) 이웃이 같이 선택돼 있는지 봐서, 이웃도
+  // 선택돼 있으면 그 방향 테두리를 생략(칸끼리 맞닿는 안쪽 경계에는 선을 안
+  // 그림) — 클래스 조합만으로는 칸마다 필요한 변의 조합(4방향 중 몇 개가
+  // 켜지는지)이 너무 다양해서 인라인 box-shadow로 직접 계산해 심음.
   function updateBulkShiftSelectionUI() {
-    document.querySelectorAll('#day-grid .grid-cell[data-date-str]').forEach(function (cell) {
-      cell.classList.toggle('bulk-shift-selected', bulkShiftSelectedDates.has(cell.dataset.dateStr));
+    const BULK_BORDER = '#5e5ce6';
+    const cells = Array.from(document.querySelectorAll('#day-grid .grid-cell[data-date-str]'));
+    cells.forEach(function (cell, i) {
+      const selected = bulkShiftSelectedDates.has(cell.dataset.dateStr);
+      cell.classList.toggle('bulk-shift-selected', selected);
+      if (!selected) {
+        cell.style.boxShadow = '';
+        return;
+      }
+      const col = i % 7;
+      const leftSelected = col > 0 && bulkShiftSelectedDates.has(cells[i - 1].dataset.dateStr);
+      const rightSelected = col < 6 && cells[i + 1] && bulkShiftSelectedDates.has(cells[i + 1].dataset.dateStr);
+      const topSelected = i - 7 >= 0 && bulkShiftSelectedDates.has(cells[i - 7].dataset.dateStr);
+      const bottomSelected = cells[i + 7] && bulkShiftSelectedDates.has(cells[i + 7].dataset.dateStr);
+      const shadows = [];
+      if (!topSelected) shadows.push('inset 0 2px 0 0 ' + BULK_BORDER);
+      if (!bottomSelected) shadows.push('inset 0 -2px 0 0 ' + BULK_BORDER);
+      if (!leftSelected) shadows.push('inset 2px 0 0 0 ' + BULK_BORDER);
+      if (!rightSelected) shadows.push('inset -2px 0 0 0 ' + BULK_BORDER);
+      cell.style.boxShadow = shadows.join(', ');
     });
   }
 
@@ -5029,6 +5119,30 @@
     });
     (state.shiftOverrides || []).forEach(function (o) {
       if (o.shiftName && names.indexOf(o.shiftName) === -1) names.push(o.shiftName);
+    });
+    (state.dayOverrides || []).forEach(function (o) {
+      if (o.shiftName && names.indexOf(o.shiftName) === -1) names.push(o.shiftName);
+    });
+    Object.keys(state.shiftColors || {}).forEach(function (n) {
+      if (names.indexOf(n) === -1) names.push(n);
+    });
+    return names;
+  }
+
+  // 달력 "근무 변경" 팝업(openShiftPicker) 전용 목록(2026-07-17 추가) —
+  // getAllShiftTypeNames()와 달리 state.shiftOverrides(날짜 예외)는 안 봄.
+  // "괌"처럼 그 날 하루만 "한번만"으로 바꾼 이름은 그 날짜 하나에만 의미가
+  // 있는 일회성 값이라, 다른 날짜에도 또 고를 수 있는 "근무 종류" 목록에
+  // 계속 남아있으면 안 됨(사용자 요청) — 기본 패턴·"이 자리마다"(dayOverrides,
+  // 반복되는 변경이라 재사용 가치가 있음)·이 화면들에서 명시적으로 만든 색
+  // (shiftColors)만 보여줌. 설정 탭 "근무 편집"에서는 여전히 이런 일회성
+  // 이름도 보여야(그래야 지울 수 있으니) getAllShiftTypeNames()를 그대로 씀 —
+  // 이 함수로 바꾸지 말 것.
+  function getShiftTypeNamesForPicker() {
+    const names = [];
+    if (!state) return names;
+    (state.days || []).forEach(function (d) {
+      if (d.shiftType.name && names.indexOf(d.shiftType.name) === -1) names.push(d.shiftType.name);
     });
     (state.dayOverrides || []).forEach(function (o) {
       if (o.shiftName && names.indexOf(o.shiftName) === -1) names.push(o.shiftName);
@@ -6217,10 +6331,20 @@
     }
   }
 
+  // 근무 변경 시트의 버튼 문구("한번만"/"○요일 ○○마다", updateDDShiftPickerUI
+  // 참고)와 같은 말투로 통일(2026-07-17) — 이 배지는 지금 이 날짜에 적용된
+  // 예외가 어떤 종류인지 보여주는 것이라, 편집 화면을 열지 않아도 그 예외가
+  // "이번 한 번만"인지 "이 요일마다 반복"인지 바로 알 수 있어야 함.
   function renderDDShift(shiftName, isOverride, overrideType) {
     const badge = document.getElementById('dd-shift-override-badge');
     if (isOverride) {
-      badge.textContent = overrideType === 'date' ? '날짜만' : '이 자리마다';
+      if (overrideType === 'date') {
+        badge.textContent = '한번만';
+      } else {
+        const DOW_KR = ['일', '월', '화', '수', '목', '금', '토'];
+        const dayLabel = detailDateStr ? (DOW_KR[parseLocalDate(detailDateStr).getDay()] + '요일') : '';
+        badge.textContent = (dayLabel ? dayLabel + ' ' : '') + (shiftName || '') + '마다';
+      }
       badge.style.display = '';
     } else {
       badge.style.display = 'none';
@@ -6344,7 +6468,7 @@
   function openShiftPicker() {
     const list = document.getElementById('shift-picker-list');
     list.innerHTML = '';
-    const names = getAllShiftTypeNames();
+    const names = getShiftTypeNamesForPicker();
     names.forEach(function (name) {
       const item = document.createElement('button');
       item.type = 'button';
@@ -6381,7 +6505,9 @@
   document.getElementById('btn-dd-shift-picker').addEventListener('click', openShiftPicker);
 
   document.getElementById('btn-dd-change-shift').addEventListener('click', function () {
-    const { name } = getEffectiveShiftName(detailDateStr, detailDayIdx0);
+    // 하루짜리 날짜 예외(괌 등)가 있어도 그 하루짜리 이름이 아니라, 이 자리가
+    // 원래 반복하던 이름을 기본값으로 채움(getBaseShiftName 주석 참고).
+    const name = getBaseShiftName(detailDayIdx0);
     ddShiftSelectedName = name || null;
     updateDDShiftPickerUI();
     document.getElementById('dd-shift-edit-row').style.display = '';
