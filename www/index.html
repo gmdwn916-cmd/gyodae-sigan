@@ -1354,13 +1354,13 @@
       white-space: nowrap;
     }
     .pattern-chip-remove {
-      width: 18px;
-      height: 18px;
+      width: 22px;
+      height: 22px;
       border-radius: 50%;
       border: none;
       background: var(--line);
       color: var(--text-2);
-      font-size: 12px;
+      font-size: 13px;
       line-height: 1;
       cursor: pointer;
       display: flex;
@@ -1369,6 +1369,7 @@
       padding: 0;
       font-family: inherit;
       -webkit-tap-highlight-color: transparent;
+      flex-shrink: 0;
     }
     .pattern-chip-input-row {
       display: flex;
@@ -1413,13 +1414,20 @@
     .btn-row { display: flex; gap: 10px; }
     .btn-row .btn { flex: 1; }
 
-    /* "반복 할 일" 편집 시트의 기간/근무·요일 모드 버튼만 작게(2026-07-17
-       요청) — 같이 쓰는 .btn/.btn-row는 다른 화면(온보딩 등)에도 널리
-       쓰이는 공용 스타일이라 거기는 안 건드리고, 이 버튼 행에만 좁힘. */
+    /* "반복 할 일" 편집 시트의 기간/근무·요일 모드 버튼(2026-07-18, 반복·중요
+       탭의 .routine-filter-btn과 같은 "둘 중 하나 고르기" 세그먼트 모양으로
+       통일 — 예전엔 이 버튼만 .btn/.btn-secondary를 그대로 써서 꽉 찬 파란
+       배경으로 눌렸는데, 같은 역할의 반복·중요 필터는 테두리+옅은 색 방식이라
+       서로 달라 보였음). 같이 쓰는 .btn/.btn-row는 다른 화면(온보딩 등)에도
+       널리 쓰이는 공용 스타일이라 거기는 안 건드리고, 이 버튼 행에만 좁힘. */
     #promote-mode-row.btn-row { gap: 8px; }
     #promote-mode-row .btn {
-      padding: 9px;
-      font-size: 14px;
+      padding: 8px 0;
+      font-size: 13px;
+      border: 1.5px solid var(--line);
+      background: var(--surface-2);
+      color: var(--text-2);
+      border-radius: 10px;
     }
 
     /* ── Onboarding ── */
@@ -1840,9 +1848,8 @@
       margin-top: 60px;
     }
 
-    /* 반복·중요 탭 필터(2026-07-17) — 둘 다 켜기/끄기 가능한 독립 토글이라
-       "탭 전환"이 아니라 체크박스에 가까움(둘 다 끄는 건 막아서 목록이 아예
-       비지 않게 함, JS에서 처리). */
+    /* 반복·중요 탭 필터(2026-07-17) — "기간/근무·요일" 모드 버튼과 같은
+       배타적 단일 선택(항상 둘 중 하나만 켜짐, JS의 routineFilterMode 참고). */
     .routine-filter-row {
       display: flex;
       gap: 8px;
@@ -2010,14 +2017,26 @@
       color: var(--text-1);
     }
 
+    /* 미배치 목록 삭제 버튼(2026-07-18) — 근무 순서 칩의 삭제 버튼과 같은
+       동그란 배지 모양으로 통일(예전엔 배경 없는 "×" 글자만 있어서 화면마다
+       삭제 버튼 생김새가 서로 달랐음). */
     .inbox-item-del {
-      background: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
       border: none;
-      font-size: 18px;
-      color: var(--text-3);
+      background: var(--line);
+      color: var(--text-2);
+      font-size: 13px;
+      line-height: 1;
       cursor: pointer;
-      padding: 0 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0;
       font-family: inherit;
+      flex-shrink: 0;
+      -webkit-tap-highlight-color: transparent;
     }
 
     .inbox-empty {
@@ -2028,9 +2047,9 @@
     }
 
     #promote-panel .btn.active {
-      background: #007aff;
-      color: #fff;
-      border-color: #007aff;
+      border-color: var(--accent);
+      color: var(--accent);
+      background: color-mix(in srgb, var(--accent) 14%, var(--surface-2));
     }
 
     .promote-lunar-toggle-btn {
@@ -5174,11 +5193,15 @@
     });
   }
 
+  function pushPatternChip(text) {
+    text = text.trim();
+    if (!text) return;
+    patternChips.push(text);
+  }
+
   function addPatternChip() {
     const input = document.getElementById('input-pattern-chip');
-    const v = input.value.trim();
-    if (!v) return;
-    patternChips.push(v);
+    pushPatternChip(input.value);
     input.value = '';
     renderPatternChips();
     input.focus();
@@ -5187,6 +5210,21 @@
   document.getElementById('btn-pattern-chip-add').addEventListener('click', addPatternChip);
   document.getElementById('input-pattern-chip').addEventListener('keydown', function (e) {
     if (e.key === 'Enter') { e.preventDefault(); addPatternChip(); }
+  });
+
+  // 쉼표(,)로 연속 입력(2026-07-18 추가) — 빠른 추가 바(quick-add-input)와
+  // 똑같은 앱 전역 관례를 여기도 맞춤: 쉼표를 치는 순간 그때까지 쓴 이름을
+  // 바로 칩으로 추가하고 입력칸은 마지막(아직 안 끝난) 조각만 남겨서
+  // "주간,야간,비번,휴무"처럼 이어 쳐서 한 번에 넣을 수 있게 함 — 매번
+  // "확인"을 눌러야 했던 것보다 여러 개를 이어 넣기 훨씬 편함.
+  document.getElementById('input-pattern-chip').addEventListener('input', function () {
+    if (this.value.indexOf(',') === -1) return;
+    const parts = this.value.split(',');
+    for (let i = 0; i < parts.length - 1; i++) {
+      pushPatternChip(parts[i]);
+    }
+    this.value = parts[parts.length - 1];
+    renderPatternChips();
   });
 
   function openSettingsDetail(key) {

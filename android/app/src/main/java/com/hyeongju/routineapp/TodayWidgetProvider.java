@@ -62,14 +62,31 @@ public class TodayWidgetProvider extends AppWidgetProvider {
         super.onReceive(context, intent);
     }
 
-    // 체크칸 없는 줄 영역을 눌렀을 때 오늘 탭으로 앱을 엶(위젯 헤더를 누르는
-    // 것과 같은 목적지). 방송 수신자 안에서 화면을 열려면 NEW_TASK 플래그가
-    // 필요함.
+    // 체크칸 없는 줄 영역(빈 공백 포함)을 눌렀을 때 오늘 탭으로 앱을 엶(위젯
+    // 헤더를 누르는 것과 같은 목적지). **처음엔 여기서 바로 context.startActivity()를
+    // 불렀는데, 화면이 잘 안 열리는 문제가 있었음(2026-07-18 발견)** — 목록
+    // 항목은 구조상 방송(브로드캐스트)을 한 번 거쳐야만 탭에 반응하는데, 그
+    // 방송을 받은 코드 안에서 곧바로 화면을 여는 방식은 안드로이드가 배경
+    // 실행 제한 정책으로 종종 막아버려서 기기·상황에 따라 됐다 안 됐다 하는
+    // 문제가 있었음(위젯 헤더처럼 시스템이 직접 화면을 여는 PendingIntent는
+    // 이 제한을 안 받아서 항상 잘 열림). 고침: 여기서도 화면을 직접 열지
+    // 않고, 위젯 헤더와 똑같은 방식(PendingIntent.getActivity)으로 미리
+    // "화면 열기 티켓"을 만들어서 그걸 실행(send)하는 방식으로 바꿈 — 이
+    // 티켓은 안드로이드가 원래부터 신뢰하는 방식이라 배경 실행 제한을 안 받음.
     private void openAppToToday(Context context) {
         Intent openIntent = new Intent(context, MainActivity.class);
+        openIntent.setAction("com.hyeongju.routineapp.OPEN_APP_TODAY_FROM_LIST");
         openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "today");
         openIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-        context.startActivity(openIntent);
+        PendingIntent openPending = PendingIntent.getActivity(
+            context, 3, openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
+        );
+        try {
+            openPending.send();
+        } catch (PendingIntent.CanceledException e) {
+            // 무시 — 이번 한 번 안 열려도 다음 탭에서 다시 시도됨
+        }
     }
 
     // 위젯 목록의 한 줄을 탭했을 때: ① 저장해둔 오늘 데이터 안의 그 항목 done
