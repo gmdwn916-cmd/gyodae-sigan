@@ -1504,8 +1504,9 @@
       border-radius: 10px;
     }
 
-    /* ── Onboarding ── */
-    #onboard-overlay {
+    /* ── Onboarding (+ 첫 실행 튜토리얼, #tour-overlay가 같은 시각 스타일을
+       공유 — 위 HTML 쪽 주석 참고) ── */
+    #onboard-overlay, #tour-overlay {
       display: none;
       position: fixed;
       inset: 0;
@@ -1515,7 +1516,15 @@
       align-items: flex-start;
       justify-content: center;
     }
-    #onboard-overlay.open { display: flex; }
+    #onboard-overlay.open, #tour-overlay.open { display: flex; }
+
+    /* 튜토리얼 슬라이드 큰 이모지 — 별도 그림 없이 이모지 하나로 화면에
+       포인트를 줌(간단하고 가벼운 방식). */
+    .tour-visual {
+      font-size: 64px;
+      line-height: 1;
+      margin-bottom: 24px;
+    }
 
     .onboard-inner {
       width: 100%;
@@ -2819,7 +2828,7 @@
       <div id="sd-help" style="display:none">
         <div class="help-topic">
           <div class="help-topic-title">할 일은 어디에 적나요?</div>
-          <div class="help-topic-body">화면 아래에 항상 떠 있는 입력칸에 적으면 바로 저장돼요. 지금 보고 있는 화면이 오늘 탭이면 오늘 날짜로, 날짜를 열어둔 상태면 그 날짜로 바로 들어가요. 어느 화면인지 안 정해져 있으면 "미배치"로 들어가요.</div>
+          <div class="help-topic-body">화면 아래에 항상 떠 있는 입력칸에 적으면 바로 저장돼요. 오늘 탭을 보고 있으면 오늘 날짜로, 날짜를 열어둔 상태면 그 날짜로 바로 들어가요. 어느 날짜인지 아직 안 정했다면 "미배치"로 들어가요.</div>
         </div>
         <div class="help-topic">
           <div class="help-topic-title">여러 개를 한 번에 넣고 싶어요</div>
@@ -2827,19 +2836,19 @@
         </div>
         <div class="help-topic">
           <div class="help-topic-title">미배치가 뭔가요?</div>
-          <div class="help-topic-body">아직 언제 할지 안 정한 할 일이 모이는 곳이에요. 화면 아무 데서나 하단의 미배치 버튼(숫자 배지가 있는 버튼)을 누르면 목록이 나와요. 항목을 짧게 누르면 지금 보고 있는 화면(달력 등)에 배치할 수 있어요.</div>
+          <div class="help-topic-body">아직 언제 할지 안 정한 할 일이 모이는 곳이에요. 화면 어디서든 하단의 미배치 버튼(숫자 배지가 있는 버튼)을 누르면 목록이 나오고, 항목을 짧게 누르면 지금 보고 있는 화면에 바로 배치할 수 있어요.</div>
         </div>
         <div class="help-topic">
-          <div class="help-topic-title">날짜는 모르지만 "이맘때쯤"은 알아요</div>
-          <div class="help-topic-body">연간 탭에서 미배치 항목을 꾹 눌러 원하는 달 상자 위로 끌어다 놓으면 그 달로 태그돼요. 나중에 그 달의 달력을 보면서 미배치를 열면 위쪽에 따로 나와요 — 거기서 다시 꾹 눌러 날짜에 놓으면 확정돼요.</div>
+          <div class="help-topic-title">날짜는 몰라도, "이맘때쯤"은 알아요</div>
+          <div class="help-topic-body">교대근무는 스케줄이 미리 안 나올 때가 많죠. 그럴 땐 날짜까지 정하지 말고 달만 정해두세요 — 연간 탭에서 미배치 항목을 꾹 눌러 원하는 달 상자 위로 끌어다 놓으면 돼요. 나중에 그 달의 달력을 보면서 미배치를 열면 위쪽에 따로 나와요 — 근무표가 나오면 그때 다시 꾹 눌러 날짜에 놓아 확정하면 끝.</div>
         </div>
         <div class="help-topic">
-          <div class="help-topic-title">매번 반복되는 할 일은요?</div>
-          <div class="help-topic-body">할 일 글자를 누르면 메뉴가 뜨는데, 거기서 "반복"을 고르면 돼요. "근무·요일"(예: 야간인 날마다) 또는 "기간"(예: 3개월마다) 중 골라서 만들 수 있어요.</div>
+          <div class="help-topic-title">교대근무자를 위한 반복</div>
+          <div class="help-topic-body">일반 캘린더 앱은 "매주 화요일마다" 정도만 되지만, 교대근무는 요일이 매번 밀리죠. 이 앱은 할 일 글자를 눌러 나오는 메뉴에서 "반복"을 고르면 "야간인 날마다", "비번 다음날마다"처럼 근무·요일 조합으로 반복을 만들 수 있어요. 요일과 상관없이 "3개월마다", "6주마다"처럼 간격으로 반복하고 싶으면 "기간"을 고르면 돼요.</div>
         </div>
         <div class="help-topic">
           <div class="help-topic-title">오늘 탭에서 시간대는 어떻게 정하나요?</div>
-          <div class="help-topic-body">할 일 카드를 꾹 눌러 원하는 시간대(오전/오후/밤)로 옮기면 돼요. 글자 맨 앞에 숫자를 붙여도(예: "18청소") 자동으로 그 시각에 맞는 시간대로 들어가고 시간 순서대로 정렬돼요.</div>
+          <div class="help-topic-body">할 일 카드를 꾹 눌러 원하는 시간대(오전/오후/밤)로 옮기면 돼요. 글자 맨 앞에 숫자를 붙여도(예: "19청소") 자동으로 그 시각에 맞는 시간대로 들어가고 시간 순서대로 정렬돼요.</div>
         </div>
         <div class="help-topic">
           <div class="help-topic-title">중요 표시는 어떻게 하나요?</div>
@@ -2850,12 +2859,12 @@
           <div class="help-topic-body">날짜를 눌러 나오는 화면에서 "근무 변경"을 누르면, 그날 하루만 바꿀지 그 자리(예: 3일 주기 중 3번째 날)가 돌아올 때마다 바꿀지 고를 수 있어요.</div>
         </div>
         <div class="help-topic">
-          <div class="help-topic-title">홈 화면 위젯도 있나요?</div>
-          <div class="help-topic-body">다섯 종류가 있어요 — 빠른 할 일 추가, 이번 달 달력, N주 스케줄, 오늘 할 일, 미배치 목록. 홈 화면을 꾹 눌러 위젯 추가에서 "루틴"을 찾으면 돼요.</div>
+          <div class="help-topic-title">홈 화면에서 앱을 열지 않고도</div>
+          <div class="help-topic-body">홈 화면에 추가할 수 있는 위젯이 다섯 종류 있어요 — 빠른 할 일 추가, 이번 달 달력, N주 스케줄, 오늘 할 일, 미배치 목록. 오늘 무슨 근무인지, 할 일이 뭔지 앱을 열지 않고 홈 화면에서 바로 보고 체크할 수 있어요. 홈 화면을 꾹 눌러 위젯 추가에서 "루틴"을 찾으면 돼요.</div>
         </div>
         <div class="help-topic">
-          <div class="help-topic-title">근무별로 알람을 맞출 수 있나요?</div>
-          <div class="help-topic-body">설정 탭의 "근무유형별 알람"에서 근무마다 켜고 끄고, 시각을 정할 수 있어요(설치된 안드로이드 앱에서만 울려요). 알람이 안 울리면 휴대폰의 알림 권한이나 배터리 절약 설정을 확인해 보세요 — 화면에도 문제가 있으면 안내 문구가 떠요.</div>
+          <div class="help-topic-title">근무유형별 알람</div>
+          <div class="help-topic-body">근무마다 다른 시각에 알람을 맞출 수 있어요 — 야간 출근 전엔 이 시각에, 주간 출근 전엔 저 시각에. 설정 탭의 "근무유형별 알람"에서 근무별로 켜고 끄고 시각을 정하면 그 근무가 있는 날 자동으로 울려요(설치된 안드로이드 앱에서만 동작). 알람이 안 울리면 휴대폰의 알림 권한이나 배터리 절약 설정을 확인해 보세요 — 화면에도 문제가 있으면 안내 문구가 떠요.</div>
         </div>
         <div class="help-topic">
           <div class="help-topic-title">기기를 바꾸면 기록은 어떻게 되나요?</div>
@@ -3094,6 +3103,67 @@
   <div id="tcal-date-detail-panel">
     <div class="tcal-dd-title" id="tcal-dd-title"></div>
     <div id="tcal-dd-teams"></div>
+  </div>
+</div>
+
+<!-- ── 첫 실행 튜토리얼(2026-07-19 추가) — 실제 설정(온보딩)을 시작하기 전에
+     이 앱만의 특징 4가지를 슬라이드로 짧게 보여줌. 온보딩과 똑같은 시각
+     스타일(.onboard-inner/.onboard-progress/.onboard-dot/.onboard-step/
+     .onboard-title/.onboard-sub/.onboard-btn-row/.btn-ob-next/.btn-ob-back)을
+     그대로 재사용하되, id는 전부 "tour-"로 따로 둬서 온보딩 쪽 JS(showObStep
+     등)와 절대 안 겹치게 함. 마지막 슬라이드의 "시작하기"를 누르면 이 오버레이를
+     닫고 openOnboarding()을 불러 원래 있던 설정 마법사로 이어짐 — 온보딩 자체
+     로직은 하나도 안 건드림. openOnboarding()을 부르는 자리(초기화 부분)도
+     openTour()로 바꿔서, 신규 설치 때는 항상 튜토리얼이 먼저 뜨고 그 다음에
+     설정으로 이어지게 함(둘 다 뜨는 조건은 여전히 "state.cycleDays/baseDate가
+     없을 때" 하나로 동일 — 온보딩이 다시 뜨는 조건과 항상 같이 감). -->
+<div id="tour-overlay">
+  <div class="onboard-inner">
+    <div class="onboard-progress">
+      <div class="onboard-dot" id="tour-dot-1"></div>
+      <div class="onboard-dot" id="tour-dot-2"></div>
+      <div class="onboard-dot" id="tour-dot-3"></div>
+      <div class="onboard-dot" id="tour-dot-4"></div>
+    </div>
+
+    <div class="onboard-step" id="tour-step-1">
+      <div class="tour-visual">🔔</div>
+      <div class="onboard-title">근무마다 다른 알람</div>
+      <div class="onboard-sub">야간 출근 전엔 이 시각에, 주간 출근 전엔 저 시각에 — 근무 종류마다 알람 시각을 따로 맞춰두면 그 근무가 있는 날 자동으로 울려요.</div>
+      <div class="onboard-btn-row">
+        <button class="btn-ob-next" id="btn-tour-1">다음 →</button>
+      </div>
+    </div>
+
+    <div class="onboard-step" id="tour-step-2">
+      <div class="tour-visual">🔁</div>
+      <div class="onboard-title">교대근무자를 위한 반복</div>
+      <div class="onboard-sub">요일이 매번 밀리는 교대근무엔 평범한 반복이 안 맞죠. "야간인 날마다", "비번 다음날마다"처럼 근무·요일로 반복을 만들거나, "3개월마다"처럼 원하는 기간으로도 자유롭게 만들 수 있어요.</div>
+      <div class="onboard-btn-row">
+        <button class="btn-ob-back" id="btn-tour-back-2">← 이전</button>
+        <button class="btn-ob-next" id="btn-tour-2">다음 →</button>
+      </div>
+    </div>
+
+    <div class="onboard-step" id="tour-step-3">
+      <div class="tour-visual">📅</div>
+      <div class="onboard-title">날짜를 몰라도 괜찮아요</div>
+      <div class="onboard-sub">근무표가 아직 안 나왔다면, 날짜 대신 "이 달 안에"로만 미리 담아두세요. 나중에 근무표가 나오면 그 달을 보면서 날짜를 정하면 돼요.</div>
+      <div class="onboard-btn-row">
+        <button class="btn-ob-back" id="btn-tour-back-3">← 이전</button>
+        <button class="btn-ob-next" id="btn-tour-3">다음 →</button>
+      </div>
+    </div>
+
+    <div class="onboard-step" id="tour-step-4">
+      <div class="tour-visual">🏠</div>
+      <div class="onboard-title">홈 화면에서 바로</div>
+      <div class="onboard-sub">앱을 열지 않아도 홈 화면 위젯으로 오늘 근무·할 일·달력·미배치 목록까지 바로 보고 체크할 수 있어요.</div>
+      <div class="onboard-btn-row">
+        <button class="btn-ob-back" id="btn-tour-back-4">← 이전</button>
+        <button class="btn-ob-next" id="btn-tour-4">시작하기 →</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -4645,7 +4715,7 @@
   const TIMELINE_SLOTS = [
     { key: 'unset', label: '미정' },
     { key: 'morning', label: '오전' },
-    { key: 'afternoon', label: '오후 (~18시)' },
+    { key: 'afternoon', label: '오후' },
     { key: 'night', label: '밤' },
   ];
 
@@ -4700,7 +4770,7 @@
     if (!ev || !ev.date) return;
     const t = parseLeadingTimeFromText(ev.text);
     if (!t) return;
-    ev.timeSlot = t.hh < 12 ? 'morning' : (t.hh < 18 ? 'afternoon' : 'night');
+    ev.timeSlot = t.hh < 12 ? 'morning' : (t.hh < 19 ? 'afternoon' : 'night');
     ev.timelineOrder = t.hh * 60 + t.mm;
   }
 
@@ -7019,6 +7089,36 @@
     }, { passive: true });
   })();
 
+  // ── 첫 실행 튜토리얼(2026-07-19 추가) ───────────────────────
+  // 온보딩(showObStep/openOnboarding)과 구조는 같지만 완전히 독립된 상태
+  // (tour-step-N/tour-dot-N)로 관리 — 온보딩 쪽 id·로직은 하나도 안 건드림.
+  function showTourStep(n) {
+    [1, 2, 3, 4].forEach(function (i) {
+      document.getElementById('tour-step-' + i).classList.toggle('active', i === n);
+      document.getElementById('tour-dot-' + i).classList.toggle('active', i <= n);
+    });
+  }
+
+  function openTour() {
+    showTourStep(1);
+    document.getElementById('tour-overlay').classList.add('open');
+  }
+
+  // 마지막 슬라이드의 "시작하기" — 튜토리얼을 닫고 바로 원래 있던 설정
+  // 마법사(온보딩)로 이어감.
+  function finishTourAndOpenOnboarding() {
+    document.getElementById('tour-overlay').classList.remove('open');
+    openOnboarding();
+  }
+
+  document.getElementById('btn-tour-1').addEventListener('click', function () { showTourStep(2); });
+  document.getElementById('btn-tour-back-2').addEventListener('click', function () { showTourStep(1); });
+  document.getElementById('btn-tour-2').addEventListener('click', function () { showTourStep(3); });
+  document.getElementById('btn-tour-back-3').addEventListener('click', function () { showTourStep(2); });
+  document.getElementById('btn-tour-3').addEventListener('click', function () { showTourStep(4); });
+  document.getElementById('btn-tour-back-4').addEventListener('click', function () { showTourStep(3); });
+  document.getElementById('btn-tour-4').addEventListener('click', finishTourAndOpenOnboarding);
+
   // ── 온보딩 ──────────────────────────────────────────────
   function showObStep(n) {
     [1, 2, 3].forEach(i => {
@@ -8748,7 +8848,10 @@
   switchTab('today');
   renderInboxBadge();
   if (!state || !state.cycleDays || !state.baseDate) {
-    openOnboarding();
+    // 신규 설치(설정 안 끝남) 때는 온보딩(설정 마법사) 전에 튜토리얼부터
+    // 보여줌(2026-07-19 추가) — 튜토리얼 마지막 "시작하기"가 openOnboarding()을
+    // 이어서 부름.
+    openTour();
   }
   syncWidgetInboxItems();
   syncWidgetDatedItems();
