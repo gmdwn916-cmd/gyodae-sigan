@@ -1,8 +1,10 @@
 package com.hyeongju.routineapp;
 
+import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.os.Bundle;
 import android.view.View;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
@@ -20,15 +22,19 @@ import java.util.List;
 public class InboxWidgetService extends RemoteViewsService {
     @Override
     public RemoteViewsFactory onGetViewFactory(Intent intent) {
-        return new InboxRemoteViewsFactory(getApplicationContext());
+        int appWidgetId = intent.getIntExtra(AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID);
+        return new InboxRemoteViewsFactory(getApplicationContext(), appWidgetId);
     }
 
     private static class InboxRemoteViewsFactory implements RemoteViewsFactory {
         private final Context context;
+        private final int appWidgetId;
         private List<String> texts = new ArrayList<>();
 
-        InboxRemoteViewsFactory(Context context) {
+        InboxRemoteViewsFactory(Context context, int appWidgetId) {
             this.context = context;
+            this.appWidgetId = appWidgetId;
         }
 
         @Override
@@ -62,26 +68,43 @@ public class InboxWidgetService extends RemoteViewsService {
             texts.clear();
         }
 
-        // 위젯 4(오늘)의 FILLER_COUNT와 같은 이유·같은 방식(2026-07-18 추가) —
-        // 항목이 몇 개 안 될 때 실제 항목 바로 아래 빈 줄 하나를 더 채워서
-        // 그 자리도 눌리게 함. **이 방식은 목록(inbox_list)의 weight/높이를
-        // 전혀 안 건드리고 어댑터 안에 "항목 하나 더"를 얹는 것뿐이라, 항목이
-        // 많아서 스크롤이 필요한 경우에도 이 빈 줄은 그냥 맨 마지막에 자연스럽게
-        // 스크롤되는 한 줄일 뿐 — 오늘 위젯이 2026-07-16부터 문제없이 써온
-        // 검증된 방식**(이 위젯도 처음부터 이렇게 했어야 했는데 빠져 있었음).
-        // **`RemoteViews.setViewLayoutHeight`로 목록 자체 높이를 항목 수에
-        // 맞춰 강제로 계산하는 방식은 절대 다시 시도하지 말 것** — 항목이
-        // 많을 때 위젯 실제 크기보다 목록이 커져서 스크롤이 깨지고 그 아래
-        // "+" 버튼까지 화면 밖으로 밀려나는 심각한 회귀가 있었음(InboxWidgetProvider.
-        // updateOne()의 2026-07-18 기록 참고, 그 방식은 도입 당일 되돌림).
-        private static final int FILLER_COUNT = 1;
+        // 위젯 4(오늘)의 빈 줄 방식과 같은 이유·같은 방식(2026-07-18 추가,
+        // 같은 날 위젯 크기에 맞춰 동적으로 재조정 — 자세한 경위와 왜 이번엔
+        // 안전한지는 TodayWidgetService.TodayRemoteViewsFactory의 긴 주석
+        // 참고). **이 방식은 목록(inbox_list)의 weight/높이를 전혀 안
+        // 건드리고 어댑터 안에 "빈 줄 몇 개"를 얹는 것뿐이라, 항목이 많아서
+        // 스크롤이 필요한 경우에도 그 빈 줄들은 그냥 맨 마지막에 자연스럽게
+        // 스크롤되는 줄일 뿐임. **`RemoteViews.setViewLayoutHeight`로 목록
+        // 자체 높이를 항목 수에 맞춰 강제로 계산하는 방식은 절대 다시 시도하지
+        // 말 것** — 항목이 많을 때 위젯 실제 크기보다 목록이 커져서 스크롤이
+        // 깨지고 그 아래 "+" 버튼까지 화면 밖으로 밀려나는 심각한 회귀가
+        // 있었음(InboxWidgetProvider.updateOne()의 2026-07-18 기록 참고, 그
+        // 방식은 도입 당일 되돌림).
+        private static final int ROW_HEIGHT_DP = 30;
+        private static final int HEADER_AND_BUTTON_OVERHEAD_DP = 100;
+        private static final int MAX_FILLER_COUNT = 12;
+
+        private int estimateVisibleRows() {
+            if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return 1;
+            try {
+                Bundle opts = AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId);
+                int heightDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+                if (heightDp <= 0) return 1;
+                int rows = (heightDp - HEADER_AND_BUTTON_OVERHEAD_DP) / ROW_HEIGHT_DP;
+                return Math.max(1, rows);
+            } catch (Exception e) {
+                return 1;
+            }
+        }
 
         @Override
         public int getCount() {
             // 위젯 4와 같은 이유로, 항목이 정말 0개일 때는 그대로 0을 반환해야
             // inbox_empty("미배치 항목이 없어요") 문구가 뜸 — 항목이 1개
             // 이상일 때만 빈 줄을 덧붙임.
-            return texts.isEmpty() ? 0 : texts.size() + FILLER_COUNT;
+            if (texts.isEmpty()) return 0;
+            int fillerCount = Math.max(1, Math.min(MAX_FILLER_COUNT, estimateVisibleRows() - texts.size()));
+            return texts.size() + fillerCount;
         }
 
         @Override

@@ -33,6 +33,17 @@ public class InboxWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    // 위젯 크기가 바뀌면 목록의 빈 줄 개수도 다시 계산해야 함(2026-07-18 추가,
+    // TodayWidgetProvider와 같은 이유 — InboxRemoteViewsFactory.
+    // estimateVisibleRows() 참고).
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
+            int appWidgetId, android.os.Bundle newOptions) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+        updateOne(context, appWidgetManager, appWidgetId);
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, idFor(context, "inbox_list"));
+    }
+
     // 휴대폰 시스템 다크/라이트 설정이 바뀌면 앱을 안 열어도 위젯을 새로
     // 그림(2026-07-18 추가) — WidgetThemeHelper.isDarkMode()가 매번 다시
     // 판단하므로 refreshAll()만 다시 부르면 됨(목록도 같이 새로고침됨).

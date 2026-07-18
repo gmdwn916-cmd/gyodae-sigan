@@ -157,6 +157,20 @@ public class TodayWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    // 사용자가 위젯 크기를 늘리거나 줄이면 안드로이드가 이걸 불러줌(onUpdate가
+    // 아님) — 목록의 빈 줄 개수가 위젯 크기(TodayRemoteViewsFactory.
+    // estimateVisibleRows() 참고)에 따라 달라지므로, 크기가 바뀌면 바로 다시
+    // 계산해서 그려야 함(2026-07-18 추가). 안 하면 리사이즈 직후에는 예전
+    // 크기 기준 빈 줄 개수가 그대로 남아있다가, 다음 자연스러운 갱신 시점
+    // (데이터 push 등)에야 뒤늦게 맞춰짐.
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
+            int appWidgetId, android.os.Bundle newOptions) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+        updateOne(context, appWidgetManager, appWidgetId);
+        appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, idFor(context, "today_list"));
+    }
+
     // WidgetBridgePlugin이 새 데이터를 받았을 때 즉시 다시 그리기 위해 호출.
     public static void refreshAll(Context context) {
         AppWidgetManager mgr = AppWidgetManager.getInstance(context);
