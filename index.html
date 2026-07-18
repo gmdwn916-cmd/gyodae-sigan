@@ -463,9 +463,9 @@
     #tab-today .today-items > .swipe-delete-wrap { border-bottom: 1px solid var(--divider); }
     #tab-today .today-items > .swipe-delete-wrap:last-child { border-bottom: none; }
     #tab-today .item-check-btn {
-      width: 28px;
-      height: 28px;
-      min-width: 28px;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
       border-color: var(--check-border);
     }
     #tab-today .today-item--done .item-check-btn {
@@ -2361,11 +2361,11 @@
 
     .today-item--done .item-text { opacity: 0.4; }
     .item-check-btn {
-      width: 26px;
-      height: 26px;
-      min-width: 26px;
+      width: 18px;
+      height: 18px;
+      min-width: 18px;
       border-radius: 50%;
-      border: 2px solid var(--check-border);
+      border: 1.5px solid var(--check-border);
       background: none;
       cursor: pointer;
       flex-shrink: 0;
@@ -4352,7 +4352,7 @@
     checkBtn.className = 'item-check-btn';
     checkBtn.setAttribute('aria-label', isDone ? '완료 취소' : '완료');
     if (isDone) {
-      checkBtn.innerHTML = '<svg width="14" height="14" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+      checkBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     }
     checkBtn.addEventListener('click', function () {
       if (kind === 'repeat') {
