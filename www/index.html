@@ -1306,6 +1306,27 @@
     .settings-menu-label { font-size: 15px; font-weight: 600; color: var(--text-1); margin-bottom: 2px; }
     .settings-menu-value { font-size: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .settings-menu-chevron { font-size: 22px; color: var(--text-3); flex-shrink: 0; line-height: 1; }
+    /* 도움말 화면(2026-07-19) — 다른 "쭉 나열되는 카드" 그룹과 같은 레시피
+       (routine-card/settings-menu-item/shift-color-row/tcal-dd-team-row와
+       통일, 2026-07-18 최종 디자인 점검 때 정리한 토큰 그대로 재사용). */
+    .help-topic {
+      background: var(--surface);
+      border-radius: var(--radius-row);
+      box-shadow: var(--shadow-card);
+      padding: 14px 16px;
+      margin-bottom: 8px;
+    }
+    .help-topic-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 6px;
+    }
+    .help-topic-body {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
     .settings-detail-header {
       display: flex;
       align-items: center;
@@ -2792,6 +2813,55 @@
           <div id="data-io-msg" class="onboard-warn"></div>
         </div>
       </div>
+
+      <!-- 도움말(2026-07-19 추가) — 정적 안내 문구만 있어서 openSettingsDetail()에
+           별도 분기 없이 그냥 보여주기만 함. -->
+      <div id="sd-help" style="display:none">
+        <div class="help-topic">
+          <div class="help-topic-title">할 일은 어디에 적나요?</div>
+          <div class="help-topic-body">화면 아래에 항상 떠 있는 입력칸에 적으면 바로 저장돼요. 지금 보고 있는 화면이 오늘 탭이면 오늘 날짜로, 날짜를 열어둔 상태면 그 날짜로 바로 들어가요. 어느 화면인지 안 정해져 있으면 "미배치"로 들어가요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">여러 개를 한 번에 넣고 싶어요</div>
+          <div class="help-topic-body">쉼표(,)로 이어 적으면 돼요. "빨래,청소,운동"처럼 치면 쉼표를 찍는 순간 앞의 글자가 바로 추가되고, 입력칸은 비워진 채로 다음 것을 이어 적을 수 있어요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">미배치가 뭔가요?</div>
+          <div class="help-topic-body">아직 언제 할지 안 정한 할 일이 모이는 곳이에요. 화면 아무 데서나 하단의 미배치 버튼(숫자 배지가 있는 버튼)을 누르면 목록이 나와요. 항목을 짧게 누르면 지금 보고 있는 화면(달력 등)에 배치할 수 있어요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">날짜는 모르지만 "이맘때쯤"은 알아요</div>
+          <div class="help-topic-body">연간 탭에서 미배치 항목을 꾹 눌러 원하는 달 상자 위로 끌어다 놓으면 그 달로 태그돼요. 나중에 그 달의 달력을 보면서 미배치를 열면 위쪽에 따로 나와요 — 거기서 다시 꾹 눌러 날짜에 놓으면 확정돼요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">매번 반복되는 할 일은요?</div>
+          <div class="help-topic-body">할 일 글자를 누르면 메뉴가 뜨는데, 거기서 "반복"을 고르면 돼요. "근무·요일"(예: 야간인 날마다) 또는 "기간"(예: 3개월마다) 중 골라서 만들 수 있어요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">오늘 탭에서 시간대는 어떻게 정하나요?</div>
+          <div class="help-topic-body">할 일 카드를 꾹 눌러 원하는 시간대(오전/오후/밤)로 옮기면 돼요. 글자 맨 앞에 숫자를 붙여도(예: "18청소") 자동으로 그 시각에 맞는 시간대로 들어가고 시간 순서대로 정렬돼요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">중요 표시는 어떻게 하나요?</div>
+          <div class="help-topic-body">할 일 글자를 눌러 나오는 메뉴에서 "중요"를 누르면 돼요. 중요 표시한 건 연간 탭의 달 상자와 "반복·중요" 탭에서 따로 모아볼 수 있어요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">근무가 바뀌었어요(당직, 휴가 등)</div>
+          <div class="help-topic-body">날짜를 눌러 나오는 화면에서 "근무 변경"을 누르면, 그날 하루만 바꿀지 그 자리(예: 3일 주기 중 3번째 날)가 돌아올 때마다 바꿀지 고를 수 있어요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">홈 화면 위젯도 있나요?</div>
+          <div class="help-topic-body">다섯 종류가 있어요 — 빠른 할 일 추가, 이번 달 달력, N주 스케줄, 오늘 할 일, 미배치 목록. 홈 화면을 꾹 눌러 위젯 추가에서 "루틴"을 찾으면 돼요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">근무별로 알람을 맞출 수 있나요?</div>
+          <div class="help-topic-body">설정 탭의 "근무유형별 알람"에서 근무마다 켜고 끄고, 시각을 정할 수 있어요(설치된 안드로이드 앱에서만 울려요). 알람이 안 울리면 휴대폰의 알림 권한이나 배터리 절약 설정을 확인해 보세요 — 화면에도 문제가 있으면 안내 문구가 떠요.</div>
+        </div>
+        <div class="help-topic">
+          <div class="help-topic-title">기기를 바꾸면 기록은 어떻게 되나요?</div>
+          <div class="help-topic-body">지금은 기록이 이 기기 안에만 저장돼요. 다른 기기로 옮기려면 설정 탭의 "데이터 백업"에서 내보내기 한 뒤, 새 기기에서 가져오기 하면 돼요.</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -3169,6 +3239,7 @@
     teams: '<svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3"/><path d="M4 20c0-3.3 2.2-6 5-6s5 2.7 5 6"/><circle cx="17" cy="9" r="2.3"/><path d="M15 20c.2-2.6 1.8-4.5 4-4.5"/></svg>',
     data: '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>',
     alarm: '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
+    help: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2-2.6 3.8"/><circle cx="12" cy="17" r="0.1" fill="currentColor" stroke="currentColor" stroke-width="2"/></svg>',
   };
 
   function getShiftColor(name) {
@@ -5226,6 +5297,7 @@
         return n ? n + '개 켜짐' : '';
       }},
       { key: 'data', icon: SETTINGS_ICONS.data, label: '데이터 백업', getValue: function() { return ''; }},
+      { key: 'help', icon: SETTINGS_ICONS.help, label: '도움말', getValue: function() { return ''; }},
     ];
 
     // 항목 개수가 늘면서 한 줄로 쭉 나열돼 있으면 찾기 번거로워져서, 성격별로
@@ -5237,6 +5309,7 @@
       { label: '근무', keys: ['cycle', 'colors', 'alarms'] },
       { label: '화면', keys: ['weekstart', 'theme'] },
       { label: '기타', keys: ['teams', 'data'] },
+      { label: '정보', keys: ['help'] },
     ];
 
     var listEl = document.getElementById('settings-list-view');
@@ -5357,10 +5430,10 @@
     document.getElementById('settings-list-view').style.display = 'none';
     document.getElementById('settings-detail-view').style.display = '';
 
-    var titles = { cycle: '내 근무', colors: '근무 편집', weekstart: '주 시작 요일', theme: '테마', teams: '팀 근무', alarms: '근무유형별 알람', data: '데이터 백업' };
+    var titles = { cycle: '내 근무', colors: '근무 편집', weekstart: '주 시작 요일', theme: '테마', teams: '팀 근무', alarms: '근무유형별 알람', data: '데이터 백업', help: '도움말' };
     document.getElementById('settings-detail-title').textContent = titles[key] || '';
 
-    ['sd-cycle','sd-colors','sd-weekstart','sd-theme','sd-teams','sd-alarms','sd-data'].forEach(function(id) {
+    ['sd-cycle','sd-colors','sd-weekstart','sd-theme','sd-teams','sd-alarms','sd-data','sd-help'].forEach(function(id) {
       document.getElementById(id).style.display = 'none';
     });
     document.getElementById('sd-' + key).style.display = '';
