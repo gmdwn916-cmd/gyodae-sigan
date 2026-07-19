@@ -5390,7 +5390,7 @@
         importantEvents.forEach(function (ev) {
           const item = document.createElement('div');
           item.className = 'year-month-item';
-          item.textContent = ev.text;
+          item.textContent = '• ' + ev.text;
           // 이 목록은 전부 "중요 표시"된 할 일만 모은 것이라 항상 주황(2026-07-16
           // — 다른 화면과 같은 색 규칙을 여기에도 적용해달라는 요청).
           item.style.color = '#ff9500';
