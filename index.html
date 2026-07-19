@@ -205,6 +205,14 @@
 
     .tab-content.active { display: block; }
 
+    /* 오늘/반복·중요/설정 탭은 화면 맨 위에 바로 카드·목록이 시작돼서
+       상단 안전영역 여백(20px)만으로는 너무 붙어 보인다는 지적(2026-07-19)
+       — 이 세 탭만 위쪽에 여백을 좀 더 줌(연간·달력 탭은 자체 상단
+       내비게이션 줄이 이미 시각적 여백 역할을 해서 대상 아님). */
+    #tab-routine, #tab-today, #tab-settings {
+      padding-top: 36px;
+    }
+
     /* ── 하단 고정 영역(빠른 추가 바 + 내비게이션) ── */
     #bottom-fixed {
       position: fixed;
@@ -994,7 +1002,7 @@
       padding: 0 4px 12px;
     }
 
-    #cal-title {
+    #cal-title, #year-title {
       font-size: 17px;
       font-weight: 700;
       color: var(--text-1);
@@ -1020,10 +1028,24 @@
     .btn-cal-nav:active { background: var(--line); }
 
     /* ── Year Tab ── */
+    /* 연간 탭도 달력 탭(day-grid)과 같은 이유로 flex 늘어남 적용(2026-07-19) —
+       12칸(4행×3열)은 달마다 개수가 안 바뀌므로 grid-template-rows를 4로
+       고정해도 안전함(달력 탭은 줄 수가 달마다 달라 grid-auto-rows를 썼던 것과
+       다른 점). 위아래에 약간의 여백을 둬서 나머지 화면 콘텐츠(오늘/설정 등)
+       처럼 상단 내비게이션·하단 빠른 추가 바에 바짝 붙지 않게 함. */
+    #tab-year.active {
+      display: flex;
+      flex-direction: column;
+    }
+    #tab-year .cal-nav { flex-shrink: 0; }
     .year-grid {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(4, 1fr);
       gap: 10px;
+      flex: 1;
+      min-height: 0;
+      margin: 6px 0 14px;
     }
 
     .year-month-box {
@@ -1035,6 +1057,8 @@
       box-sizing: border-box;
       -webkit-tap-highlight-color: transparent;
       transition: background 0.12s;
+      display: flex;
+      flex-direction: column;
     }
 
     .year-month-box:active { background: var(--surface-2); }
@@ -2519,7 +2543,7 @@
     .btn-team-cal-wrap {
       display: flex;
       justify-content: flex-end;
-      margin-top: 8px;
+      margin: 14px 0 8px;
     }
 
     /* 열고 닫힐 때 부드럽게(2026-07-18) — 이 화면은 반투명 배경 위에 뜨는
