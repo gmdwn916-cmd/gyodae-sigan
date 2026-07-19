@@ -1355,8 +1355,11 @@
       line-height: 15px;
       background: rgba(94,92,230,0.15);
       color: #5e5ce6;
-      font-size: 10px;
-      font-weight: 700;
+      /* 글씨는 하루짜리 할 일(.cell-event-item)과 같게(2026-07-19 요청 —
+         "여러날 할일 추가 글씨폰트는 일반 할일 폰트랑 같게") — 이전엔
+         근무 띠처럼 10px/굵게였는데, 9px/보통 굵기로 맞춤. */
+      font-size: 9px;
+      font-weight: 400;
       padding: 0 5px;
       box-sizing: border-box;
       overflow: hidden;
