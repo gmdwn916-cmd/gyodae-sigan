@@ -6695,7 +6695,16 @@
 
         const undoneRepeat = getRepeatTodosForDate(dateStr).filter(function (ev) { return !isRepeatDoneOn(ev.id, dateStr); });
         const undoneOneTime = getEventsForDate(dateStr).filter(function (ev) { return !ev.done; });
-        const todos = undoneRepeat.concat(undoneOneTime).slice(0, 3).map(function (ev) { return '• ' + ev.text; });
+        const allTodoTexts = undoneRepeat.concat(undoneOneTime).map(function (ev) { return '• ' + ev.text; });
+        // todos: 위젯 칸 안에 실제로 그릴 수 있는 만큼만(최대 3줄, 공간이
+        // 좁아서 그 이상은 못 그림). allTodos: 그 날의 전체 목록(2026-07-19
+        // 추가) — 날짜 칸 팝업(DayQuickViewActivity)이 위젯 칸과 같은
+        // "최대 3개"만 보고 있던 문제(사용자 신고: "위젯에 표시된 것만
+        // 보여준다") 수정용. 팝업은 화면이 넓어서 다 보여줄 수 있는데,
+        // 예전엔 위젯 칸용으로 이미 3개로 잘라둔 값을 그대로 재사용하고
+        // 있었음 — 네이티브(ScheduleWidgetProvider)가 이제 이 필드로 팝업
+        // 인텐트를 채움.
+        const todos = allTodoTexts.slice(0, 3);
 
         days.push({
           date: dateStr,
@@ -6708,6 +6717,7 @@
           batchId: (ov && ov.batchId) || '',
           holidayName: holiday ? holiday.name : '',
           todos: todos,
+          allTodos: allTodoTexts,
         });
       }
       pages.push({ days: days });

@@ -785,7 +785,17 @@
   제외) 중 아무 곳이나 누르면 DayQuickViewActivity(QuickAddDialogTheme +
   quick_add_bg.xml 재사용)가 뜸 — 위젯이 이미 그리고 있던 그 날짜의 근무·할
   일을 그대로 인텐트 extras로 받아 보여주기만 함(체크·수정 불가, 보기
-  전용, 따로 다시 계산 안 함). 입력칸(EditText, 엔터=추가)에 쓴 항목은
+  전용, 따로 다시 계산 안 함). **할 일 목록은 위젯 칸이 아니라 전체를 다
+  보여줌(2026-07-19 수정)** — 예전엔 이 팝업이 위젯 칸에 표시된 것과 같은
+  값(`day.todos`, 칸 안에 실제로 그릴 수 있는 최대 3개로 잘라둔 것)을
+  그대로 재사용하고 있어서, 그 날 할 일이 4개 이상이면 팝업에서도 3개까지만
+  보이는 문제가 있었음(사용자 신고 — "위젯에 표시된 것만 보여준다"). 고침:
+  `buildSchedulePayload()`가 각 날짜에 `todos`(칸용, 최대 3개)와
+  `allTodos`(팝업용, 전체 목록) 두 필드를 같이 보내고,
+  `ScheduleWidgetProvider`가 팝업 인텐트(`EXTRA_TODOS`)를 채울 때 `todos`
+  대신 `allTodos`를 씀(`allTodos`가 없으면 구버전 데이터 대비 `todos`로
+  대체) — 위젯 칸 자체의 표시(최대 3줄, 공간이 좁아서 어쩔 수 없는 한계)는
+  그대로 두고 팝업만 완전한 목록을 보여주게 분리함. 입력칸(EditText, 엔터=추가)에 쓴 항목은
   **미배치가 아니라 그 날짜에 바로 배치된 한 번짜리 할 일**로 들어감 —
   "pending_dated_items"({text,date} 객체 배열) →
   WidgetBridgePlugin.getPendingDatedItems()/clearPendingDatedItems() → JS의

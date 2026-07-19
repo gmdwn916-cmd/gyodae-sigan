@@ -264,6 +264,15 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
                                 String batchId = day.optString("batchId", "");
                                 String holidayName = day.optString("holidayName", "");
                                 JSONArray todos = day.optJSONArray("todos");
+                                // 날짜 칸 팝업(DayQuickViewActivity)용 전체 목록(2026-07-19
+                                // 추가) — 위 todos는 위젯 칸 안에 실제로 그릴 수 있는 만큼만
+                                // (최대 3줄)이라, 팝업에도 그걸 그대로 재사용하면 그 이상은
+                                // 절대 안 보이는 문제가 있었음("위젯에 표시된 것만 보여준다"는
+                                // 신고). 팝업은 화면이 넓어서 다 보여줄 수 있으므로 JS가 같이
+                                // 보내주는 전체 목록을 씀 — 없으면(구버전 데이터 등) todos로
+                                // 대체.
+                                JSONArray allTodos = day.optJSONArray("allTodos");
+                                if (allTodos == null) allTodos = todos;
 
                                 int dateId = idFor(context, "sch_date_" + i);
                                 int shiftId = idFor(context, "sch_shift_" + i);
@@ -330,7 +339,7 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
                                         dayIntent.putExtra(DayQuickViewActivity.EXTRA_SHIFT_NAME, shiftName);
                                         if (!color.isEmpty()) dayIntent.putExtra(DayQuickViewActivity.EXTRA_SHIFT_COLOR, color);
                                     }
-                                    if (todos != null) dayIntent.putExtra(DayQuickViewActivity.EXTRA_TODOS, todos.toString());
+                                    if (allTodos != null) dayIntent.putExtra(DayQuickViewActivity.EXTRA_TODOS, allTodos.toString());
                                     PendingIntent dayPending = PendingIntent.getActivity(
                                         context, 200 + i, dayIntent,
                                         PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
