@@ -1335,24 +1335,28 @@
       color: var(--text-3);
     }
 
+    /* 근무 띠(.cell-shift-band)와 완전히 같은 박스 모양으로 통일(2026-07-19,
+       사용자 요청 — "근무처럼 좌우 꽉채워 연결시켜줘") — 칸 좌우 여백(4px)
+       만큼 옆으로 늘려서 옆 칸(또는 같은 할 일의 다음 날짜 칸)과 항상 맞닿게
+       하고, 모서리도 둥글리지 않음. 예전엔 폭이 칸 안에서 끝나고 시작/끝
+       칸만 둥글린 알약 모양이었는데, 근무 띠와 색 톤(SHIFT_COLOR_PRESETS
+       재사용, 아래 openBulkTodoSheet 참고)을 맞추면서 모양도 같이 맞춤. */
     .cell-period-band {
-      width: 100%;
-      margin-top: 3px;
-      height: 15px;
-      line-height: 15px;
+      width: calc(100% + 8px);
+      margin: 3px -4px 0;
+      height: 16px;
+      line-height: 16px;
       background: #5e5ce6;
       color: #fff;
-      font-size: 9px;
+      font-size: 10px;
       font-weight: 700;
-      padding: 0 3px;
+      padding: 0 5px;
       box-sizing: border-box;
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
+      border-radius: 0;
     }
-
-    .cell-period-band.band-start { border-radius: 5px 0 0 5px; }
-    .cell-period-band.band-end { border-radius: 0 5px 5px 0; }
 
     .grid-empty-msg {
       grid-column: 1 / -1;
@@ -3143,11 +3147,10 @@
   </div>
 </div>
 
-<!-- ── 할일 일괄 추가 바텀시트(2026-07-19 추가) — 근무 일괄 수정과 형식은
-     같지만(입력칸+색 스와치+취소/적용), 근무와 헷갈리지 않게 팔레트를
-     CATEGORY_COLOR_PRESETS로 다르게 쓰고 결과물도 이어진 근무 띠가 아니라
-     양끝이 둥근 기간 할 일 띠(cell-period-band)로 그려져 구조적으로도
-     구별됨. ── -->
+<!-- ── 할일 일괄 추가 바텀시트(2026-07-19 추가, 같은 날 색·모양 재조정) —
+     근무 일괄 수정과 형식은 같고(입력칸+색 스와치+취소/적용), 색 팔레트
+     (SHIFT_COLOR_PRESETS)와 결과물 띠 모양(cell-period-band, 근무 띠와
+     같은 좌우 연결형)도 근무 표시와 통일함. ── -->
 <div id="bulk-todo-overlay">
   <div id="bulk-todo-panel">
     <h2>할일 일괄 추가</h2>
@@ -5765,20 +5768,22 @@
     openBulkTodoSheet();
   });
 
-  // ── 할일 일괄 추가(2026-07-19 추가) ──
-  // 근무 일괄 수정 시트와 형식은 같지만(입력칸+색 스와치+취소/적용), 근무
-  // 색과 안 겹치도록 CATEGORY_COLOR_PRESETS(카테고리 전용 팔레트, 이미
-  // 있던 상수 재사용)를 써서 팔레트 자체가 다르고, 결과물도 근무처럼 옆
-  // 칸과 맞닿는 각진 띠가 아니라 기간(멀티데이) 할 일과 완전히 같은,
-  // 양끝이 둥근 알약 모양 띠(cell-period-band)로 그려져 구조적으로도
-  // 구별됨. 선택한 날짜 범위 그대로 date~endDate를 잡은 새 한 번짜리
-  // 할 일 하나를 만듦(하루만 골랐으면 그냥 평소의 하루짜리 할 일이 됨).
-  let bulkTodoSelectedColor = CATEGORY_COLOR_PRESETS[0];
+  // ── 할일 일괄 추가(2026-07-19 추가, 같은 날 색·모양 재조정) ──
+  // 근무 일괄 수정 시트와 형식은 같음(입력칸+색 스와치+취소/적용).
+  // **색·모양을 근무 표시와 맞춤(2026-07-19)** — 처음엔 근무와 안 헷갈리게
+  // CATEGORY_COLOR_PRESETS(카테고리 전용 팔레트)를 쓰고 양끝이 둥근 알약
+  // 모양으로 일부러 다르게 만들었는데, 사용자가 "근무 색·톤을 맞추고
+  // 근무처럼 좌우 꽉 채워 연결시켜달라"고 재요청해서 SHIFT_COLOR_PRESETS로
+  // 바꾸고(위 .cell-period-band CSS도 같이 근무 띠와 같은 모양으로 바꿈)
+  // 근무 표시와 톤·모양을 통일함. 선택한 날짜 범위 그대로 date~endDate를
+  // 잡은 새 한 번짜리 할 일 하나를 만듦(하루만 골랐으면 그냥 평소의
+  // 하루짜리 할 일이 됨).
+  let bulkTodoSelectedColor = SHIFT_COLOR_PRESETS[0];
 
   function renderBulkTodoSwatches() {
     const wrap = document.getElementById('bulk-todo-swatches');
     wrap.innerHTML = '';
-    CATEGORY_COLOR_PRESETS.forEach(function (preset) {
+    SHIFT_COLOR_PRESETS.forEach(function (preset) {
       const swatch = document.createElement('button');
       swatch.type = 'button';
       swatch.className = 'shift-color-swatch' + (preset === bulkTodoSelectedColor ? ' active' : '');
@@ -5807,7 +5812,7 @@
     document.getElementById('bulk-todo-count').textContent = bulkShiftSelectedDates.size + '개 날짜 선택됨';
     document.getElementById('bulk-todo-input').value = '';
     document.getElementById('bulk-todo-warn').textContent = '';
-    bulkTodoSelectedColor = CATEGORY_COLOR_PRESETS[0];
+    bulkTodoSelectedColor = SHIFT_COLOR_PRESETS[0];
     renderBulkTodoSwatches();
     document.getElementById('bulk-todo-overlay').classList.add('open');
     document.getElementById('bulk-todo-input').focus();
