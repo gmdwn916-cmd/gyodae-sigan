@@ -265,6 +265,8 @@ public class TodayWidgetProvider extends AppWidgetProvider {
         views.setTextViewText(idFor(context, "today_shift"), "");
         views.setTextColor(idFor(context, "today_shift"), secondaryText);
         views.setViewVisibility(idFor(context, "today_shift_bg"), View.GONE);
+        views.setTextColor(idFor(context, "today_weather"), secondaryText);
+        views.setViewVisibility(idFor(context, "today_weather"), View.GONE);
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String raw = prefs.getString(KEY_TODAY_DATA, null);
@@ -279,6 +281,17 @@ public class TodayWidgetProvider extends AppWidgetProvider {
                 JSONObject obj = new JSONObject(raw);
                 views.setTextViewText(idFor(context, "today_date"), obj.optString("dateLabel", ""));
                 todayDate = obj.optString("date", "");
+
+                // 둘째 줄: 기온·날씨 이모지(2026-07-19 추가) — 날짜·근무가
+                // 있는 첫 줄과 분리된 자리(사용자 요청). 데이터가 없으면
+                // (위치 권한 거부 등) 줄 자체를 GONE으로 숨겨서 빈 줄이
+                // 남지 않게 함(위 기본값 리셋에서 이미 GONE으로 해뒀으니
+                // 여기선 있을 때만 VISIBLE로 바꿔주면 됨).
+                String weatherLabel = obj.optString("weatherLabel", "");
+                if (!weatherLabel.isEmpty()) {
+                    views.setTextViewText(idFor(context, "today_weather"), weatherLabel);
+                    views.setViewVisibility(idFor(context, "today_weather"), View.VISIBLE);
+                }
 
                 String shiftName = obj.optString("shiftName", "");
                 String color = obj.optString("color", "");

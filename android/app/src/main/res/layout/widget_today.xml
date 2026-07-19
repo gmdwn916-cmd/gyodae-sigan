@@ -60,6 +60,18 @@
         </RelativeLayout>
     </LinearLayout>
 
+    <!-- 둘째 줄: 기온·날씨 이모지(2026-07-19 추가, 첫 줄(날짜+근무)과 분리해
+         달라는 요청 — 날씨 데이터가 없으면(위치 권한 거부 등) GONE으로
+         숨겨서 이 줄 자체가 차지하는 자리도 없게 함. -->
+    <TextView
+        android:id="@+id/today_weather"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:paddingBottom="4dp"
+        android:textColor="@color/widget_text_secondary"
+        android:textSize="13sp"
+        android:visibility="gone" />
+
     <ListView
         android:id="@+id/today_list"
         android:layout_width="match_parent"
