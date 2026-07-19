@@ -1335,19 +1335,26 @@
       color: var(--text-3);
     }
 
-    /* 근무 띠(.cell-shift-band)와 완전히 같은 박스 모양으로 통일(2026-07-19,
-       사용자 요청 — "근무처럼 좌우 꽉채워 연결시켜줘") — 칸 좌우 여백(4px)
-       만큼 옆으로 늘려서 옆 칸(또는 같은 할 일의 다음 날짜 칸)과 항상 맞닿게
-       하고, 모서리도 둥글리지 않음. 예전엔 폭이 칸 안에서 끝나고 시작/끝
-       칸만 둥글린 알약 모양이었는데, 근무 띠와 색 톤(SHIFT_COLOR_PRESETS
-       재사용, 아래 openBulkTodoSheet 참고)을 맞추면서 모양도 같이 맞춤. */
+    /* 근무 띠(.cell-shift-band)와 박스 모양은 맞추되(칸 좌우 여백만큼 늘려
+       옆 칸과 맞닿음, 2026-07-19 "근무처럼 좌우 꽉채워 연결시켜줘"), 색은
+       근무와 톤(15% 옅은 배경 + 그 색 글자, applyShiftBadgeColor와 같은
+       레시피)만 맞추고 실제 색상값은 다른 팔레트를 씀(같은 날 재조정 —
+       "색이 너무 튀어... 근무와 색 자체는 차별을 주고, 톤은 맞춰줘"),
+       배경을 꽉 채운 진한 색이 아니라 근무처럼 옅게. 모서리는 시작/끝
+       칸에서만 살짝 둥글림(아래 .band-start/.band-end, "모서리 약간
+       둥글게"). **두께는 근무보다 1px 얇음**(근무 16px, 이건 15px —
+       "근무 띠 두께를 할일보다 1 크게") — 날짜 칸 줄 높이를 통일해둔
+       근무 띠(16px, "핵심 로직" 문서 참고)는 그대로 두고 이 띠만 살짝
+       낮춤. 배경·글자색은 JS(appendEventIndicators)가 ev.color 유무와
+       무관하게 항상 인라인으로 심음 — 여기 값은 JS가 실행되기 전(또는
+       실패했을 때) 대비 기본값일 뿐. */
     .cell-period-band {
       width: calc(100% + 8px);
       margin: 3px -4px 0;
-      height: 16px;
-      line-height: 16px;
-      background: #5e5ce6;
-      color: #fff;
+      height: 15px;
+      line-height: 15px;
+      background: rgba(94,92,230,0.15);
+      color: #5e5ce6;
       font-size: 10px;
       font-weight: 700;
       padding: 0 5px;
@@ -1357,6 +1364,9 @@
       text-overflow: ellipsis;
       border-radius: 0;
     }
+
+    .cell-period-band.band-start { border-radius: 4px 0 0 4px; }
+    .cell-period-band.band-end { border-radius: 0 4px 4px 0; }
 
     .grid-empty-msg {
       grid-column: 1 / -1;
@@ -5351,10 +5361,13 @@
       const ev = periodEvents[0];
       const band = document.createElement('div');
       band.className = 'cell-period-band';
-      // 달력 드래그로 만든 기간 할 일은 그때 고른 색을 가짐(2026-07-19 추가) —
-      // 없으면(예전 방식으로 만들어졌거나 색을 안 고른 경우) 원래 고정
-      // 보라색 그대로.
-      if (ev.color) band.style.background = ev.color;
+      // 달력 드래그로 만든 기간 할 일은 그때 고른 색을 가짐(2026-07-19 추가,
+      // 같은 날 근무와 같은 톤으로 재조정) — 근무 띠(applyShiftBadgeColor)와
+      // 같은 레시피(15% 옅은 배경 + 그 색 글자)로 칠함, 색이 없으면(예전
+      // 방식 등) 원래 고정 보라를 이 레시피로 씀.
+      const bandColor = ev.color || '#5e5ce6';
+      band.style.background = 'rgba(' + hexToRgb(bandColor) + ',0.15)';
+      band.style.color = bandColor;
       if (ev.date === cellDateStr) { band.classList.add('band-start'); band.textContent = ev.text; }
       if (ev.endDate === cellDateStr) band.classList.add('band-end');
       cell.appendChild(band);
@@ -5768,22 +5781,25 @@
     openBulkTodoSheet();
   });
 
-  // ── 할일 일괄 추가(2026-07-19 추가, 같은 날 색·모양 재조정) ──
+  // ── 할일 일괄 추가(2026-07-19 추가, 같은 날 색·모양 두 차례 재조정) ──
   // 근무 일괄 수정 시트와 형식은 같음(입력칸+색 스와치+취소/적용).
-  // **색·모양을 근무 표시와 맞춤(2026-07-19)** — 처음엔 근무와 안 헷갈리게
-  // CATEGORY_COLOR_PRESETS(카테고리 전용 팔레트)를 쓰고 양끝이 둥근 알약
-  // 모양으로 일부러 다르게 만들었는데, 사용자가 "근무 색·톤을 맞추고
-  // 근무처럼 좌우 꽉 채워 연결시켜달라"고 재요청해서 SHIFT_COLOR_PRESETS로
-  // 바꾸고(위 .cell-period-band CSS도 같이 근무 띠와 같은 모양으로 바꿈)
-  // 근무 표시와 톤·모양을 통일함. 선택한 날짜 범위 그대로 date~endDate를
-  // 잡은 새 한 번짜리 할 일 하나를 만듦(하루만 골랐으면 그냥 평소의
-  // 하루짜리 할 일이 됨).
-  let bulkTodoSelectedColor = SHIFT_COLOR_PRESETS[0];
+  // **색상 값은 근무와 다른 팔레트, 톤(칠하는 방식)만 통일(2026-07-19,
+  // 두 번째 재조정)** — 1차로 SHIFT_COLOR_PRESETS를 그대로 재사용했다가,
+  // "색이 너무 튀어, 근무와 색 자체는 차별을 주고 톤은 맞춰달라"는 요청으로
+  // 다시 CATEGORY_COLOR_PRESETS(카테고리 전용 팔레트, 근무색과 안 겹침)로
+  // 되돌림 — 대신 "톤을 맞춘다"는 실제로는 근무 띠와 같은 칠하는 방식
+  // (applyShiftBadgeColor처럼 15% 옅은 배경 + 그 색 글자, 위
+  // .cell-period-band 참고)을 쓰는 것으로 구현. 즉 근무는 "이 색들 중
+  // 하나", 할일은 "저 색들 중 하나"로 고르는 팔레트 자체는 다르지만, 둘 다
+  // 화면에는 옅은 배경 위에 그 색 글자로 똑같이 은은하게 나타남. 선택한
+  // 날짜 범위 그대로 date~endDate를 잡은 새 한 번짜리 할 일 하나를 만듦
+  // (하루만 골랐으면 그냥 평소의 하루짜리 할 일이 됨).
+  let bulkTodoSelectedColor = CATEGORY_COLOR_PRESETS[0];
 
   function renderBulkTodoSwatches() {
     const wrap = document.getElementById('bulk-todo-swatches');
     wrap.innerHTML = '';
-    SHIFT_COLOR_PRESETS.forEach(function (preset) {
+    CATEGORY_COLOR_PRESETS.forEach(function (preset) {
       const swatch = document.createElement('button');
       swatch.type = 'button';
       swatch.className = 'shift-color-swatch' + (preset === bulkTodoSelectedColor ? ' active' : '');
@@ -5812,7 +5828,7 @@
     document.getElementById('bulk-todo-count').textContent = bulkShiftSelectedDates.size + '개 날짜 선택됨';
     document.getElementById('bulk-todo-input').value = '';
     document.getElementById('bulk-todo-warn').textContent = '';
-    bulkTodoSelectedColor = SHIFT_COLOR_PRESETS[0];
+    bulkTodoSelectedColor = CATEGORY_COLOR_PRESETS[0];
     renderBulkTodoSwatches();
     document.getElementById('bulk-todo-overlay').classList.add('open');
     document.getElementById('bulk-todo-input').focus();
