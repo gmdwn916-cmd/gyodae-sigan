@@ -3474,7 +3474,15 @@
     data: '<svg viewBox="0 0 24 24"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>',
     alarm: '<svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>',
     help: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2-2.6 3.8"/><circle cx="12" cy="17" r="0.1" fill="currentColor" stroke="currentColor" stroke-width="2"/></svg>',
+    feedback: '<svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>',
   };
+
+  // 설정 탭 "피드백 보내기"(2026-07-20 추가) — 이 앱은 서버가 없어서 사용자
+  // 피드백(글+사진/영상)을 직접 받는 기능을 만드는 대신 구글 폼(파일 업로드
+  // 질문 포함)을 씀 — 눌러서 이 주소를 열기만 하면 됨(제출된 내용은 사장님이
+  // 공유해둔 구글 시트에 쌓이고, "피드백 확인해줘"라고 물을 때만 그 시트를
+  // 확인해서 요약해드리는 방식 — 실시간 취합 아님, 사용자 명시적 요청).
+  const FEEDBACK_FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSeoJTjIH8Nq_8D31URXZlk3gAS1tQLLD421OijBTBa9spt3Ww/viewform?usp=header';
 
   function getShiftColor(name) {
     if (!name) return null;
@@ -5902,6 +5910,10 @@
       }},
       { key: 'data', icon: SETTINGS_ICONS.data, label: '데이터 백업', getValue: function() { return ''; }},
       { key: 'help', icon: SETTINGS_ICONS.help, label: '도움말', getValue: function() { return ''; }},
+      { key: 'feedback', icon: SETTINGS_ICONS.feedback, label: '피드백 보내기', getValue: function() { return ''; },
+        // 이 항목만 상세 화면(sd-feedback)을 여는 대신 구글 폼을 새 탭/브라우저로
+        // 바로 염 — appendSettingsRow가 onClick이 있으면 그걸 우선 씀.
+        onClick: function() { window.open(FEEDBACK_FORM_URL, '_blank'); } },
     ];
 
     // 항목 개수가 늘면서 한 줄로 쭉 나열돼 있으면 찾기 번거로워져서, 성격별로
@@ -5913,7 +5925,7 @@
       { label: '근무', keys: ['cycle', 'colors', 'alarms'] },
       { label: '화면', keys: ['weekstart', 'theme'] },
       { label: '기타', keys: ['teams', 'data'] },
-      { label: '정보', keys: ['help'] },
+      { label: '정보', keys: ['help', 'feedback'] },
     ];
 
     var listEl = document.getElementById('settings-list-view');
@@ -5948,7 +5960,10 @@
       row.appendChild(infoEl);
       row.appendChild(chevronEl);
 
-      row.addEventListener('click', function() { openSettingsDetail(item.key); });
+      row.addEventListener('click', function() {
+        if (item.onClick) { item.onClick(); return; }
+        openSettingsDetail(item.key);
+      });
       listEl.appendChild(row);
     }
 
