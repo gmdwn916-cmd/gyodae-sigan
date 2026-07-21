@@ -14,8 +14,8 @@
     android:background="@drawable/widget_background"
     android:paddingStart="10dp"
     android:paddingEnd="8dp"
-    android:paddingTop="6dp"
-    android:paddingBottom="6dp">
+    android:paddingTop="4dp"
+    android:paddingBottom="4dp">
 
     <TextView
         android:id="@+id/tt_date"
@@ -23,7 +23,7 @@
         android:layout_height="wrap_content"
         android:textStyle="bold"
         android:textColor="@color/widget_text_primary"
-        android:textSize="13sp"
+        android:textSize="16sp"
         android:maxLines="1" />
 
     <LinearLayout
@@ -42,7 +42,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="9sp" />
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/tt_shift_0"
             android:layout_width="match_parent"
@@ -52,9 +52,9 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textStyle="bold"
-            android:textSize="11sp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp" />
+            android:textSize="14sp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -73,7 +73,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="9sp" />
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/tt_shift_1"
             android:layout_width="match_parent"
@@ -83,9 +83,9 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textStyle="bold"
-            android:textSize="11sp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp" />
+            android:textSize="14sp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -104,7 +104,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="9sp" />
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/tt_shift_2"
             android:layout_width="match_parent"
@@ -114,9 +114,9 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textStyle="bold"
-            android:textSize="11sp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp" />
+            android:textSize="14sp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -135,7 +135,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="9sp" />
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/tt_shift_3"
             android:layout_width="match_parent"
@@ -145,9 +145,9 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textStyle="bold"
-            android:textSize="11sp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp" />
+            android:textSize="14sp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -166,7 +166,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="9sp" />
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/tt_shift_4"
             android:layout_width="match_parent"
@@ -176,9 +176,9 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textStyle="bold"
-            android:textSize="11sp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp" />
+            android:textSize="14sp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
     </LinearLayout>
 
     <LinearLayout
@@ -197,7 +197,7 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textColor="@color/widget_text_secondary"
-            android:textSize="9sp" />
+            android:textSize="11sp" />
         <TextView
             android:id="@+id/tt_shift_5"
             android:layout_width="match_parent"
@@ -207,9 +207,9 @@
             android:maxLines="1"
             android:ellipsize="end"
             android:textStyle="bold"
-            android:textSize="11sp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp" />
+            android:textSize="14sp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp" />
     </LinearLayout>
 
 </LinearLayout>

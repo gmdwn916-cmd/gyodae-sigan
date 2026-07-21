@@ -83,11 +83,14 @@ public class TeamTodayWidgetProvider extends AppWidgetProvider {
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
         int accentBlue = 0xFF007AFF;
 
-        // 자료가 없거나 깨져 있어도 안전하게 빈 상태로 시작
+        // 자료가 없거나 깨져 있어도 안전하게 빈 상태로 시작(매번 새
+        // RemoteViews를 만들어서 기본값은 항상 투명이지만, 습관적으로 명시
+        // 리셋 — 다른 위젯들에서 겪었던 "이전 상태가 남는" 함정 예방).
         views.setTextViewText(idFor(context, "tt_date"), "");
         views.setTextColor(idFor(context, "tt_date"), primaryText);
         for (int i = 0; i < MAX_TEAMS; i++) {
             views.setViewVisibility(idFor(context, "tt_slot_" + i), View.GONE);
+            views.setInt(idFor(context, "tt_slot_" + i), "setBackgroundColor", 0x00000000);
         }
 
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
@@ -111,6 +114,11 @@ public class TeamTodayWidgetProvider extends AppWidgetProvider {
                         boolean isMyTeam = team.optBoolean("isMyTeam", false);
                         views.setTextViewText(nameId, team.optString("name", ""));
                         views.setTextColor(nameId, isMyTeam ? accentBlue : secondaryText);
+                        // 내 팀 칸을 "오늘" 표시와 같은 방식으로 강조(2026-07-21
+                        // 요청) — 앱의 다른 화면들이 "오늘"에 쓰는 옅은 파란
+                        // 배경(rgba(0,122,255,0.08), 팀 근무 비교 표의
+                        // `.tst-date-row.today`와 같은 톤)을 이 칸 전체에 입힘.
+                        views.setInt(slotId, "setBackgroundColor", isMyTeam ? 0x14007AFF : 0x00000000);
 
                         String shiftName = team.optString("shiftName", "");
                         String color = team.optString("color", "");
