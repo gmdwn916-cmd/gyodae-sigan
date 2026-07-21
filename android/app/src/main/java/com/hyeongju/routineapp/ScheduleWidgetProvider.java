@@ -8,6 +8,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.Spannable;
 import android.text.SpannableString;
@@ -15,6 +16,7 @@ import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StrikethroughSpan;
+import android.util.SizeF;
 import android.view.View;
 import android.widget.RemoteViews;
 
@@ -22,6 +24,9 @@ import androidx.core.content.ContextCompat;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.Map;
 
 // N주 스케줄 위젯 — 한 줄에 한 주(7칸)씩 보여주는 요일 그리드 + 페이지(주 단위)
 // 넘기기. 위젯 2(달력)와 완전히 같은 원칙 — 근무 계산·할 일 목록 판단은 전부
@@ -33,6 +38,25 @@ import org.json.JSONObject;
 // 나머지는 GONE. JS가 넘겨주는 `weeks[]`(예전 `pages[]`를 "2주" 단위에서
 // "1주" 단위로 세분화, 넉넉한 범위를 한 번에 계산해 넘김)에서 현재 위젯
 // 크기에 맞는 구간만 그림.
+// **같은 날 재수정 — 실기기(삼성 One UI)에서 4x1인데도 2주가 그대로 나오는
+// 버그 발견**: 처음엔 `OPTION_APPWIDGET_MIN_HEIGHT`(dp)를 읽어 "70×n-30"
+// 공식으로 몇 줄인지 직접 역산했는데, 이 공식은 이 프로젝트가 위젯
+// minWidth/minHeight를 "선언"할 때 쓰는 값일 뿐 — 실제 기기·런처(특히
+// 삼성 One UI)가 리사이즈 시 보고하는 dp 값이 이 공식과 정확히 일치한다는
+// 보장이 전혀 없었음(안드로이드 공식 문서의 그 공식은 "위젯 제작자가
+// 선언할 때 쓰는 참고값"이지 "런처가 실제로 보고하는 값"이 아님). 그래서
+// 실기기에서 4x1로 줄여도 계산 결과가 계속 2(또는 그 이상)로 나와 2주가
+// 그대로 렌더링됐음. **고침**: 직접 dp를 읽어 계산하는 대신, 안드로이드
+// 12(API 31)부터 있는 `RemoteViews(Map<SizeF, RemoteViews>)`(반응형 위젯)
+// API로 바꿔서, "이 크기 이상일 때 보여줄 화면"을 5가지(1~5주) 미리
+// 만들어두고 **안드로이드 자신이** 지금 위젯에 실제로 할당된 크기와 비교해
+// 그중 맞는 걸 고르게 함 — 그러니 이 프로젝트가 dp 공식을 정확히 맞힐 필요
+// 자체가 없어짐(안드로이드가 이미 알고 있는 진짜 크기로 직접 비교하므로).
+// API 31 미만(이 프로젝트 minSdk 24)에서는 이 생성자 자체가 없어서, 그런
+// 기기에서는 그냥 예전처럼 "항상 2주"(DEFAULT_VISIBLE_WEEKS) 고정 — 사용자
+// 요청("4x2는 2주치만 나오던 전 버전으로")과도 맞물려, 리사이즈를 안정적으로
+// 판단 못 하는 기기에서는 아예 예전 고정 동작으로 되돌아가는 게 더 안전
+// 하다고 판단.
 public class ScheduleWidgetProvider extends AppWidgetProvider {
     public static final String PREFS_NAME = "widget_bridge";
     public static final String KEY_SCHEDULE_DATA = "schedule_widget_data";
@@ -45,7 +69,7 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
 
     private static final int MAX_TODOS_PER_CELL = 3;
     private static final int MAX_WEEKS = 5; // 레이아웃에 미리 선언해둔 최대 줄 수
-    private static final int DEFAULT_VISIBLE_WEEKS = 2; // 위젯 크기를 못 읽었을 때의 기본값(예전 고정 2주와 동일)
+    private static final int DEFAULT_VISIBLE_WEEKS = 2; // API 31 미만 기기·크기 정보 없음일 때의 고정값(예전 버전과 동일)
     // JS의 SCHEDULE_WEEK_OFFSET_START(-5)와 반드시 같은 값 — weeks[] 배열의
     // 몇 번째 인덱스가 "이번 주"(오프셋 0)인지 계산하는 데 씀.
     private static final int WEEK_OFFSET_START = -5;
@@ -53,6 +77,15 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
     // 자료를 받을 때마다 이 값으로 되돌리기 위해 public으로 노출.
     public static final int DEFAULT_WEEK_START_INDEX = -WEEK_OFFSET_START;
 
+    // 반응형 위젯(SizeF 맵)에서 각 "N주" 화면이 필요로 하는 최소 크기(dp) —
+    // 폭은 어차피 어떤 실제 크기든 항상 만족하도록 넉넉히 작은 값 하나로
+    // 고정(가로 리사이즈는 이 기능과 무관), 높이만 "70×n-30" 공식으로 구간을
+    // 나눔 — 이 값 자체가 실제 기기와 정확히 일치할 필요는 없음(안드로이드가
+    // "이 최소 크기를 만족하는 것 중 가장 큰 것"을 골라주는 방식이라, 예를
+    // 들어 실제 1줄 높이가 90dp인 기기여도 "2주"가 요구하는 110dp보다는
+    // 작으므로 "1주" 화면이 정확히 선택됨 — 여러 후보 중 상대적으로 비교되는
+    // 구조라 절대값이 조금 어긋나도 안전함).
+    private static final float VARIANT_WIDTH_DP = 100f;
 
     private static final String ACTION_PREV = "com.hyeongju.routineapp.SCHEDULE_PREV";
     private static final String ACTION_NEXT = "com.hyeongju.routineapp.SCHEDULE_NEXT";
@@ -98,9 +131,12 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
             // 여러 인스턴스가 있으면 이 위젯들은 시작 인덱스를 공유하므로
             // (예전 페이지 인덱스도 마찬가지), 몇 주씩 넘길지는 그중 첫
             // 인스턴스의 현재 크기를 기준으로 정함 — 사실상 거의 항상
-            // 인스턴스가 하나뿐이라 실사용에서 문제되지 않음.
+            // 인스턴스가 하나뿐이라 실사용에서 문제되지 않음. 실제 렌더링과
+            //달리 이 "몇 주씩 넘길지"는 정확한 판단이 아니어도 큰 문제가
+            // 없어서(최악의 경우도 그냥 조금 더/덜 넘어가는 정도) 기존
+            // 방식(dp 어림) 그대로 둠.
             int[] ids = AppWidgetManager.getInstance(context).getAppWidgetIds(new ComponentName(context, ScheduleWidgetProvider.class));
-            int visibleWeeks = ids.length > 0 ? estimateVisibleWeeks(context, ids[0]) : DEFAULT_VISIBLE_WEEKS;
+            int visibleWeeks = ids.length > 0 ? estimateVisibleWeeksForPaging(context, ids[0]) : DEFAULT_VISIBLE_WEEKS;
             int maxIdx = Math.max(0, totalWeeks - visibleWeeks);
             idx = ACTION_PREV.equals(action) ? Math.max(0, idx - visibleWeeks) : Math.min(maxIdx, idx + visibleWeeks);
             prefs.edit().putInt(KEY_WEEK_START_INDEX, idx).apply();
@@ -124,8 +160,10 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // 위젯 크기가 바뀌면(4x1~4x5 리사이즈, 2026-07-21 추가) 몇 주를 보여줄지도
-    // 다시 계산해야 함(다른 위젯들의 onAppWidgetOptionsChanged와 같은 이유).
+    // 위젯 크기가 바뀌면(4x1~4x5 리사이즈, 2026-07-21 추가) 다시 그려야 함
+    // (다른 위젯들의 onAppWidgetOptionsChanged와 같은 이유) — API 31+에서는
+    // 사실 SizeF 맵 자체가 알아서 다시 골라주지만, 배경/테마 등 다른 값도
+    // 같이 새로 그려야 하므로 그대로 둠.
     @Override
     public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
             int appWidgetId, Bundle newOptions) {
@@ -158,15 +196,12 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // 위젯 크기(세로 dp)로 몇 주(줄)를 보여줄지 계산 — 처음엔 "헤더+패딩
-    // 어림값" 방식으로 추정했는데, "4x1이면 정확히 1주, 4x2면 정확히 2주"
-    // 요청으로 어림 계산 대신 안드로이드 위젯 크기 공식을 그대로 역산함:
-    // 이 프로젝트의 다른 위젯들 minWidth/minHeight 값이 전부 공식 문서의
-    // "cells = (size+30)/70" 규칙을 따르고 있음(예: 2x2 위젯들의 110dp =
-    // 70*2-30, 1x1 위젯의 40dp = 70*1-30, 이 위젯 자체의 minWidth 250dp =
-    // 70*4-30) — 그러니 반대로 `(minHeightDp+30)/70`을 반올림하면 지금 몇
-    // 행(줄)짜리로 배치돼 있는지 정확히 나옴(2026-07-21 재조정).
-    private static int estimateVisibleWeeks(Context context, int appWidgetId) {
+    // 이전/다음 버튼을 눌렀을 때 "몇 주씩 넘길지"만 정하는 용도(실제 화면에
+    // 몇 주가 보이는지와 100% 일치하지 않아도 괜찮음 — 안 맞으면 그냥 조금
+    // 더/덜 넘어갈 뿐, 렌더링 자체가 깨지지는 않음). 실제 렌더링은
+    // buildViewsForWeeks()를 SizeF 맵으로 감싸는 updateOne()이 담당하고,
+    // 이 함수는 그것과 별개로 dp 어림 계산만 씀.
+    private static int estimateVisibleWeeksForPaging(Context context, int appWidgetId) {
         if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return DEFAULT_VISIBLE_WEEKS;
         try {
             Bundle opts = AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId);
@@ -229,7 +264,25 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    // API 31+에서는 "1~5주" 화면을 전부 미리 만들어 SizeF 맵으로 감싸서,
+    // 실제로 몇 주를 보여줄지는 안드로이드가 현재 위젯 크기와 비교해 직접
+    // 고르게 함(위 클래스 주석 참고) — dp 어림 계산이 아예 필요 없어짐.
+    // API 31 미만은 이 생성자가 없어서 그냥 "2주 고정" 화면 하나만 씀(예전
+    // 버전과 동일한 동작).
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            Map<SizeF, RemoteViews> variants = new HashMap<>();
+            for (int weeks = 1; weeks <= MAX_WEEKS; weeks++) {
+                float minHeightDp = 70f * weeks - 30f;
+                variants.put(new SizeF(VARIANT_WIDTH_DP, minHeightDp), buildViewsForWeeks(context, appWidgetId, weeks));
+            }
+            appWidgetManager.updateAppWidget(appWidgetId, new RemoteViews(variants));
+        } else {
+            appWidgetManager.updateAppWidget(appWidgetId, buildViewsForWeeks(context, appWidgetId, DEFAULT_VISIBLE_WEEKS));
+        }
+    }
+
+    private static RemoteViews buildViewsForWeeks(Context context, int appWidgetId, int visibleWeeks) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_schedule);
 
         Intent openIntent = new Intent(context, MainActivity.class);
@@ -262,11 +315,9 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         int primaryText = WidgetThemeHelper.primaryTextColor(context);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
 
-        int visibleWeeks = estimateVisibleWeeks(context, appWidgetId);
-
-        // 위젯 크기(리사이즈)에 맞는 줄만 보이게, 나머지는 GONE(2026-07-21
-        // 추가) — GONE인 형제는 부모 LinearLayout의 weight 배분에서 자동으로
-        // 빠지므로, 보이는 줄들이 남는 세로 공간을 알아서 나눠 채움.
+        // 이 화면 변형이 보여줄 줄 수만 VISIBLE, 나머지는 GONE — GONE인
+        // 형제는 부모 LinearLayout의 weight 배분에서 자동으로 빠지므로,
+        // 보이는 줄들이 남는 세로 공간을 알아서 나눠 채움.
         for (int r = 0; r < MAX_WEEKS; r++) {
             views.setViewVisibility(idFor(context, "sch_week_row_" + r), r < visibleWeeks ? View.VISIBLE : View.GONE);
         }
@@ -466,6 +517,6 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
             }
         }
 
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+        return views;
     }
 }
