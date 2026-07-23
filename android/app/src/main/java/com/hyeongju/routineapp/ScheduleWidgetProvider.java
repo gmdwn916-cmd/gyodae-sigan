@@ -13,7 +13,6 @@ import android.os.Bundle;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
-import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StrikethroughSpan;
 import android.util.SizeF;
@@ -110,14 +109,25 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
     // 칸) 둘 다 이 조건에 해당 — 보이는 범위가 두 달에 걸치면(예: 7/21~8/3)
     // 두 군데 다 월이 붙어서 보임("2개 다 표시" 요청). 나머지 칸은 그대로
     // 날짜 숫자만.
+    // 공휴일 이름이 이보다 길면(2026-07-23 추가, 달력 위젯과 같은 기준) 칸에
+    // 다 안 들어가서 삐져나오므로 점(•) 하나만 표시 — "대체공휴일"(5자)을
+    // 예로 들며 요청받음, 자세한 기준은 달력 위젯(MonthCalendarWidgetProvider)
+    // 주석 참고.
+    private static final int HOLIDAY_NAME_MAX_CHARS = 3;
+
+    // **색은 여기서 안 입힘(2026-07-23부터)** — 날짜 숫자까지 포함해서 TextView
+    // 전체를 공휴일 색으로 칠하는 쪽으로 바뀌어서(달력 탭이 `.is-holiday
+    // .cell-date`로 숫자까지 빨갛게 칠하는 것과 통일, 아래 호출부의
+    // `views.setTextColor(dateId, HOLIDAY_COLOR)` 참고), 이 함수는 텍스트
+    // 내용과 크기만 책임짐.
     private static CharSequence buildDateText(int dayNum, int monthNum, boolean showMonth, String holidayName) {
         String numStr = showMonth ? (monthNum + "/" + dayNum) : String.valueOf(dayNum);
         if (holidayName == null || holidayName.isEmpty()) return numStr;
-        SpannableStringBuilder ssb = new SpannableStringBuilder(numStr + " " + holidayName);
+        String suffix = holidayName.length() > HOLIDAY_NAME_MAX_CHARS ? "•" : holidayName;
+        SpannableStringBuilder ssb = new SpannableStringBuilder(numStr + " " + suffix);
         int start = numStr.length() + 1;
         int end = ssb.length();
         ssb.setSpan(new RelativeSizeSpan(0.62f), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        ssb.setSpan(new ForegroundColorSpan(HOLIDAY_COLOR), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         return ssb;
     }
 
@@ -441,6 +451,12 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
                             // 실제로 넘어가는 칸(dayNum==1)일 때만 월을 붙임.
                             boolean showMonth = (r == 0 && c == 0) || (dayNum == 1);
                             views.setTextViewText(dateId, buildDateText(dayNum, monthNum, showMonth, holidayName));
+                            // 공휴일은 날짜 숫자까지 빨갛게(2026-07-23 추가) — 달력 탭·
+                            // 달력 위젯과 통일(UI 일관성 요청). 아래 "오늘" 체크가 이
+                            // 색을 다시 덮어써서 우선순위(오늘 > 공휴일)는 그대로 유지.
+                            if (!holidayName.isEmpty()) {
+                                views.setTextColor(dateId, HOLIDAY_COLOR);
+                            }
                             if (isToday) {
                                 views.setTextColor(dateId, 0xFF007AFF);
                                 // 오늘은 날짜 숫자만이 아니라 그 날 칸 전체에 테두리를 둘러서 표시.

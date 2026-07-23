@@ -11,7 +11,6 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
-import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -47,9 +46,21 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
     // "전체 톤과 어울리게" 요청으로 낮춤).
     private static final int HOLIDAY_COLOR = 0xFFD9645E;
 
-    // 날짜 칸의 숫자 뒤에 공휴일 이름을 작게 이어붙임(2026-07-18 추가) — 이
-    // 위젯 레이아웃엔 공휴일 전용 칸이 따로 없어서, 같은 TextView 안에 크기·색이
-    // 다른 부분(Span)을 넣는 방식으로 처리(레이아웃 XML은 안 건드림).
+    // 이 이름이 이보다 길면(2026-07-23 추가) 칸에 다 안 들어가서 삐져나오므로
+    // 점(•) 하나만 표시 — "대체공휴일"(5자)을 예로 들며 요청받음. 3자 이하인
+    // 대부분의 공휴일 이름(신정·삼일절·현충일·광복절·개천절·한글날·성탄절·
+    // 설날·추석)은 그대로 보여주고, 4자 이상(어린이날·대체공휴일·부처님오신날)만
+    // 점으로 줄임.
+    private static final int HOLIDAY_NAME_MAX_CHARS = 3;
+
+    // 날짜 칸의 숫자 뒤에 공휴일 이름(또는 너무 길면 점 하나)을 작게 이어붙임
+    // (2026-07-18 추가) — 이 위젯 레이아웃엔 공휴일 전용 칸이 따로 없어서, 같은
+    // TextView 안에 크기가 다른 부분(Span)을 넣는 방식으로 처리(레이아웃 XML은
+    // 안 건드림). **색은 여기서 안 입힘(2026-07-23부터)** — 날짜 숫자까지
+    // 포함해서 TextView 전체를 공휴일 색으로 칠하는 쪽으로 바뀌어서(달력 탭이
+    // `.is-holiday .cell-date`로 숫자까지 빨갛게 칠하는 것과 통일, 아래
+    // 호출부의 `views.setTextColor(dateId, HOLIDAY_COLOR)` 참고), 이 함수는
+    // 텍스트 내용과 크기만 책임짐.
     // showMonth가 true면 "7/21"처럼 월을 같이 붙임(2026-07-22 추가, 스케줄
     // 위젯의 buildDateText와 같은 방식) — 맨 위 월 표시(widget_month_label)를
     // 없애는 대신, 이 그리드가 실제로 보여주는 첫 칸(index 0, 다른 달 날짜가
@@ -58,11 +69,11 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
     private static CharSequence buildDateText(int dayNum, int monthNum, boolean showMonth, String holidayName) {
         String numStr = showMonth ? (monthNum + "/" + dayNum) : String.valueOf(dayNum);
         if (holidayName == null || holidayName.isEmpty()) return numStr;
-        SpannableStringBuilder ssb = new SpannableStringBuilder(numStr + " " + holidayName);
+        String suffix = holidayName.length() > HOLIDAY_NAME_MAX_CHARS ? "•" : holidayName;
+        SpannableStringBuilder ssb = new SpannableStringBuilder(numStr + " " + suffix);
         int start = numStr.length() + 1;
         int end = ssb.length();
         ssb.setSpan(new RelativeSizeSpan(0.62f), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
-        ssb.setSpan(new ForegroundColorSpan(HOLIDAY_COLOR), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         return ssb;
     }
 
@@ -384,6 +395,14 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
                                 }
                                 boolean showMonth = (i == 0) || (dayNum == 1);
                                 views.setTextViewText(dateId, buildDateText(dayNum, monthNum, showMonth, holidayName));
+
+                                // 공휴일은 날짜 숫자까지 빨갛게(2026-07-23 추가) — 달력 탭이
+                                // `.is-holiday .cell-date`로 숫자까지 공휴일 색을 입히는 것과
+                                // 통일(UI 일관성 요청). 아래 "오늘" 체크가 이 색을 다시
+                                // 덮어써서 우선순위(오늘 > 공휴일)는 그대로 유지됨.
+                                if (!holidayName.isEmpty()) {
+                                    views.setTextColor(dateId, HOLIDAY_COLOR);
+                                }
 
                                 // 다른 달 날짜는 앱 달력 탭(.other-month, opacity 0.38)과 같은
                                 // 톤으로 흐리게(2026-07-22 추가) — 칸 전체(cell_container)에
