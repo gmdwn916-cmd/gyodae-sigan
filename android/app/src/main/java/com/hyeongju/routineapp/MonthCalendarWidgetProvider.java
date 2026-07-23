@@ -23,7 +23,9 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 // 이번 달 달력을 앱의 달력 탭과 같은 모양(날짜 숫자 + 근무이름 작은 배지)으로
 // 보여주는 읽기 전용 위젯 + 이전/다음 달 넘기기. 근무 계산은 전혀 모름 —
@@ -127,10 +129,18 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
     }
 
     // 위젯이 지금 보여주고 있는 달(이전/다음 달로 넘겨봤을 수 있음)을 앱을 열 때
-    // 그대로 이어서 보여주기 위해, 그 달의 날짜 하나를 뽑아 "YYYY-MM"만 돌려줌.
-    // 근무 계산이 아니라 이미 JS가 계산해서 저장해둔 데이터에서 문자열만 잘라
-    // 쓰는 것이라 네이티브에 로직을 새로 두는 게 아님.
-    private static String currentDisplayedMonth(Context context) {
+    // 그대로 이어서 보여주기 위해 "YYYY-MM"만 돌려줌. 근무 계산이 아니라 이미
+    // JS가 계산해서 저장해둔 데이터에서 문자열만 잘라 쓰는 것이라 네이티브에
+    // 로직을 새로 두는 게 아님.
+    // **버그(수정 완료, 2026-07-23)**: 예전엔 그냥 배열의 첫 칸(index 0) 날짜를
+    // 그대로 썼는데, "다른 달 날짜까지 보여주기" 기능(otherMonth) 이후로는
+    // 그 달이 무슨 요일에 시작하느냐에 따라 index 0이 종종 지난달 날짜라서
+    // 위젯을 눌렀을 때 엉뚱한 달(지난달)이 열리는 버그가 있었음(실제 사용자
+    // 신고 — "7월 달력을 눌렀는데 6월로 간다"). **고침**: 화면에 실제로 보이는
+    // 칸(totalCells — 5줄이면 35, 6줄이면 42)만 세어서, 그중 가장 많이 나온
+    // "YYYY-MM"을 이 그리드가 대표하는 달로 판단(다수결) — 다른 달이 삐져나온
+    // 칸은 많아야 대여섯 개뿐이라 항상 실제로 보여주려는 그 달이 이김.
+    private static String currentDisplayedMonth(Context context, int totalCells) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String raw = prefs.getString(KEY_MONTH_DATA, null);
         if (raw == null) return null;
@@ -144,13 +154,28 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
             if (monthObj == null) return null;
             JSONArray days = monthObj.optJSONArray("days");
             if (days == null) return null;
-            for (int i = 0; i < days.length(); i++) {
+            Map<String, Integer> counts = new HashMap<>();
+            int limit = Math.min(days.length(), totalCells);
+            for (int i = 0; i < limit; i++) {
                 Object dayObj = days.opt(i);
                 if (dayObj instanceof JSONObject) {
                     String dateStr = ((JSONObject) dayObj).optString("date", "");
-                    if (dateStr.length() >= 7) return dateStr.substring(0, 7);
+                    if (dateStr.length() >= 7) {
+                        String ym = dateStr.substring(0, 7);
+                        Integer cur = counts.get(ym);
+                        counts.put(ym, (cur == null ? 0 : cur) + 1);
+                    }
                 }
             }
+            String best = null;
+            int bestCount = -1;
+            for (Map.Entry<String, Integer> e : counts.entrySet()) {
+                if (e.getValue() > bestCount) {
+                    bestCount = e.getValue();
+                    best = e.getKey();
+                }
+            }
+            if (best != null) return best;
         } catch (Exception e) {
             // 무시 — 못 구하면 그냥 앱이 원래 열리던 대로 열림(오늘 기준)
         }
@@ -207,7 +232,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         // 서로 다른 PendingIntent로 구분되게 함.
         openIntent.setAction("com.hyeongju.routineapp.OPEN_APP_MONTH");
         openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV, "month");
-        String targetMonth = currentDisplayedMonth(context);
+        String targetMonth = currentDisplayedMonth(context, totalCells);
         if (targetMonth != null) openIntent.putExtra(MainActivity.EXTRA_WIDGET_NAV_MONTH, targetMonth);
         PendingIntent openPending = PendingIntent.getActivity(
             context, 0, openIntent,
