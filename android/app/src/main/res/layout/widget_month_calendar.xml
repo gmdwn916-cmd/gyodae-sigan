@@ -1,20 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- 이번 달 달력 위젯(위젯 2, MonthCalendarWidgetProvider) — 4x3 크기.
-     2026-07-22 두 차례 재조정:
-     1차) 맨 위 월 라벨 삭제 + 다른 달 날짜까지 표시 + 텍스트·여백 컴팩트화로
-        6줄(42칸)을 4x3 안에 욱여넣음.
-     2차(이 파일, 같은 날 재조정) — "6줄 말고 5줄만 보여주고 그만큼 여유
-        생긴 간격을 더 써서 4x3 크기를 맞춰달라" 요청: 6번째 줄(cell 35~41)
-        자체를 레이아웃에서 삭제해 5줄(35칸)만 남기고, 그만큼 남는 세로
-        공간을 글씨 크기·여백에 다시 얹음(날짜 13→15sp, 근무 배지 11→12sp,
-        헤더 12→13sp, 칸 안쪽 위 여백/배지 위아래 여백 0dp→1dp). **트레이드
-        오프**: 6줄이 필요한 달(그 해 며칠이 어느 요일에 시작하는지에 따라
-        연중 4~5개월 정도)은 마지막 줄(그 달 실제 날짜 1~2일 또는 다음 달
-        며칠)이 이 위젯에서는 안 보임 — 달력 탭·다른 위젯에는 영향 없음,
-        이 위젯 하나만 5줄로 고정한 트레이드오프. MonthCalendarWidgetProvider.java
-        도 35칸까지만 채우도록 같이 맞춤(JS는 여전히 42칸을 계산해 넘기지만
-        네이티브가 앞 35개만 씀 — JS 쪽은 안 건드림, 스케줄 위젯 등 다른
-        곳은 여전히 42칸 전체 payload를 그대로 쓰므로 영향 없음). -->
+<!-- 이번 달 달력 위젯(위젯 2) ― 4x2~4x3+ 리사이즈(2026-07-23 세 번째 재조정).
+     처음엔 5줄/6줄을 아예 다른 두 레이아웃 파일로 만들고 API 31+의
+     RemoteViews(Map SizeF,RemoteViews)로 골라줬는데, 실제 기기(사용자
+     리포트)에서 4x2인데도 6줄(SizeF 180dp 기준)이 골라져서 잘리는 문제가
+     있었음 ― 스케줄 위젯 리사이즈 때도 겪었던 "이 프로젝트의 dp 공식이
+     실제 런처가 보고하는 값과 안 맞을 수 있다"는 문제가 이 위젯에서도
+     재현됨. API 버전 상관없이 항상 동작하고, 문제가 생겼을 때 조정할
+     지점이 명확한 방식으로 교체: 6줄 전부를 미리 이 레이아웃 하나에
+     선언해두고(week_row_5가 6번째 줄), 실행 시점에
+     AppWidgetManager.getAppWidgetOptions()로 실제 위젯 높이(dp)를 직접
+     읽어서 6번째 줄을 보여줄지 GONE으로 숨길지 코드에서 직접 결정함
+     (MonthCalendarWidgetProvider의 shouldShowSixthRow 참고) ― SizeF 맵의
+     불투명한 자동 매칭에 기대지 않고, 우리가 정한 dp 기준 하나만 보고
+     판단하므로 나중에 또 안 맞으면 그 기준값 하나만 고치면 됨(레이아웃은
+     안 건드려도 됨). -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_month_root"
     android:layout_width="match_parent"
@@ -1061,6 +1060,202 @@
                 android:textSize="15sp" />
             <TextView
                 android:id="@+id/cell_shift_34"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <LinearLayout android:id="@+id/week_row_5"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+        <LinearLayout
+            android:id="@+id/cell_container_35"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="top|center_horizontal"
+            android:paddingTop="1dp">
+            <TextView
+                android:id="@+id/cell_date_35"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="15sp" />
+            <TextView
+                android:id="@+id/cell_shift_35"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/cell_container_36"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="top|center_horizontal"
+            android:paddingTop="1dp">
+            <TextView
+                android:id="@+id/cell_date_36"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="15sp" />
+            <TextView
+                android:id="@+id/cell_shift_36"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/cell_container_37"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="top|center_horizontal"
+            android:paddingTop="1dp">
+            <TextView
+                android:id="@+id/cell_date_37"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="15sp" />
+            <TextView
+                android:id="@+id/cell_shift_37"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/cell_container_38"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="top|center_horizontal"
+            android:paddingTop="1dp">
+            <TextView
+                android:id="@+id/cell_date_38"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="15sp" />
+            <TextView
+                android:id="@+id/cell_shift_38"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/cell_container_39"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="top|center_horizontal"
+            android:paddingTop="1dp">
+            <TextView
+                android:id="@+id/cell_date_39"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="15sp" />
+            <TextView
+                android:id="@+id/cell_shift_39"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/cell_container_40"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="top|center_horizontal"
+            android:paddingTop="1dp">
+            <TextView
+                android:id="@+id/cell_date_40"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="15sp" />
+            <TextView
+                android:id="@+id/cell_shift_40"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:maxLines="1"
+                android:textStyle="bold"
+                android:textSize="12sp" />
+        </LinearLayout>
+        <LinearLayout
+            android:id="@+id/cell_container_41"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="top|center_horizontal"
+            android:paddingTop="1dp">
+            <TextView
+                android:id="@+id/cell_date_41"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:gravity="center"
+                android:textStyle="bold"
+                android:textColor="@color/widget_text_primary"
+                android:textSize="15sp" />
+            <TextView
+                android:id="@+id/cell_shift_41"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:gravity="center"

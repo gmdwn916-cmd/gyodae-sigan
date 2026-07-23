@@ -8,12 +8,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
-import android.os.Build;
+import android.os.Bundle;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
-import android.util.SizeF;
+import android.view.View;
 import android.widget.RemoteViews;
 
 import androidx.core.content.ContextCompat;
@@ -23,9 +23,7 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
-import java.util.HashMap;
 import java.util.Locale;
-import java.util.Map;
 
 // 이번 달 달력을 앱의 달력 탭과 같은 모양(날짜 숫자 + 근무이름 작은 배지)으로
 // 보여주는 읽기 전용 위젯 + 이전/다음 달 넘기기. 근무 계산은 전혀 모름 —
@@ -94,12 +92,13 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // 4x2~4x3 리사이즈(2026-07-23 추가) 때 다시 그리기 위해 필요 — API 31+에서는
-    // SizeF 맵 자체가 알아서 다시 골라주지만, 배경·테마 등 다른 값도 같이 새로
-    // 그려야 하므로 스케줄 위젯과 같은 이유로 그대로 둠.
+    // 4x2~4x3 리사이즈(2026-07-23 추가) 때 다시 그리기 위해 필요 — 몇 줄을
+    // 보여줄지가 이제 실제 리사이즈 크기(newOptions)에 달려있으므로 반드시
+    // 다시 그려야 함(SizeF 맵을 쓰던 예전 버전과 달리, 이제는 이 콜백이
+    // 없으면 리사이즈해도 화면이 안 바뀜).
     @Override
     public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
-            int appWidgetId, android.os.Bundle newOptions) {
+            int appWidgetId, Bundle newOptions) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
         updateOne(context, appWidgetManager, appWidgetId);
     }
@@ -158,33 +157,45 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         return null;
     }
 
-    // 4x2~4x3 리사이즈(2026-07-23 추가) — "4x3에서는 6줄, 4x2에서는 5줄만
-    // 보이게 해달라" 요청. 스케줄 위젯이 1주/2주를 나눴던 것과 같은 기법
-    // (API 31+의 RemoteViews(Map<SizeF,RemoteViews>) 반응형 위젯) — 5줄/6줄
-    // 레이아웃을 각각 통째로 미리 만들어두고, 실제 위젯 크기와 안드로이드
-    // 자신이 직접 비교해서 그중 맞는 걸 골라줌(이 프로젝트가 dp 공식으로
-    // "몇 줄이 보이는지" 어림짐작할 필요가 없어서, 스케줄 위젯 리사이즈
-    // 때 겪었던 "공식이 실제 런처와 안 맞는" 문제 자체가 발생할 수 없음 —
-    // 자세한 배경은 CLAUDE.md "스케줄 위젯" 항목 참고). API 31 미만 기기는
-    // 이 API 자체가 없어서 5줄 레이아웃 하나로 고정(가장 무난한 폴백).
-    private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            RemoteViews views5 = buildViews(context, R.layout.widget_month_calendar, 5);
-            RemoteViews views6 = buildViews(context, R.layout.widget_month_calendar_6rows, 6);
-            Map<SizeF, RemoteViews> sizeMap = new HashMap<>();
-            // 너비 값은 둘 다 똑같이 작게 줘서(이 위젯의 실제 minWidth 250dp보다
-            // 항상 작음) 너비가 비교에 안 걸리게 하고, 높이만으로 판단.
-            sizeMap.put(new SizeF(100f, 90f), views5);
-            sizeMap.put(new SizeF(100f, 180f), views6);
-            appWidgetManager.updateAppWidget(appWidgetId, new RemoteViews(sizeMap));
-        } else {
-            appWidgetManager.updateAppWidget(appWidgetId, buildViews(context, R.layout.widget_month_calendar, 5));
+    // 4x2~4x3 리사이즈(2026-07-23, 두 번째 시도) — "4x3에서는 6줄, 4x2에서는
+    // 5줄만 보이게 해달라" 요청. **1차 시도(실패, 같은 날 되돌림)**: 스케줄
+    // 위젯의 1주/2주 반응형 기법(API 31+ RemoteViews(Map<SizeF,RemoteViews>))을
+    // 그대로 가져와서 5줄/6줄을 별도 레이아웃 두 개로 만들고 SizeF(100,90)/
+    // (100,180)으로 매핑했는데, 실제 기기에서 4x2인데도 6줄(180dp 기준)이
+    // 골라져서 잘리는 문제가 있었음 — 이 프로젝트의 "70×n-30 dp 공식"이 실제
+    // 런처가 보고하는 값과 정확히 안 맞을 수 있다는 문제가 이 위젯에서도
+    // 재현된 것(스케줄 위젯 리사이즈 때 겪은 것과 동일한 종류). **2차 시도
+    // (현재)**: SizeF 맵의 불투명한 자동 매칭에 기대는 대신, 실행 시점에
+    // `AppWidgetManager.getAppWidgetOptions()`로 실제 위젯 높이(dp)를 직접
+    // 읽어서 6번째 줄(week_row_5)을 보여줄지 우리 코드가 직접 결정함 — 레이아웃도
+    // 5줄/6줄 두 파일 대신 6줄 전부가 있는 파일 하나로 합치고(widget_month_calendar.xml),
+    // 안 보여줄 줄만 GONE 처리(다른 위젯들의 "최대치 선언 + GONE" 관례와 동일).
+    // 이러면 API 버전과 무관하게 항상 동작하고, 기준값이 또 안 맞으면
+    // MIN_HEIGHT_FOR_SIX_ROWS_DP 숫자 하나만 고치면 됨(레이아웃·나머지 코드는
+    // 안 건드려도 됨).
+    private static final int MIN_HEIGHT_FOR_SIX_ROWS_DP = 260;
+
+    private static boolean shouldShowSixthRow(Context context, int appWidgetId) {
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) return false;
+        try {
+            Bundle opts = AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId);
+            int minHeightDp = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 0);
+            return minHeightDp >= MIN_HEIGHT_FOR_SIX_ROWS_DP;
+        } catch (Exception e) {
+            return false; // 못 구하면 안전하게 5줄(기존 최소 크기 기준)
         }
     }
 
-    private static RemoteViews buildViews(Context context, int layoutRes, int totalRows) {
+    private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        boolean showSixthRow = shouldShowSixthRow(context, appWidgetId);
+        RemoteViews views = buildViews(context, showSixthRow ? 6 : 5);
+        views.setViewVisibility(idFor(context, "week_row_5"), showSixthRow ? View.VISIBLE : View.GONE);
+        appWidgetManager.updateAppWidget(appWidgetId, views);
+    }
+
+    private static RemoteViews buildViews(Context context, int totalRows) {
         int totalCells = totalRows * 7;
-        RemoteViews views = new RemoteViews(context.getPackageName(), layoutRes);
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_month_calendar);
 
         Intent openIntent = new Intent(context, MainActivity.class);
         // 다른 위젯들(스케줄/오늘/미배치)도 전부 "MainActivity를 requestCode 0으로
