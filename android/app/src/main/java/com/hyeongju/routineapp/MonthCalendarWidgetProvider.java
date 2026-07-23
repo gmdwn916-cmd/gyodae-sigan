@@ -8,10 +8,12 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.graphics.Color;
+import android.os.Build;
 import android.text.Spannable;
 import android.text.SpannableStringBuilder;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
+import android.util.SizeF;
 import android.widget.RemoteViews;
 
 import androidx.core.content.ContextCompat;
@@ -21,7 +23,9 @@ import org.json.JSONObject;
 
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.HashMap;
 import java.util.Locale;
+import java.util.Map;
 
 // 이번 달 달력을 앱의 달력 탭과 같은 모양(날짜 숫자 + 근무이름 작은 배지)으로
 // 보여주는 읽기 전용 위젯 + 이전/다음 달 넘기기. 근무 계산은 전혀 모름 —
@@ -90,6 +94,16 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         }
     }
 
+    // 4x2~4x3 리사이즈(2026-07-23 추가) 때 다시 그리기 위해 필요 — API 31+에서는
+    // SizeF 맵 자체가 알아서 다시 골라주지만, 배경·테마 등 다른 값도 같이 새로
+    // 그려야 하므로 스케줄 위젯과 같은 이유로 그대로 둠.
+    @Override
+    public void onAppWidgetOptionsChanged(Context context, AppWidgetManager appWidgetManager,
+            int appWidgetId, android.os.Bundle newOptions) {
+        super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions);
+        updateOne(context, appWidgetManager, appWidgetId);
+    }
+
     // WidgetBridgePlugin이 새 데이터를 받았을 때, 또는 이전/다음 달 버튼을
     // 눌렀을 때 즉시 다시 그리기 위해 호출.
     public static void refreshAll(Context context) {
@@ -144,8 +158,33 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         return null;
     }
 
+    // 4x2~4x3 리사이즈(2026-07-23 추가) — "4x3에서는 6줄, 4x2에서는 5줄만
+    // 보이게 해달라" 요청. 스케줄 위젯이 1주/2주를 나눴던 것과 같은 기법
+    // (API 31+의 RemoteViews(Map<SizeF,RemoteViews>) 반응형 위젯) — 5줄/6줄
+    // 레이아웃을 각각 통째로 미리 만들어두고, 실제 위젯 크기와 안드로이드
+    // 자신이 직접 비교해서 그중 맞는 걸 골라줌(이 프로젝트가 dp 공식으로
+    // "몇 줄이 보이는지" 어림짐작할 필요가 없어서, 스케줄 위젯 리사이즈
+    // 때 겪었던 "공식이 실제 런처와 안 맞는" 문제 자체가 발생할 수 없음 —
+    // 자세한 배경은 CLAUDE.md "스케줄 위젯" 항목 참고). API 31 미만 기기는
+    // 이 API 자체가 없어서 5줄 레이아웃 하나로 고정(가장 무난한 폴백).
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_month_calendar);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            RemoteViews views5 = buildViews(context, R.layout.widget_month_calendar, 5);
+            RemoteViews views6 = buildViews(context, R.layout.widget_month_calendar_6rows, 6);
+            Map<SizeF, RemoteViews> sizeMap = new HashMap<>();
+            // 너비 값은 둘 다 똑같이 작게 줘서(이 위젯의 실제 minWidth 250dp보다
+            // 항상 작음) 너비가 비교에 안 걸리게 하고, 높이만으로 판단.
+            sizeMap.put(new SizeF(100f, 90f), views5);
+            sizeMap.put(new SizeF(100f, 180f), views6);
+            appWidgetManager.updateAppWidget(appWidgetId, new RemoteViews(sizeMap));
+        } else {
+            appWidgetManager.updateAppWidget(appWidgetId, buildViews(context, R.layout.widget_month_calendar, 5));
+        }
+    }
+
+    private static RemoteViews buildViews(Context context, int layoutRes, int totalRows) {
+        int totalCells = totalRows * 7;
+        RemoteViews views = new RemoteViews(context.getPackageName(), layoutRes);
 
         Intent openIntent = new Intent(context, MainActivity.class);
         // 다른 위젯들(스케줄/오늘/미배치)도 전부 "MainActivity를 requestCode 0으로
@@ -200,9 +239,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         PendingIntent nextPending = navPendingIntent(context, ACTION_NEXT, 2);
         views.setOnClickPendingIntent(idFor(context, "header_" + mondayCol), prevPending);
         views.setOnClickPendingIntent(idFor(context, "header_" + sunColForNav), nextPending);
-        // 2026-07-22 재조정: 6줄(42칸)이 아니라 5줄(35칸)만 보여줌(레이아웃도
-        // 같이 수정, 자세한 이유는 widget_month_calendar.xml 상단 주석 참고).
-        for (int row = 0; row < 5; row++) {
+        for (int row = 0; row < totalRows; row++) {
             views.setOnClickPendingIntent(idFor(context, "cell_container_" + (row * 7 + mondayCol)), prevPending);
             views.setOnClickPendingIntent(idFor(context, "cell_container_" + (row * 7 + sunColForNav)), nextPending);
         }
@@ -215,7 +252,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(idFor(context, "header_" + i), "");
             views.setTextColor(idFor(context, "header_" + i), secondaryText);
         }
-        for (int i = 0; i < 35; i++) {
+        for (int i = 0; i < totalCells; i++) {
             views.setTextViewText(idFor(context, "cell_date_" + i), "");
             views.setTextViewText(idFor(context, "cell_shift_" + i), "");
             views.setTextColor(idFor(context, "cell_date_" + i), primaryText);
@@ -281,10 +318,10 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
                             // 안 속하는 빈 칸(null)을 만나면 거기서만 진짜로 끊긴 것이므로
                             // 그때만 초기화.
                             String prevBatchId = null;
-                            // 5줄(35칸)까지만 그림 — JS는 여전히 42칸(6주)을
-                            // 계산해 넘기지만, 이 위젯 화면 자체는 5줄만 있으므로
-                            // 나머지는 무시(위 "6줄→5줄" 재조정 참고).
-                            for (int i = 0; i < days.length() && i < 35; i++) {
+                            // totalCells(35 또는 42)까지만 그림 — JS는 항상
+                            // 42칸(6주)을 계산해 넘기므로, 5줄짜리 레이아웃을
+                            // 그릴 때는 자연스럽게 앞 35개만 쓰임.
+                            for (int i = 0; i < days.length() && i < totalCells; i++) {
                                 Object dayObj = days.opt(i);
                                 if (!(dayObj instanceof JSONObject)) { prevBatchId = null; continue; } // 그 달에 속하지 않는 빈 칸
                                 JSONObject day = (JSONObject) dayObj;
@@ -354,6 +391,6 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
             }
         }
 
-        appWidgetManager.updateAppWidget(appWidgetId, views);
+        return views;
     }
 }
