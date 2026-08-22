@@ -165,14 +165,19 @@ public class TodayWidgetService extends RemoteViewsService {
             String icon = it.optString("icon", "");
             String type = it.optString("type", "once");
             boolean done = it.optBoolean("done", false);
+            boolean important = it.optBoolean("important", false);
 
             int textId = idFor("item_text");
             row.setTextViewText(textId, (icon.isEmpty() ? "" : icon + " ") + text);
             row.setInt(textId, "setPaintFlags",
                 done ? (Paint.STRIKE_THRU_TEXT_FLAG | Paint.ANTI_ALIAS_FLAG) : Paint.ANTI_ALIAS_FLAG);
+            // 중요 표시된 항목은 앱 화면과 같은 주황(#ff9500)으로(2026-08-22
+            // 추가, 사용자 요청 — "위젯에서도 중요 표시 색 적용해달라"). 완료가
+            // 색 우선순위상 더 위(회색 고정)라 done이면 중요 여부와 무관하게
+            // 계속 회색.
             row.setTextColor(textId, done
                 ? ContextCompat.getColor(context, R.color.widget_text_secondary)
-                : WidgetThemeHelper.primaryTextColor(context));
+                : (important ? 0xFFFF9500 : WidgetThemeHelper.primaryTextColor(context)));
             row.setImageViewResource(idFor("item_check"),
                 done ? R.drawable.widget_check_on : R.drawable.widget_check_off);
             // 빈 줄(위 position >= items.size() 분기)이 체크칸을 INVISIBLE로

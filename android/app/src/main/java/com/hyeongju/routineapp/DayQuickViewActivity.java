@@ -94,13 +94,17 @@ public class DayQuickViewActivity extends Activity {
                     JSONObject todoObj = arr.optJSONObject(i);
                     String text = todoObj != null ? todoObj.optString("text", "") : arr.optString(i, "");
                     boolean done = todoObj != null && todoObj.optBoolean("done", false);
+                    boolean important = todoObj != null && todoObj.optBoolean("important", false);
                     if (sb.length() > 0) sb.append('\n');
                     int start = sb.length();
                     sb.append(text);
+                    int end = sb.length();
                     if (done) {
-                        int end = sb.length();
                         sb.setSpan(new StrikethroughSpan(), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                         sb.setSpan(new ForegroundColorSpan(ContextCompat.getColor(this, R.color.widget_text_secondary)), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    } else if (important) {
+                        // 중요 표시된 항목은 앱과 같은 주황(#ff9500)으로(2026-08-22 추가).
+                        sb.setSpan(new ForegroundColorSpan(0xFFFF9500), start, end, Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
                     }
                 }
             }

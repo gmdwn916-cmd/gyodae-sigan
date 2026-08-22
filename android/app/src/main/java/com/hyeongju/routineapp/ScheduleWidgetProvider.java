@@ -13,8 +13,10 @@ import android.os.Bundle;
 import android.text.Spannable;
 import android.text.SpannableString;
 import android.text.SpannableStringBuilder;
+import android.text.TextPaint;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.StrikethroughSpan;
+import android.util.DisplayMetrics;
 import android.util.SizeF;
 import android.view.View;
 import android.widget.RemoteViews;
@@ -101,6 +103,45 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         SpannableString ss = new SpannableString(text);
         ss.setSpan(new StrikethroughSpan(), 0, text.length(), Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
         return ss;
+    }
+
+    // 할 일 글씨가 칸 폭보다 길어서 잘리면(sch_todo_N_t가 layout_width=
+    // wrap_content라 ellipsize가 실제로 안 먹혀서 옆 칸까지 넘치거나 위젯
+    // 가장자리에서 뚝 잘려 보임) 그 줄 자체를 숨겨달라는 요청(2026-08-22
+    // 추가) — 실제로 그 폭에 들어가는지 Paint로 미리 재보고, 안 들어가면
+    // 그 줄을 아예 GONE으로 숨김(뒤 줄이 자동으로 한 칸씩 당겨 올라옴).
+    // 이 위젯은 가로로도 리사이즈 가능(resizeMode="horizontal|vertical")해서
+    // 칸 폭이 고정이 아니므로, 매번 그 순간의 실제 위젯 폭(OPTION_APPWIDGET_
+    // MIN_WIDTH)을 읽어 계산 — 값이 없으면 이 위젯의 선언된 최소 폭(250dp)을
+    // 대신 씀.
+    private static final float TODO_TEXT_SIZE_SP = 10f;
+    private static final int DEFAULT_WIDGET_WIDTH_DP = 250;
+
+    private static float todoCellUsableWidthPx(Context context, int appWidgetId) {
+        int widthDp = DEFAULT_WIDGET_WIDTH_DP;
+        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            try {
+                Bundle opts = AppWidgetManager.getInstance(context).getAppWidgetOptions(appWidgetId);
+                int w = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 0);
+                if (w > 0) widthDp = w;
+            } catch (Exception e) {
+                // 무시 — 기본값(250dp)으로 계산
+            }
+        }
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        // 7칸으로 나눈 뒤, 칸 안쪽 여백·측정 오차를 감안해 살짝 보수적으로
+        // 줄임(4dp) — 딱 맞는 값보다 약간 더 엄격하게 잘라야 실제로 삐져나오는
+        // 사고를 확실히 막을 수 있음.
+        float cellWidthDp = Math.max(0f, (widthDp / 7f) - 4f);
+        return cellWidthDp * metrics.density;
+    }
+
+    private static boolean todoTextFits(Context context, String text, float usableWidthPx) {
+        if (text == null || text.isEmpty()) return true;
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        TextPaint paint = new TextPaint();
+        paint.setTextSize(TODO_TEXT_SIZE_SP * metrics.scaledDensity);
+        return paint.measureText(text) <= usableWidthPx;
     }
 
     // showMonth가 true면 "7/21"처럼 월을 같이 붙임(2026-07-21 추가) — 화면에
@@ -307,6 +348,7 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
 
     private static RemoteViews buildViewsForWeeks(Context context, int appWidgetId, int visibleWeeks) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_schedule);
+        final float usableTodoWidthPx = todoCellUsableWidthPx(context, appWidgetId);
 
         Intent openIntent = new Intent(context, MainActivity.class);
         // 위젯마다 다른 action을 붙여서 서로 다른 PendingIntent로 구분되게 함 —
@@ -358,7 +400,9 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
             views.setTextViewText(idFor(context, "sch_shift_" + i), "");
             views.setInt(idFor(context, "sch_shift_" + i), "setBackgroundColor", 0x00000000);
             for (int t = 0; t < MAX_TODOS_PER_CELL; t++) {
-                views.setTextViewText(idFor(context, "sch_todo_" + i + "_" + t), "");
+                int todoId = idFor(context, "sch_todo_" + i + "_" + t);
+                views.setTextViewText(todoId, "");
+                views.setViewVisibility(todoId, View.VISIBLE);
             }
         }
 
@@ -491,7 +535,22 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
                                     JSONObject todoObj = todos.optJSONObject(t);
                                     String text = todoObj != null ? todoObj.optString("text", "") : todos.optString(t, "");
                                     boolean done = todoObj != null && todoObj.optBoolean("done", false);
-                                    views.setTextViewText(idFor(context, "sch_todo_" + i + "_" + t), buildTodoText(text, done));
+                                    boolean important = todoObj != null && todoObj.optBoolean("important", false);
+                                    int todoId = idFor(context, "sch_todo_" + i + "_" + t);
+                                    // 중요 표시된 항목은 앱과 같은 주황(#ff9500)으로(2026-08-22
+                                    // 추가) — 완료면 그대로 회색 유지가 우선(기존 XML 기본값,
+                                    // buildTodoText는 취소선만 얹을 뿐 색은 안 건드림).
+                                    views.setTextColor(todoId, done
+                                        ? secondaryText
+                                        : (important ? 0xFFFF9500 : secondaryText));
+                                    // 칸 폭에 안 들어가는(잘리는) 글씨는 보여주는 대신 그 줄
+                                    // 자체를 숨김(2026-08-22 추가) — 위 todoCellUsableWidthPx/
+                                    // todoTextFits 참고.
+                                    if (todoTextFits(context, text, usableTodoWidthPx)) {
+                                        views.setTextViewText(todoId, buildTodoText(text, done));
+                                    } else {
+                                        views.setViewVisibility(todoId, View.GONE);
+                                    }
                                 }
                             }
 

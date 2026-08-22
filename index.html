@@ -620,8 +620,10 @@
       border-radius: 20px 20px 0 0;
       padding: 20px 20px calc(36px + env(safe-area-inset-bottom, 0));
       /* 여기도 156px 고정값 대신 실측한 --bottom-fixed-height를 씀(2026-07-16,
-         같은 이유는 #day-detail-overlay 쪽 주석 참고). */
-      max-height: min(80vh, calc(100vh - var(--bottom-fixed-height, 156px)));
+         같은 이유는 #day-detail-overlay 쪽 주석 참고). 80vh였을 때 패널이
+         화면 위쪽까지 너무 많이 올라와서 뒤 화면이 거의 안 보인다는 요청으로
+         2026-08-22에 화면 높이 2/3(66.67vh)까지로 낮춤. */
+      max-height: min(66.67vh, calc(100vh - var(--bottom-fixed-height, 156px)));
       overflow-y: auto;
       /* 배경 페이드와 같이, 패널 자체는 아래에서 살짝 밀려 올라오게(슬라이드업). */
       transform: translateY(24px);
@@ -3015,6 +3017,21 @@
         </div>
       </div>
 
+      <!-- 시작 화면 -->
+      <div id="sd-hometab" style="display:none">
+        <div class="card">
+          <div class="form-group" style="margin-bottom:0">
+            <label for="input-hometab">앱을 켰을 때 처음 보여줄 화면</label>
+            <select id="input-hometab">
+              <option value="year">연간</option>
+              <option value="month">달력</option>
+              <option value="today">오늘</option>
+              <option value="routine">반복·중요</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
       <!-- 팀 근무 -->
       <div id="sd-teams" style="display:none">
         <div id="team-settings-card" class="card"></div>
@@ -3581,7 +3598,14 @@
     help: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.2 9a2.8 2.8 0 0 1 5.4 1c0 1.8-2.6 2-2.6 3.8"/><circle cx="12" cy="17" r="0.1" fill="currentColor" stroke="currentColor" stroke-width="2"/></svg>',
     feedback: '<svg viewBox="0 0 24 24"><path d="M4 5h16a1 1 0 0 1 1 1v9a1 1 0 0 1-1 1H9l-4 4v-4H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg>',
     donedisplay: '<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 12l3 3 7-7"/></svg>',
+    hometab: '<svg viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-9"/><path d="M10 20v-6h4v6"/></svg>',
   };
+
+  // 설정 탭 "시작 화면"(2026-08-22 추가) — 앱을 켰을 때 처음 보여줄 탭을
+  // 고를 수 있게 함. 선택지는 하단 탭 5개 중 설정 탭을 뺀 4개(연간/달력/
+  // 오늘/반복·중요) — 설정 화면을 시작 화면으로 고르는 건 이 앱의 성격상
+  // 의미가 없다고 판단해 목록에서 아예 제외(사용자 요청).
+  const HOMETAB_LABELS = { year: '연간', month: '달력', today: '오늘', routine: '반복·중요' };
 
   // 설정 탭 "피드백 보내기"(2026-07-20 추가) — 이 앱은 서버가 없어서 사용자
   // 피드백(글+사진/영상)을 직접 받는 기능을 만드는 대신 구글 폼(파일 업로드
@@ -5167,6 +5191,10 @@
     TIMELINE_SLOTS.forEach(function (slotDef) {
       const itemsInSlot = all.filter(function (t) { return slotOf(t.item) === slotDef.key; });
       itemsInSlot.sort(function (a, b) { return orderOf(a.item) - orderOf(b.item); });
+      // 중요 표시된 항목은 그 구역 안에서 맨 위로(2026-08-22 추가, 사용자
+      // 요청) — 시간순 정렬은 유지한 채(Array.sort는 안정 정렬) 중요
+      // 여부만 한 번 더 정렬.
+      itemsInSlot.sort(function (a, b) { return (a.item.important ? 0 : 1) - (b.item.important ? 0 : 1); });
 
       const section = document.createElement('div');
       section.className = 'timeline-section';
@@ -5654,6 +5682,11 @@
 
     if (singleEvents.length > 0) {
       const sortedSingle = sortByLeadingTime(singleEvents);
+      // 중요 표시된 항목은 맨 위로(2026-08-22 추가, 사용자 요청) — 시간순
+      // 정렬은 유지한 채(안정 정렬) 중요 여부만 한 번 더 정렬. 아래 완료
+      // 정렬이 더 나중(더 우선순위 높음)이라, 완료된 항목은 중요 여부와
+      // 무관하게 여전히 항상 맨 아래.
+      sortedSingle.sort(function (a, b) { return (a.important ? 0 : 1) - (b.important ? 0 : 1); });
       // 완료된 항목은 항상 맨 아래로(2026-07-22 추가) — 시간순 정렬은
       // 유지한 채(Array.sort는 안정 정렬), 완료 여부만 기준으로 한 번 더
       // 정렬해서 미완료가 위, 완료가 아래로 가게 함(showDone이 꺼져 있으면
@@ -6250,6 +6283,9 @@
         var n = ['year','month','dayDetail','widget'].filter(function(k) { return state.showDoneItems[k]; }).length;
         return n + '개 켜짐';
       }},
+      { key: 'hometab', icon: SETTINGS_ICONS.hometab, label: '시작 화면', getValue: function() {
+        return HOMETAB_LABELS[(state && state.homeTab) || 'today'];
+      }},
       { key: 'teams', icon: SETTINGS_ICONS.teams, label: '팀 근무', getValue: function() { return ''; }},
       { key: 'alarms', icon: SETTINGS_ICONS.alarm, label: '근무유형별 알람', getValue: function() {
         if (!state || !state.shiftAlarms) return '';
@@ -6271,7 +6307,7 @@
     // 바꾸면 화면에 보이는 순서도 그대로 따라감(항목 정의 자체는 안 건드림).
     var GROUPS = [
       { label: '근무', keys: ['cycle', 'colors', 'alarms'] },
-      { label: '화면', keys: ['weekstart', 'theme', 'donedisplay'] },
+      { label: '화면', keys: ['weekstart', 'theme', 'donedisplay', 'hometab'] },
       { label: '기타', keys: ['teams', 'data'] },
       { label: '정보', keys: ['help', 'feedback'] },
     ];
@@ -6406,10 +6442,10 @@
     document.getElementById('settings-list-view').style.display = 'none';
     document.getElementById('settings-detail-view').style.display = '';
 
-    var titles = { cycle: '내 근무', colors: '근무 편집', weekstart: '주 시작 요일', theme: '테마', teams: '팀 근무', alarms: '근무유형별 알람', data: '데이터 백업', help: '도움말', donedisplay: '완료된 항목' };
+    var titles = { cycle: '내 근무', colors: '근무 편집', weekstart: '주 시작 요일', theme: '테마', teams: '팀 근무', alarms: '근무유형별 알람', data: '데이터 백업', help: '도움말', donedisplay: '완료된 항목', hometab: '시작 화면' };
     document.getElementById('settings-detail-title').textContent = titles[key] || '';
 
-    ['sd-cycle','sd-colors','sd-weekstart','sd-theme','sd-teams','sd-alarms','sd-data','sd-help','sd-donedisplay'].forEach(function(id) {
+    ['sd-cycle','sd-colors','sd-weekstart','sd-theme','sd-teams','sd-alarms','sd-data','sd-help','sd-donedisplay','sd-hometab'].forEach(function(id) {
       document.getElementById(id).style.display = 'none';
     });
     document.getElementById('sd-' + key).style.display = '';
@@ -6448,6 +6484,8 @@
       document.getElementById('data-io-msg').textContent = '';
     } else if (key === 'donedisplay') {
       renderDoneDisplaySettings();
+    } else if (key === 'hometab') {
+      document.getElementById('input-hometab').value = (state && state.homeTab) || 'today';
     }
   }
 
@@ -7119,12 +7157,15 @@
         // 앞에, 그다음 한 번짜리를 순서 그대로 이어붙이기만 해서 시간순이
         // 전혀 아니었음.
         combinedTodos.sort(function (a, b) { return compareByTimeline(a.ev, b.ev); });
+        // 중요 표시된 항목은 맨 위로(2026-08-22 추가, 사용자 요청 — 앱뿐
+        // 아니라 위젯도 적용해달라는 요청) — 안정 정렬로 시간순은 유지.
+        combinedTodos.sort(function (a, b) { return (a.ev.important ? 0 : 1) - (b.ev.important ? 0 : 1); });
         // 완료된 항목은 항상 맨 아래로(2026-07-22 추가) — 시간순 정렬은
         // 유지한 채(Array.sort는 안정 정렬이라 위 정렬 순서가 그대로
         // 보존됨), 완료 여부만 기준으로 한 번 더 정렬해서 미완료가 전부
         // 위로, 완료가 전부 아래로 가게 함.
         combinedTodos.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
-        const allTodoObjs = combinedTodos.map(function (t) { return { text: '• ' + t.ev.text, done: t.done }; });
+        const allTodoObjs = combinedTodos.map(function (t) { return { text: '• ' + t.ev.text, done: t.done, important: !!t.ev.important }; });
         // todos: 위젯 칸 안에 실제로 그릴 수 있는 만큼만(최대 3줄, 공간이
         // 좁아서 그 이상은 못 그림). allTodos: 그 날의 전체 목록(2026-07-19
         // 추가) — 날짜 칸 팝업(DayQuickViewActivity)이 위젯 칸과 같은
@@ -7222,6 +7263,9 @@
     // timeSlot/timelineOrder만 보고 정렬해서, 아직 손으로 안 옮긴 반복
     // 할일은 앱 화면과 다른 순서로 보일 수 있었음.
     all.sort(function (a, b) { return compareByTimeline(a.item, b.item); });
+    // 중요 표시된 항목은 맨 위로(2026-08-22 추가, 사용자 요청) — 안정
+    // 정렬로 시간순은 유지.
+    all.sort(function (a, b) { return (a.item.important ? 0 : 1) - (b.item.important ? 0 : 1); });
     // 완료된 항목은 항상 맨 아래로(2026-07-22 추가) — 스케줄 위젯과 같은
     // 이유(안정 정렬로 시간순은 유지한 채 완료 여부만 한 번 더 정렬).
     all.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
@@ -7230,6 +7274,7 @@
       const cat = getCat(t.item.category);
       return {
         id: t.item.id,
+        important: !!t.item.important,
         text: t.kind === 'onetime' ? eventDisplayText(t.item) : t.item.text,
         done: t.done,
         icon: cat.icon || '',
@@ -7867,6 +7912,12 @@
     state.themeMode = this.value;
     saveState();
     applyTheme();
+  });
+
+  document.getElementById('input-hometab').addEventListener('change', function () {
+    if (!state) return;
+    state.homeTab = this.value;
+    saveState();
   });
 
   // ── 일별 상세 패널 ──────────────────────────────────────────
@@ -10204,7 +10255,10 @@
     if (migrated) saveState();
   }
   applyTheme();
-  switchTab('today');
+  // 설정 탭 "시작 화면"에서 고른 탭으로 시작(2026-08-22 추가) — 설정 자체가
+  // 안 끝난 신규 설치는 어차피 곧 튜토리얼/온보딩이 뜨므로 값이 없어도
+  // 기본값 'today'로 충분함.
+  switchTab((state && state.homeTab) || 'today');
   renderInboxBadge();
   if (!state || !state.cycleDays || !state.baseDate) {
     // 신규 설치(설정 안 끝남) 때는 온보딩(설정 마법사) 전에 튜토리얼부터
