@@ -2196,10 +2196,32 @@
        열고 닫힐 때 부드럽게(2026-07-18, 날짜 상세에 먼저 시범 적용해본 뒤
        확대 — #day-detail-overlay와 같은 방식: display:none 대신
        visibility+opacity+pointer-events, 패널은 translateY 슬라이드업). */
-    #inbox-overlay, #promote-overlay, #period-edit-overlay, #bulk-shift-overlay, #shift-picker-overlay, #weather-region-overlay, #bulk-action-choice-overlay, #bulk-todo-overlay {
+    #promote-overlay, #period-edit-overlay, #bulk-shift-overlay, #shift-picker-overlay, #weather-region-overlay, #bulk-action-choice-overlay, #bulk-todo-overlay {
       display: flex;
       position: fixed;
       inset: 0;
+      background: rgba(0,0,0,0.4);
+      z-index: 45;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+    }
+
+    /* #inbox-overlay만 하단 전역 빠른 추가 바(#bottom-fixed) 자리는 안
+       덮게 남겨둠(2026-08-24, 사용자 요청) — 미배치 목록을 보면서도 그
+       바가 계속 보이고 눌려야, 그 자리에 바로 입력한 할 일이 미배치로
+       들어갈 수 있음(#day-detail-overlay와 완전히 같은 이유·같은 방식,
+       위 "일별 상세 패널" 주석 참고). */
+    #inbox-overlay {
+      display: flex;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: calc(var(--bottom-fixed-height, 156px) + var(--keyboard-inset, 0px));
       background: rgba(0,0,0,0.4);
       z-index: 45;
       align-items: flex-end;
@@ -8428,6 +8450,19 @@
   function addQuickAddItem(text) {
     text = text.trim();
     if (!text) return;
+
+    // 미배치 목록 창이 열려있으면(#inbox-overlay가 이 바를 안 가리게 남겨둠,
+    // 위 CSS 주석 참고) 다른 무엇보다 우선해서 미배치로 바로 넣고, 열려있는
+    // 목록도 그 자리에서 바로 갱신한다(2026-08-24 추가) — 지금 보고 있는
+    // 목록에 즉시 나타나야 자연스러움.
+    if (document.getElementById('inbox-overlay').classList.contains('open')) {
+      if (!Array.isArray(state.inbox)) state.inbox = [];
+      state.inbox.push({ id: genId('i'), text: text, createdAt: Date.now() });
+      saveState();
+      renderInboxList();
+      renderInboxBadge();
+      return;
+    }
 
     // 날짜 상세 화면이 열려있거나 오늘 탭을 보고 있으면, 이미 날짜가 정해진
     // 화면이므로 미배치를 거치지 않고 그 날짜에 바로 배치한다("넣기=놓기 동시").
