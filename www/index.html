@@ -1423,23 +1423,59 @@
     /* 도움말 화면(2026-07-19) — 다른 "쭉 나열되는 카드" 그룹과 같은 레시피
        (routine-card/settings-menu-item/shift-color-row와 통일, 2026-07-18
        최종 디자인 점검 때 정리한 토큰 그대로 재사용). */
+    /* 질문(제목)을 누르면 그 밑에 설명이 펼쳐지는 방식(2026-09-06 변경) —
+       예전엔 12개 설명이 전부 펼쳐진 채라 화면이 길어서 원하는 항목을 찾기
+       어려웠음. 제목 줄만 항상 보이고, 누른 항목만 열림(여러 개 동시에 열
+       수 있음 — 하나만 열리게 강제하면 다른 항목과 비교해 읽을 때 불편). */
     .help-topic {
       background: var(--surface);
       border-radius: var(--radius-row);
       box-shadow: var(--shadow-card);
-      padding: 14px 16px;
       margin-bottom: 8px;
+      overflow: hidden;
     }
     .help-topic-title {
       font-size: 15px;
       font-weight: 700;
       color: var(--text-1);
-      margin-bottom: 6px;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      cursor: pointer;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    /* 열림/닫힘 화살표(∨) — 다른 화면의 chevron과 달리 글자가 아니라 테두리로
+       그린 작은 꺾쇠라 회전 애니메이션이 자연스러움. */
+    .help-topic-title::after {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-right: 2px solid var(--text-3);
+      border-bottom: 2px solid var(--text-3);
+      transform: translateY(-2px) rotate(45deg);
+      transition: transform 0.2s ease;
+      flex-shrink: 0;
+    }
+    .help-topic.open .help-topic-title::after {
+      transform: translateY(2px) rotate(-135deg);
     }
     .help-topic-body {
       font-size: 13px;
       color: var(--text-2);
       line-height: 1.5;
+      padding: 0 16px 14px;
+      display: none;
+    }
+    .help-topic.open .help-topic-body {
+      display: block;
+      animation: helpTopicOpen 0.18s ease;
+    }
+    @keyframes helpTopicOpen {
+      from { opacity: 0; transform: translateY(-4px); }
+      to { opacity: 1; transform: none; }
     }
     /* 완료된 항목 표시 설정(2026-07-20 추가) */
     .donedisplay-example {
@@ -1648,7 +1684,7 @@
 
     /* ── Onboarding (+ 첫 실행 튜토리얼, #tour-overlay가 같은 시각 스타일을
        공유 — 위 HTML 쪽 주석 참고) ── */
-    #onboard-overlay, #tour-overlay {
+    #onboard-overlay, #tour-overlay, #alarm-setup-overlay {
       display: none;
       position: fixed;
       inset: 0;
@@ -1658,7 +1694,144 @@
       align-items: flex-start;
       justify-content: center;
     }
-    #onboard-overlay.open, #tour-overlay.open { display: flex; }
+    #onboard-overlay.open, #tour-overlay.open, #alarm-setup-overlay.open { display: flex; }
+
+    /* 새 버전 안내창(2026-09-06) — 다른 오버레이들과 달리 바텀시트가 아니라
+       화면 가운데 뜨는 작은 카드(시스템 알림창 성격이라 이 모양이 더 맞음).
+       바깥을 눌러도 안 닫힘(버튼으로만) — 그냥 지나쳐 버리지 않게. */
+    #update-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.45);
+      z-index: 70;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      transition: opacity 0.22s ease, visibility 0s linear 0.22s;
+    }
+    #update-overlay.open {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: auto;
+      transition: opacity 0.22s ease, visibility 0s linear 0s;
+    }
+    #update-panel {
+      width: 100%;
+      max-width: 340px;
+      background: var(--surface);
+      border-radius: var(--radius-card);
+      box-shadow: var(--shadow-card);
+      padding: 22px 20px 18px;
+      transform: translateY(16px);
+      transition: transform 0.22s ease;
+    }
+    #update-overlay.open #update-panel { transform: translateY(0); }
+    .update-title {
+      font-size: 19px;
+      font-weight: 800;
+      color: var(--text-1);
+      margin-bottom: 6px;
+    }
+    .update-version {
+      font-size: 13px;
+      color: var(--text-2);
+      margin-bottom: 10px;
+    }
+    .update-notes {
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.55;
+    }
+    .update-notes:empty { display: none; }
+    .update-btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    .update-btn-later {
+      padding: 13px 16px;
+      background: var(--surface-2);
+      color: var(--text-1);
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .update-btn-go {
+      flex: 1;
+      padding: 13px 16px;
+      background: var(--accent-blue);
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .update-btn-later:active, .update-btn-go:active { opacity: 0.75; }
+
+    /* 알람 준비(권한 안내) 화면의 항목 카드(2026-09-06) — 설정 탭의 쭉 나열되는
+       행 카드들과 같은 토큰(--radius-row/--shadow-card)을 그대로 씀. */
+    .alarm-setup-item {
+      background: var(--surface);
+      border-radius: var(--radius-row);
+      box-shadow: var(--shadow-card);
+      padding: 14px 16px;
+      margin-bottom: 10px;
+    }
+    .alarm-setup-item-head {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .alarm-setup-item-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+    /* 이미 켜져 있으면 초록 체크, 아직이면 주황 느낌표 — 글자를 안 읽어도
+       뭐가 남았는지 한눈에 보이게. */
+    .alarm-setup-state {
+      font-size: 13px;
+      font-weight: 700;
+      margin-left: auto;
+      flex-shrink: 0;
+    }
+    .alarm-setup-state.ok { color: var(--accent); }
+    .alarm-setup-state.todo { color: #ff9500; }
+    .alarm-setup-item-body {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+    }
+    .alarm-setup-btn {
+      margin-top: 10px;
+      padding: 11px 16px;
+      width: 100%;
+      background: var(--accent-blue);
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 700;
+      font-family: inherit;
+      cursor: pointer;
+    }
+    .alarm-setup-btn:active { opacity: 0.75; }
+    .alarm-setup-done-note {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.5;
+      margin-top: 6px;
+    }
 
     /* 튜토리얼 슬라이드 큰 이모지 — 별도 그림 없이 이모지 하나로 화면에
        포인트를 줌(간단하고 가벼운 방식). */
@@ -3518,6 +3691,37 @@
   </div>
 </div>
 
+<!-- ── 새 버전 안내(2026-09-06 추가) ──
+     설치된 앱이 켜질 때 스토어에 더 새 버전이 올라와 있으면 뜨는 안내창.
+     "업데이트하기"를 누르면 플레이스토어의 이 앱 페이지로 바로 이동함. -->
+<div id="update-overlay">
+  <div id="update-panel">
+    <div class="update-title">새 버전이 나왔어요</div>
+    <div class="update-version" id="update-version"></div>
+    <div class="update-notes" id="update-notes"></div>
+    <div class="update-btn-row">
+      <button class="update-btn-later" id="btn-update-later">나중에</button>
+      <button class="update-btn-go" id="btn-update-go">업데이트하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── 알람 준비(권한 안내, 2026-09-06 추가) ──
+     설치 직후 온보딩이 끝난 직후에 한 번 뜨고, 그 뒤로는 설정 탭
+     "근무유형별 알람" 화면의 점검 버튼으로 언제든 다시 열 수 있음.
+     휴대폰이 앱을 막지 않게 하는 두세 가지를, 각각 "설정 열기" 한 번으로
+     그 화면까지 데려다주는 방식(앱이 직접 켤 수 없는 항목들이라 이게 최선). -->
+<div id="alarm-setup-overlay">
+  <div class="onboard-inner">
+    <div class="onboard-title">알람이 제때 울리려면</div>
+    <div class="onboard-sub">휴대폰이 앱을 막지 않도록 아래 항목을 켜주세요. 누르면 해당 설정 화면으로 바로 이동해요. 나중에 설정 탭에서도 다시 할 수 있어요.</div>
+    <div id="alarm-setup-list"></div>
+    <div class="onboard-btn-row">
+      <button class="btn-ob-next" id="btn-alarm-setup-close">완료</button>
+    </div>
+  </div>
+</div>
+
 <!-- 할 일 줄의 텍스트를 탭하면 뜨는 (반복/중요/수정) 메뉴 — 위 카테고리 팝업과
      같은 이유로 body 바로 아래, position:fixed. -->
 <div id="todo-item-menu" class="cat-picker-menu"></div>
@@ -3772,6 +3976,28 @@
 
   function saveState() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    scheduleWidgetPush();
+  }
+
+  // 저장이 일어나면 위젯도 항상 같이 갱신(2026-09-06 추가) — 예전엔 저장하는
+  // 곳마다 pushAllWidgets()를 따로 불러줘야 했는데, 하단 빠른 추가 바로 할 일을
+  // 넣는 경로(addQuickAddItem)처럼 그 호출이 빠진 곳이 있어서 "앱에는 추가됐는데
+  // 위젯에는 한참 뒤에야 보이는" 문제가 있었음(사용자 신고). 저장 = 위젯 갱신으로
+  // 묶어두면 앞으로 새 기능을 만들 때 호출을 빠뜨릴 일 자체가 없음.
+  // 드래그처럼 짧은 시간에 저장이 여러 번 연달아 일어나는 동작도 있으므로 잠깐
+  // 모았다가 한 번만 보냄(위젯 6개분 payload를 매번 다시 만드는 낭비 방지).
+  // 웹(브라우저)에서는 각 push 함수가 getWidgetBridge() 단계에서 바로 빠져나가
+  // 아무 비용이 없음. 기존의 명시적인 pushAllWidgets() 호출들도 그대로 둠
+  // (즉시 반영이 필요한 자리에서 150ms를 기다리지 않게 하는 의미가 있음).
+  let widgetPushTimer = null;
+  function scheduleWidgetPush() {
+    if (widgetPushTimer) clearTimeout(widgetPushTimer);
+    widgetPushTimer = setTimeout(function () {
+      widgetPushTimer = null;
+      // 이 타이머 안에서 뭐가 잘못돼도 앱 동작 자체는 멈추면 안 됨(알람 쪽과
+      // 같은 방어 원칙).
+      try { pushAllWidgets(); } catch (e) {}
+    }, 150);
   }
 
   function genId(prefix) {
@@ -7453,25 +7679,31 @@
     // 하지 않음(위 ensureFullScreenIntentIfNeeded 주석 참고, 앱이 안 열리는
     // 것처럼 보이던 버그의 원인이었음).
     ensureFullScreenIntentIfNeeded();
-    // 알림 권한이 꺼져 있으면 알람이 예약은 되도 실제로 울릴 때 아무 반응이
-    // 없음(scheduleShiftAlarms이 조용히 아무것도 안 하고 끝남) — 그런데
-    // 화면에는 아무 표시가 없어서 "왜 안 울리지" 헷갈리기 쉬움(2026-07-16,
-    // 실제로 이 문제로 혼동한 사용자 신고 있었음). 이 화면을 볼 때마다
-    // 권한 상태를 확인해서, 꺼져 있으면 위에 빨간 안내 문구를 보여줌.
+    // 알림 권한이 꺼져 있거나 배터리 절약이 앱을 막고 있으면, 알람이 예약은
+    // 돼도 실제 시각에 아무 일도 안 일어남 — 그런데 화면에는 아무 표시가 없어서
+    // "왜 안 울리지" 헷갈리기 쉬움(2026-07-16, 실제 사용자 신고 두 건).
+    // 이 화면을 볼 때마다 세 가지(알림 권한·배터리 절약·전체 화면 알람)를
+    // 한 번에 확인해서, 하나라도 문제가 있으면 위에 빨간 안내와 함께 바로
+    // 고치러 갈 수 있는 버튼을 보여줌(2026-09-06 — 예전엔 알림 권한 하나만
+    // 확인했고, 고치는 건 사용자가 설정에서 직접 찾아가야 했음).
     (async function () {
-      const LN = window.capacitorLocalNotifications && window.capacitorLocalNotifications.LocalNotifications;
-      if (!LN) return;
-      let granted = true;
-      try {
-        const cur = await LN.checkPermissions();
-        granted = cur.display === 'granted';
-      } catch (e) {}
-      if (!granted && document.getElementById('shift-alarm-card') === card) {
-        const warn = document.createElement('div');
-        warn.className = 'shift-alarm-warning';
-        warn.textContent = '⚠️ 알림 권한이 꺼져 있어서 알람이 울리지 않아요. 휴대폰 설정 → 앱 → 교대시간 → 알림에서 허용해주세요.';
-        card.insertBefore(warn, card.firstChild);
-      }
+      const plugin = getShiftAlarmPlugin();
+      if (!plugin) return;
+      let status = null;
+      try { status = await plugin.checkAlarmSetup(); } catch (e) {}
+      if (!status) return;
+      const allOk = status.notifications !== false && status.battery !== false && status.fullScreen !== false;
+      if (allOk || document.getElementById('shift-alarm-card') !== card) return;
+      const warn = document.createElement('div');
+      warn.className = 'shift-alarm-warning';
+      warn.textContent = '⚠️ 휴대폰 설정 때문에 알람이 안 울릴 수 있어요.';
+      const fixBtn = document.createElement('button');
+      fixBtn.type = 'button';
+      fixBtn.className = 'alarm-setup-btn';
+      fixBtn.textContent = '확인하고 켜기';
+      fixBtn.addEventListener('click', openAlarmSetup);
+      warn.appendChild(fixBtn);
+      card.insertBefore(warn, card.firstChild);
     })();
     // 기본 순환 패턴의 근무 이름뿐 아니라, D번호별로 "근무 변경"해서 붙인
     // 근무 이름(예: 당직)도 여기 다 나오게 함 — 이건 그 자리(D번호)가 돌아올
@@ -7632,15 +7864,22 @@
     hint.textContent = '켜둔 근무유형인 날 그 시각에 화면 전체를 덮는 알람이 울려요. 직접 꺼야 멈춰요(기상 알람과 같아요). 처음 켤 때 알림 허용 창이 뜨면 허용해줘야 울려요.';
     card.appendChild(hint);
 
-    // 배터리 절약 기능이 알람을 막는 기기가 있음(2026-07-16, 실제 사용자
-    // 사례 — 삼성 기기에서 스위치도 켜져 있고 시각도 맞는데 알람이 전혀
-    // 안 울렸는데, "설정 → 앱 → 루틴 → 배터리"를 "제한 없음"으로 바꾸니
-    // 해결됨). 코드로는 더 손쓸 수 없는 기기 설정 영역이라, 안내 문구로
-    // 미리 알려줌.
-    const batteryHint = document.createElement('p');
-    batteryHint.className = 'shift-color-hint';
-    batteryHint.textContent = '알람이 안 울리면 휴대폰 배터리 절약 기능이 이 앱을 막고 있을 수 있어요. 설정 → 앱 → 교대시간 → 배터리에서 "제한 없음"으로 바꿔보세요.';
-    card.appendChild(batteryHint);
+    // 알림 권한·배터리 절약 같은 휴대폰 설정이 알람을 막는 실제 사례가 반복돼서
+    // (2026-07-16 두 건), 예전엔 여기 긴 안내 문구를 적어뒀었음 — 이제는 그
+    // 문구 대신 "알람 준비" 화면(설치 직후에도 한 번 뜨는 그 화면)을 여는 버튼을
+    // 둠(2026-09-06). 지금 상태를 확인해주고 필요한 설정 화면까지 바로 데려다줘서
+    // 문구로 길을 설명하는 것보다 훨씬 쉬움.
+    const setupHint = document.createElement('p');
+    setupHint.className = 'shift-color-hint';
+    setupHint.textContent = '알람이 안 울리면 휴대폰 설정이 앱을 막고 있을 수 있어요. 아래에서 확인해 보세요.';
+    card.appendChild(setupHint);
+
+    const setupBtn = document.createElement('button');
+    setupBtn.type = 'button';
+    setupBtn.className = 'alarm-setup-btn';
+    setupBtn.textContent = '휴대폰 설정 점검하기';
+    setupBtn.addEventListener('click', openAlarmSetup);
+    card.appendChild(setupBtn);
   }
 
   // 필요할 때(설정 저장 시점 등) 호출 — 최초 1회만 물어보고 이후엔 캐시된 결과로 판단.
@@ -7667,6 +7906,195 @@
     }
     return window.__shiftAlarmPlugin;
   }
+
+  // ── 새 버전 안내(2026-09-06 추가) ─────────────────────────────────────
+  // 설치된 앱을 켰을 때 스토어에 더 새 버전이 올라와 있으면 안내창을 띄우고,
+  // 누르면 플레이스토어의 이 앱 페이지로 바로 보냄.
+  // **어떻게 "새 버전이 있는지" 아는가**: 이 앱은 서버가 없어서(정적 파일
+  // 하나) 스토어에 직접 물어볼 방법이 없음 — 대신 깃허브 페이지에 같이
+  // 올라가는 작은 파일(app-version.json)에 "지금 스토어에 올라간 최신
+  // 버전"을 적어두고, 설치된 앱이 자기 버전과 비교함. **스토어에 새 버전을
+  // 올린 뒤 그 파일의 versionCode도 같이 올려서 배포해야 안내가 뜸**(그 파일
+  // 안 설명 참고). 구글의 인앱 업데이트 기능을 쓰지 않은 이유: 라이브러리를
+  // 새로 넣어야 하고 실기기 없이는 확인이 어려워서, 이 앱 구조에 맞는
+  // 가장 단순한 방식을 택함.
+  const APP_VERSION_URL = 'https://gmdwn916-cmd.github.io/gyodae-sigan/app-version.json';
+
+  async function checkForAppUpdate() {
+    // 웹(브라우저)에서는 받을 앱 자체가 없으니 안 함.
+    const bridge = getWidgetBridge();
+    if (!bridge) return;
+    let installedCode = 0;
+    try {
+      const info = await bridge.getAppInfo();
+      installedCode = Number(info && info.versionCode) || 0;
+    } catch (e) {
+      // 옛 버전 앱이라 이 기능이 없는 경우 등 — 조용히 넘어감
+      return;
+    }
+    if (!installedCode) return; // 버전을 모르면 잘못된 안내를 띄우지 않음
+    let latest = null;
+    try {
+      // 캐시된 옛 파일을 읽고 "새 버전 없음"으로 잘못 판단하지 않도록 매번 새로 받음
+      const res = await fetch(APP_VERSION_URL + '?t=' + Date.now(), { cache: 'no-store' });
+      if (!res.ok) return;
+      latest = await res.json();
+    } catch (e) {
+      return; // 오프라인·서버 문제 등 — 안내는 부가 기능이니 조용히 넘어감
+    }
+    const latestCode = Number(latest && latest.versionCode) || 0;
+    if (!latestCode || latestCode <= installedCode) return;
+    // "나중에"를 누른 버전은 다시 안 띄움 — 켤 때마다 같은 안내가 뜨면 성가심
+    // (그다음 새 버전이 나오면 versionCode가 또 커지므로 그때는 다시 뜸).
+    if (state && state.updateNoticeSkippedCode === latestCode) return;
+    openUpdateNotice(latest, latestCode);
+  }
+
+  function openUpdateNotice(latest, latestCode) {
+    const versionEl = document.getElementById('update-version');
+    const notesEl = document.getElementById('update-notes');
+    const name = latest && latest.versionName ? String(latest.versionName) : '';
+    versionEl.textContent = name ? '버전 ' + name : '';
+    notesEl.textContent = latest && latest.notes ? String(latest.notes) : '';
+
+    document.getElementById('btn-update-later').onclick = function () {
+      if (state) {
+        state.updateNoticeSkippedCode = latestCode;
+        saveState();
+      }
+      document.getElementById('update-overlay').classList.remove('open');
+    };
+    document.getElementById('btn-update-go').onclick = async function () {
+      document.getElementById('update-overlay').classList.remove('open');
+      const bridge = getWidgetBridge();
+      if (bridge) { try { await bridge.openAppStore(); } catch (e) {} }
+    };
+    document.getElementById('update-overlay').classList.add('open');
+  }
+
+  // ── 알람 준비(권한 안내, 2026-09-06 추가) ─────────────────────────────
+  // 설치 직후(온보딩이 끝난 직후) 한 번 뜨고, 그 뒤로는 설정 탭 "근무유형별
+  // 알람" 화면의 점검 버튼으로 언제든 다시 열 수 있음.
+  // **앱이 직접 켤 수 있는 항목이 하나도 없음** — 알림 권한은 한 번 거부하면
+  // 안드로이드가 다시 묻는 창 자체를 안 띄우고, 배터리 절약 제외와 전체 화면
+  // 알람 허용은 애초에 사용자가 설정 화면에서 직접 켜야 하는 것들. 그래서 이
+  // 화면이 할 수 있는 건 "지금 어떤 상태인지 보여주고, 켜야 하는 그 설정
+  // 화면까지 한 번에 데려다주기"까지임. 실제 확인은 전부 네이티브
+  // (ShiftAlarmPlugin.checkAlarmSetup)가 함.
+  const ALARM_SETUP_ITEMS = [
+    {
+      key: 'notifications',
+      title: '알림 허용',
+      todoDesc: '알람이 울릴 때 화면을 띄우는 데 필요해요. 꺼져 있으면 시각이 돼도 아무 일도 일어나지 않아요.',
+      okDesc: '알람이 울릴 수 있어요.',
+      btnLabel: '허용하기',
+      run: async function () {
+        // 먼저 앱 안에서 허락 창을 띄워보고(첫 설치라면 여기서 바로 끝남),
+        // 이미 거부된 상태라 창이 안 뜨는 경우에만 설정 화면으로 보냄.
+        let granted = false;
+        try { granted = await ensureAlarmPermission(); } catch (e) {}
+        if (granted) return;
+        const plugin = getShiftAlarmPlugin();
+        if (plugin) { try { await plugin.openNotificationSettings(); } catch (e) {} }
+      },
+    },
+    {
+      key: 'battery',
+      title: '배터리 절약에서 제외',
+      todoDesc: '휴대폰이 절전을 위해 앱을 재우면 알람이 안 울릴 수 있어요. 열리는 화면에서 "배터리"를 눌러 "제한 없음"으로 바꿔주세요.',
+      okDesc: '휴대폰이 앱을 재우지 않아요.',
+      btnLabel: '설정 열기',
+      run: async function () {
+        const plugin = getShiftAlarmPlugin();
+        if (plugin) { try { await plugin.openBatterySettings(); } catch (e) {} }
+      },
+    },
+    {
+      key: 'fullScreen',
+      title: '알람 화면 띄우기 허용',
+      todoDesc: '이게 꺼져 있으면 알람이 화면을 꽉 채우지 못하고 작은 알림으로만 떠요.',
+      okDesc: '알람이 화면을 꽉 채워 떠요.',
+      btnLabel: '설정 열기',
+      run: async function () {
+        const plugin = getShiftAlarmPlugin();
+        // 이 메서드는 이미 허용돼 있으면 아무 것도 안 하고, 아니면 그 설정
+        // 화면을 열어줌(2026-07-16부터 있던 함수를 그대로 재사용).
+        if (plugin) { try { await plugin.ensureFullScreenIntentAllowed(); } catch (e) {} }
+      },
+    },
+  ];
+
+  function openAlarmSetup() {
+    // 웹(브라우저)에서는 알람 기능 자체가 없으므로 이 화면도 안 뜸.
+    if (!isNativeApp()) return;
+    document.getElementById('alarm-setup-overlay').classList.add('open');
+    renderAlarmSetup();
+  }
+
+  function closeAlarmSetup() {
+    document.getElementById('alarm-setup-overlay').classList.remove('open');
+  }
+
+  async function renderAlarmSetup() {
+    const wrap = document.getElementById('alarm-setup-list');
+    if (!wrap) return;
+    let status = null;
+    const plugin = getShiftAlarmPlugin();
+    if (plugin) {
+      try { status = await plugin.checkAlarmSetup(); } catch (e) {}
+    }
+    wrap.innerHTML = '';
+    ALARM_SETUP_ITEMS.forEach(function (item) {
+      // 상태를 못 읽었으면(옛 버전 앱 등) "아직 안 됨"으로 보여줌 — 이미 켜져
+      // 있는 걸 한 번 더 눌러도 손해가 없고, 반대로 안 된 걸 됐다고 하면
+      // 사용자가 문제를 못 찾게 되므로.
+      const ok = status ? status[item.key] !== false : false;
+      const card = document.createElement('div');
+      card.className = 'alarm-setup-item';
+
+      const head = document.createElement('div');
+      head.className = 'alarm-setup-item-head';
+      const titleEl = document.createElement('div');
+      titleEl.className = 'alarm-setup-item-title';
+      titleEl.textContent = item.title;
+      const stateEl = document.createElement('div');
+      stateEl.className = 'alarm-setup-state ' + (ok ? 'ok' : 'todo');
+      stateEl.textContent = ok ? '✓ 완료' : '설정 필요';
+      head.appendChild(titleEl);
+      head.appendChild(stateEl);
+
+      const body = document.createElement('div');
+      body.className = 'alarm-setup-item-body';
+      body.textContent = ok ? item.okDesc : item.todoDesc;
+
+      card.appendChild(head);
+      card.appendChild(body);
+
+      if (!ok) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'alarm-setup-btn';
+        btn.textContent = item.btnLabel;
+        btn.addEventListener('click', async function () {
+          await item.run();
+          // 설정 화면에 다녀오면 아래 visibilitychange가 다시 그려주지만,
+          // 앱 안에서 바로 끝나는 경우(알림 허락 창)도 있어서 여기서도 한 번.
+          renderAlarmSetup();
+        });
+        card.appendChild(btn);
+      }
+      wrap.appendChild(card);
+    });
+
+    // 기종마다 배터리 관련 메뉴 이름이 조금씩 다른 현실을 짧게 덧붙임
+    // (설정 탭 알람 화면의 안내 문구와 같은 취지).
+    const note = document.createElement('div');
+    note.className = 'alarm-setup-done-note';
+    note.textContent = '휴대폰 기종에 따라 메뉴 이름이 조금 다를 수 있어요. 설정을 마친 뒤 이 화면으로 돌아오면 상태가 새로 표시돼요.';
+    wrap.appendChild(note);
+  }
+
+  document.getElementById('btn-alarm-setup-close').addEventListener('click', closeAlarmSetup);
 
   // 완료된 항목 표시(2026-07-20 추가) — 연간/달력/날짜 상세/위젯 네 화면에서
   // 완료한 할 일(회색 글씨+가로줄)을 보여줄지 각각 독립적으로 켜고 끔.
@@ -7934,6 +8362,16 @@
     state.themeMode = this.value;
     saveState();
     applyTheme();
+  });
+
+  // 도움말: 질문(제목)을 누르면 그 항목만 펼쳐짐(2026-09-06) — 항목이 12개라
+  // 전부 펼쳐져 있으면 화면이 너무 길어서, 제목 목록만 보이고 누른 것만 열리게
+  // 함. 항목 하나하나에 리스너를 다는 대신 화면 전체에 하나만 걸어서(위임)
+  // 나중에 도움말 항목을 HTML에 더 추가해도 JS는 안 건드려도 되게 함.
+  document.getElementById('sd-help').addEventListener('click', function (e) {
+    const title = e.target.closest('.help-topic-title');
+    if (!title) return;
+    title.parentElement.classList.toggle('open');
   });
 
   document.getElementById('input-hometab').addEventListener('change', function () {
@@ -8368,8 +8806,7 @@
       state = null;
       applyNoShiftMode();
       saveState();
-      document.getElementById('onboard-overlay').classList.remove('open');
-      switchTab('today');
+      finishOnboarding();
       return;
     }
 
@@ -8418,9 +8855,20 @@
     state = null;
     applyShiftPattern(n, pattern, dateVal);
     saveState();
+    finishOnboarding();
+  });
+
+  // 온보딩이 끝나는 두 경로(교대 수 0으로 바로 끝나는 경우 / 3단계까지 다
+  // 채운 경우)가 공통으로 씀 — 설정을 마치자마자 알람 준비(권한 안내) 화면을
+  // 한 번 보여줌(2026-09-06 추가). 알람은 이 앱에서 가장 "안 울리면 바로
+  // 티나는" 기능인데, 휴대폰 설정 때문에 조용히 안 울리는 사고가 실제로
+  // 반복돼서(CLAUDE.md 알림 권한·배터리 절약 항목 참고) 설치 직후에 미리
+  // 안내하는 것. 웹에서는 openAlarmSetup()이 스스로 아무 것도 안 함.
+  function finishOnboarding() {
     document.getElementById('onboard-overlay').classList.remove('open');
     switchTab('today');
-  });
+    openAlarmSetup();
+  }
 
   // ── 팀 근무 계산 ─────────────────────────────────────────
   function getTeamShift(team, dateStr) {
@@ -10306,6 +10754,12 @@
   syncWidgetTodayToggles();
   pushAllWidgets();
   syncWidgetNavTarget();
+  // 새 버전 안내(2026-09-06) — 설치 직후 첫 실행(튜토리얼·온보딩이 뜨는 상황)
+  // 에는 안 띄움(그 위에 겹쳐 뜨면 정신없고, 방금 설치한 사람에게 업데이트
+  // 안내는 의미도 없음). 실패해도 조용히 넘어가므로 따로 감싸지 않음.
+  if (state && state.cycleDays && state.baseDate) {
+    checkForAppUpdate();
+  }
   // 위젯으로 넣은 항목은 "앱을 아예 새로 켤 때"만 반영되던 걸 보완 — 백그라운드에
   // 있던 앱을 다시 포그라운드로 불러올 때(예: 위젯 입력 후 앱 아이콘 탭)도 웹뷰의
   // visibilitychange 이벤트가 뜨므로, 그때마다 다시 동기화. 네이티브 플러그인을
@@ -10324,6 +10778,11 @@
         }
         if (document.getElementById('tab-today').classList.contains('active')) {
           renderToday();
+        }
+        // 알람 준비 화면을 열어둔 채 휴대폰 설정에 다녀온 경우 — 돌아오자마자
+        // 상태(✓ 완료 / 설정 필요)를 다시 확인해서 바로 반영(2026-09-06).
+        if (document.getElementById('alarm-setup-overlay').classList.contains('open')) {
+          renderAlarmSetup();
         }
       }
     });

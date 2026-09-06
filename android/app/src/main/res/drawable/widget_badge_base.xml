@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- widget_badge_base_light/dark와 같은 용도(오늘 할일 위젯 상단 근무 표시칸의
+     둥근 밑그림)지만, 색을 값으로 박지 않고 @color/widget_bg(values/ +
+     values-night/)로 참조하는 판 — 홈 화면 런처가 그리는 그 순간의 시스템
+     다크/라이트로 알아서 해석되므로, 앱을 안 켠 채 시스템 테마만 바뀌어도
+     배경·글자와 함께 같이 따라감(2026-09-06 추가).
+     앱 안 설정에서 테마를 직접 고른 경우엔 이 판 대신 값이 박힌
+     widget_badge_base_light/dark를 씀 — 어느 쪽을 쓸지는
+     WidgetThemeHelper.badgeBaseRes()가 배경·글자색과 완전히 같은 기준으로
+     정함(세 가지가 따로 놀면 어긋난 색이 보이므로 반드시 같이 판단할 것). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@color/widget_bg" />
+    <corners android:radius="6dp" />
+</shape>

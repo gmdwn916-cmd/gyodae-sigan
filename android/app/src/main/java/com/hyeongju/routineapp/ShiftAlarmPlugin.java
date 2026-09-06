@@ -6,6 +6,10 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Build;
+import android.os.PowerManager;
+import android.provider.Settings;
+
+import androidx.core.app.NotificationManagerCompat;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -115,6 +119,103 @@ public class ShiftAlarmPlugin extends Plugin {
         }
         ret.put("allowed", allowed);
         call.resolve(ret);
+    }
+
+    // ── 알람 준비 상태 점검·안내(2026-09-06 추가) ────────────────────────
+    // 설치 직후 안내 화면(JS의 openAlarmSetup)과 "근무유형별 알람" 설정 화면이
+    // 같이 씀. 세 가지를 한 번에 확인해서 돌려줌:
+    //  - notifications: 알림을 띄워도 되는지(안드로이드 13+ 런타임 권한, 그
+    //    미만은 사용자가 설정에서 끄지 않았는지)
+    //  - battery: 배터리 절약 대상에서 빠져 있는지(삼성 등 제조사 자체 절전이
+    //    알람을 막는 실제 사례가 있었음 — CLAUDE.md "배터리 절약" 항목 참고)
+    //  - fullScreen: 알람이 화면을 꽉 채워 뜰 수 있는지(안드로이드 14+)
+    // **어느 것도 여기서 강제로 바꾸지 않음** — 확인만 하고, 실제 변경은
+    // 아래 open*Settings로 사용자를 그 설정 화면까지 데려다주는 것까지가 전부
+    // (안드로이드가 앱이 직접 켜는 걸 허용하지 않는 항목들임).
+    @PluginMethod
+    public void checkAlarmSetup(PluginCall call) {
+        JSObject ret = new JSObject();
+        boolean notifications = true;
+        boolean battery = true;
+        boolean fullScreen = true;
+        try {
+            notifications = NotificationManagerCompat.from(getContext()).areNotificationsEnabled();
+        } catch (Exception e) {
+            // 확인 자체가 실패하면 "문제 없음"으로 두고 넘어감 — 안내 화면 하나
+            // 때문에 앱이 멈추면 안 되므로(알람 쪽 공통 방어 원칙)
+        }
+        try {
+            PowerManager pm = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
+            battery = pm == null || pm.isIgnoringBatteryOptimizations(getContext().getPackageName());
+        } catch (Exception e) {
+        }
+        try {
+            if (Build.VERSION.SDK_INT >= 34) {
+                NotificationManager nm = (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
+                fullScreen = nm == null || nm.canUseFullScreenIntent();
+            }
+        } catch (Exception e) {
+        }
+        ret.put("notifications", notifications);
+        ret.put("battery", battery);
+        ret.put("fullScreen", fullScreen);
+        call.resolve(ret);
+    }
+
+    // 이 앱의 알림 설정 화면을 바로 엶 — 안드로이드 13+에서 알림 권한을 한 번
+    // 거부하면 앱이 다시 물어봐도 창 자체가 안 뜨므로(정책상 조용히 거부로만
+    // 응답), 사용자가 직접 켤 수 있는 화면까지 데려다주는 게 최선.
+    @PluginMethod
+    public void openNotificationSettings(PluginCall call) {
+        boolean ok = false;
+        try {
+            Intent intent = new Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS);
+            intent.putExtra(Settings.EXTRA_APP_PACKAGE, getContext().getPackageName());
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            ok = true;
+        } catch (Exception e) {
+            ok = openAppDetails();
+        }
+        JSObject ret = new JSObject();
+        ret.put("opened", ok);
+        call.resolve(ret);
+    }
+
+    // 배터리 절약 제외는 앱이 직접 요청하는 창(ACTION_REQUEST_IGNORE_BATTERY_
+    // OPTIMIZATIONS)도 있지만, 그 방식은 별도 권한 선언이 필요하고 구글 플레이가
+    // 용도를 따로 심사하는 민감한 권한이라 이미 출시된 앱에 새로 넣는 건
+    // 위험하다고 판단 — 대신 이 앱의 "앱 정보" 화면으로 바로 보내고(거기서
+    // 배터리 → 제한 없음), 그 화면조차 없는 기기는 배터리 최적화 목록 화면으로
+    // 대체함. 다시 ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS로 바꾸려면
+    // 플레이 정책부터 확인할 것.
+    @PluginMethod
+    public void openBatterySettings(PluginCall call) {
+        boolean ok = openAppDetails();
+        if (!ok) {
+            try {
+                Intent intent = new Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS);
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(intent);
+                ok = true;
+            } catch (Exception e) {
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("opened", ok);
+        call.resolve(ret);
+    }
+
+    private boolean openAppDetails() {
+        try {
+            Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            return true;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     private void cancelAllInternal() {

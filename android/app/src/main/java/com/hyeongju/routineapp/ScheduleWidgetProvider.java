@@ -366,18 +366,12 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(idFor(context, "widget_schedule_root"), openPending);
 
-        // 배경을 XML의 @drawable/widget_background로 그냥 두면 홈 화면 런처가
-        // "그 순간 자신의" 다크/라이트 상태로 실시간 재해석해서 그리는데, 글자색은
-        // 우리 앱이 마지막으로 push한 순간의 다크/라이트 상태로 이미 확정돼 심어짐 —
-        // 그 사이 시스템 다크/라이트가 바뀌면 배경만 새 상태로 바뀌고 글자색은
-        // 예전 상태로 남아 어긋날 수 있음(예: 라이트로 바뀐 흰 배경 위에 다크 모드
-        // 때 심어둔 흰 글자가 그대로 남아 안 보이는 사고). 배경도 글자색과 완전히
-        // 같은 순간·같은 판단(isDark)으로 우리가 직접 골라 심어서 항상 맞게 함.
-        boolean isDark = WidgetThemeHelper.isDarkMode(context);
-        views.setInt(idFor(context, "widget_schedule_root"), "setBackgroundResource",
-            isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
+        // 배경과 글자색은 항상 짝으로 같은 방식으로 정해야 함(한쪽만 어긋나면
+        // 흰 배경에 흰 글자 같은 사고가 남) — 그 판단을 WidgetThemeHelper의
+        // applyBackground/applyPrimaryText 두 함수에 모아뒀으니 여기서 직접
+        // isDarkMode()로 색을 고르지 말 것(자세한 내용은 그 파일 주석 참고).
+        WidgetThemeHelper.applyBackground(context, views, idFor(context, "widget_schedule_root"));
 
-        int primaryText = WidgetThemeHelper.primaryTextColor(context);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
 
         // 이 화면 변형이 보여줄 줄 수만 VISIBLE, 나머지는 GONE — GONE인
@@ -395,7 +389,7 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         for (int i = 0; i < MAX_WEEKS * 7; i++) {
             int dateId = idFor(context, "sch_date_" + i);
             views.setTextViewText(dateId, "");
-            views.setTextColor(dateId, primaryText);
+            WidgetThemeHelper.applyPrimaryText(context, views, dateId);
             views.setInt(idFor(context, "sch_cell_" + i), "setBackgroundColor", 0x00000000);
             views.setTextViewText(idFor(context, "sch_shift_" + i), "");
             views.setInt(idFor(context, "sch_shift_" + i), "setBackgroundColor", 0x00000000);

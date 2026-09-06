@@ -251,19 +251,11 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(idFor(context, "widget_month_root"), openPending);
 
-        // 배경을 XML의 @drawable/widget_background(안에서 @color/widget_bg를 참조)로
-        // 그냥 두면, 그 색은 이 위젯을 그리는 홈 화면 런처가 "런처 자신의 그 순간
-        // 다크/라이트 상태"로 실시간으로 다시 해석해서 그림 — 반면 글자색(아래
-        // primaryText 등)은 우리 앱이 마지막으로 push했을 때의 다크/라이트 상태로
-        // 이미 확정된 값을 그대로 심어서 보냄. 그래서 마지막 push 이후에 시스템
-        // 다크/라이트가 바뀌면 배경은 새 상태로 바로 바뀌는데 글자색은 예전 상태
-        // 그대로 남아서(예: 라이트로 바뀐 배경 위에 다크 모드 때 심어둔 흰 글자가
-        // 그대로 남아 안 보이는 사고) 서로 어긋날 수 있음. 그래서 배경도 글자색과
-        // 완전히 같은 순간·같은 판단(isDark)으로 우리가 직접 골라서 심어버림 —
-        // 이러면 최소한 배경과 글자는 항상 같은 상태로 맞아 있음이 보장됨.
-        boolean isDark = WidgetThemeHelper.isDarkMode(context);
-        views.setInt(idFor(context, "widget_month_root"), "setBackgroundResource",
-            isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
+        // 배경과 글자색은 항상 짝으로 같은 방식으로 정해야 함(한쪽만 어긋나면
+        // 흰 배경에 흰 글자 같은 사고가 남) — 그 판단을 WidgetThemeHelper의
+        // applyBackground/applyPrimaryText 두 함수에 모아뒀으니 여기서 직접
+        // isDarkMode()로 색을 고르지 말 것(자세한 내용은 그 파일 주석 참고).
+        WidgetThemeHelper.applyBackground(context, views, idFor(context, "widget_month_root"));
 
         // 화살표 글자 대신, 월요일 쪽 세로 전체(헤더+6줄 그리드)를 누르면 이전
         // 달, 일요일 쪽 세로 전체를 누르면 다음 달로 넘어가게 함(스케줄 위젯과
@@ -291,7 +283,6 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
             views.setOnClickPendingIntent(idFor(context, "cell_container_" + (row * 7 + sunColForNav)), nextPending);
         }
 
-        int primaryText = WidgetThemeHelper.primaryTextColor(context);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
 
         // 자료가 없거나 깨져 있어도 안전하게 빈 칸으로 시작
@@ -302,7 +293,7 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
         for (int i = 0; i < totalCells; i++) {
             views.setTextViewText(idFor(context, "cell_date_" + i), "");
             views.setTextViewText(idFor(context, "cell_shift_" + i), "");
-            views.setTextColor(idFor(context, "cell_date_" + i), primaryText);
+            WidgetThemeHelper.applyPrimaryText(context, views, idFor(context, "cell_date_" + i));
             views.setInt(idFor(context, "cell_shift_" + i), "setBackgroundColor", 0x00000000);
             // 오늘 표시 테두리(widget_today_cell_border) 리셋 — 이게 없으면
             // 어제까지 "오늘"이었던 칸이 오늘이 아니게 된 뒤에도 테두리가 그대로

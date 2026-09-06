@@ -175,9 +175,15 @@ public class TodayWidgetService extends RemoteViewsService {
             // 추가, 사용자 요청 — "위젯에서도 중요 표시 색 적용해달라"). 완료가
             // 색 우선순위상 더 위(회색 고정)라 done이면 중요 여부와 무관하게
             // 계속 회색.
-            row.setTextColor(textId, done
-                ? ContextCompat.getColor(context, R.color.widget_text_secondary)
-                : (important ? 0xFFFF9500 : WidgetThemeHelper.primaryTextColor(context)));
+            if (done) {
+                row.setTextColor(textId, ContextCompat.getColor(context, R.color.widget_text_secondary));
+            } else if (important) {
+                row.setTextColor(textId, 0xFFFF9500);
+            } else {
+                // 평소 글자색만 라이트/다크에 따라 달라지므로 이 경우에만 헬퍼를 씀
+                // (완료 회색·중요 주황은 두 테마 공통 고정색).
+                WidgetThemeHelper.applyPrimaryText(context, row, textId);
+            }
             row.setImageViewResource(idFor("item_check"),
                 done ? R.drawable.widget_check_on : R.drawable.widget_check_off);
             // 빈 줄(위 position >= items.size() 분기)이 체크칸을 INVISIBLE로

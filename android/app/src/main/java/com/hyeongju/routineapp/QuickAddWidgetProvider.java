@@ -58,13 +58,10 @@ public class QuickAddWidgetProvider extends AppWidgetProvider {
         // 부분을 눌러도 반응함.
         views.setOnClickPendingIntent(R.id.widget_quick_add_root, pendingIntent);
 
-        // 위젯 2·3·4와 같은 이유로 배경도 글자색과 같은 순간에 우리가 직접
-        // 판단해서 심음(라이트/다크가 어긋나 안 보이는 사고 방지) — 이 위젯도
-        // 이제 글씨(라벨)가 생겨서 같은 버그 대상이 됨.
-        boolean isDark = WidgetThemeHelper.isDarkMode(context);
-        views.setInt(R.id.widget_quick_add_root, "setBackgroundResource",
-            isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
-        views.setTextColor(R.id.quick_add_label, WidgetThemeHelper.primaryTextColor(context));
+        // 배경과 글자색은 항상 짝으로 같은 방식으로 정함(WidgetThemeHelper 참고) —
+        // 여기서 직접 isDarkMode()로 색을 고르지 말 것.
+        WidgetThemeHelper.applyBackground(context, views, R.id.widget_quick_add_root);
+        WidgetThemeHelper.applyPrimaryText(context, views, R.id.quick_add_label);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
     }

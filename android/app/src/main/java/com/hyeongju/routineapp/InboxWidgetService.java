@@ -123,11 +123,10 @@ public class InboxWidgetService extends RemoteViewsService {
             // VISIBLE로 되돌리지 않으면 점이 계속 안 보이는 상태로 남을 수 있음
             // — 실제 항목 쪽에서 항상 VISIBLE로 되돌림.
             row.setViewVisibility(idFor("inbox_item_bullet"), isFiller ? View.INVISIBLE : View.VISIBLE);
-            // 이 줄의 XML 기본 textColor(@color/widget_text_primary)는 실제 기기
-            // 시스템 다크모드만 보고 자동으로 해석되므로, 앱 안 테마 설정을
-            // 따르게 하려면 여기서 직접 색을 심어야 함(2026-07-17 추가 — 다른
-            // 위젯들은 이미 다 이렇게 하고 있었는데 이 줄만 빠져 있었음).
-            row.setTextColor(idFor("inbox_item_text"), WidgetThemeHelper.primaryTextColor(context));
+            // 글자색은 배경과 항상 같은 기준으로 정해야 하므로 헬퍼를 씀
+            // (WidgetThemeHelper.applyPrimaryText 주석 참고) — 여기서 직접
+            // primaryTextColor()로 값을 심지 말 것.
+            WidgetThemeHelper.applyPrimaryText(context, row, idFor("inbox_item_text"));
             // 모든 줄이 항상 같은 동작(앱 열기)이라 특별한 값을 안 실은 빈
             // fillInIntent만 붙임 — 그래도 이게 있어야 탭에 반응함(RemoteViews
             // 컬렉션 위젯의 제약).

@@ -75,11 +75,10 @@ public class TeamTodayWidgetProvider extends AppWidgetProvider {
         );
         views.setOnClickPendingIntent(idFor(context, "widget_team_today_root"), openPending);
 
-        boolean isDark = WidgetThemeHelper.isDarkMode(context);
-        views.setInt(idFor(context, "widget_team_today_root"), "setBackgroundResource",
-            isDark ? R.drawable.widget_background_dark : R.drawable.widget_background_light);
+        // 배경과 글자색은 항상 짝으로 같은 방식으로 정함(WidgetThemeHelper 참고) —
+        // 여기서 직접 isDarkMode()로 색을 고르지 말 것.
+        WidgetThemeHelper.applyBackground(context, views, idFor(context, "widget_team_today_root"));
 
-        int primaryText = WidgetThemeHelper.primaryTextColor(context);
         int secondaryText = ContextCompat.getColor(context, R.color.widget_text_secondary);
         int accentBlue = 0xFF007AFF;
 
@@ -87,7 +86,7 @@ public class TeamTodayWidgetProvider extends AppWidgetProvider {
         // RemoteViews를 만들어서 기본값은 항상 투명이지만, 습관적으로 명시
         // 리셋 — 다른 위젯들에서 겪었던 "이전 상태가 남는" 함정 예방).
         views.setTextViewText(idFor(context, "tt_date"), "");
-        views.setTextColor(idFor(context, "tt_date"), primaryText);
+        WidgetThemeHelper.applyPrimaryText(context, views, idFor(context, "tt_date"));
         for (int i = 0; i < MAX_TEAMS; i++) {
             views.setViewVisibility(idFor(context, "tt_slot_" + i), View.GONE);
             views.setInt(idFor(context, "tt_slot_" + i), "setBackgroundResource", 0);

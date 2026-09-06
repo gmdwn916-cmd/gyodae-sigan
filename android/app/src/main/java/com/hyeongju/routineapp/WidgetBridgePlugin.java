@@ -1,7 +1,11 @@
 package com.hyeongju.routineapp;
 
 import android.content.Context;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.net.Uri;
+import android.os.Build;
 
 import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
@@ -24,6 +28,56 @@ public class WidgetBridgePlugin extends Plugin {
     // 파일("widget_bridge")을 그냥 공유해서 씀(새 파일 안 만듦).
     static final String PREFS_NAME = "widget_bridge";
     static final String KEY_PENDING_NAV_TARGET = "pending_nav_target";
+
+    // ── 앱 버전 확인 / 스토어 열기(2026-09-06 추가) ─────────────────────
+    // "새 버전이 나왔어요" 안내를 위해 JS가 지금 설치된 앱의 버전을 알아야 함 —
+    // 웹(브라우저)에서는 이 플러그인 자체가 없어서 안내도 안 뜸(스토어에서
+    // 받을 앱이 없으니 당연).
+    @PluginMethod
+    public void getAppInfo(PluginCall call) {
+        JSObject ret = new JSObject();
+        String versionName = "";
+        long versionCode = 0;
+        try {
+            PackageInfo info = getContext().getPackageManager()
+                .getPackageInfo(getContext().getPackageName(), 0);
+            versionName = info.versionName == null ? "" : info.versionName;
+            versionCode = Build.VERSION.SDK_INT >= 28 ? info.getLongVersionCode() : info.versionCode;
+        } catch (Exception e) {
+            // 못 읽으면 0으로 둠 — JS쪽이 "버전을 모르면 안내를 띄우지 않음"으로
+            // 처리하므로 잘못된 안내가 뜨는 일은 없음
+        }
+        ret.put("versionName", versionName);
+        ret.put("versionCode", versionCode);
+        ret.put("packageName", getContext().getPackageName());
+        call.resolve(ret);
+    }
+
+    // 플레이스토어의 이 앱 페이지를 엶 — 스토어 앱이 깔려 있으면 그 앱으로
+    // (market://), 없으면 웹 주소로 대신 엶.
+    @PluginMethod
+    public void openAppStore(PluginCall call) {
+        String pkg = getContext().getPackageName();
+        boolean opened = false;
+        try {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg));
+            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            getContext().startActivity(intent);
+            opened = true;
+        } catch (Exception e) {
+            try {
+                Intent web = new Intent(Intent.ACTION_VIEW,
+                    Uri.parse("https://play.google.com/store/apps/details?id=" + pkg));
+                web.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                getContext().startActivity(web);
+                opened = true;
+            } catch (Exception e2) {
+            }
+        }
+        JSObject ret = new JSObject();
+        ret.put("opened", opened);
+        call.resolve(ret);
+    }
 
     @PluginMethod
     public void getPendingItems(PluginCall call) {
