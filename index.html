@@ -3424,6 +3424,9 @@
     </div>
 
     <div class="onboard-warn" id="promote-warn"></div>
+    <div class="btn-row" style="padding-top:8px">
+      <button class="btn btn-primary" id="btn-promote-save">저장</button>
+    </div>
   </div>
 </div>
 
@@ -9738,6 +9741,19 @@
     if (e.target === this) attemptCloseRepeatEditor();
   });
   document.getElementById('promote-text-input').addEventListener('input', syncPromoteEditorToState);
+  document.getElementById('btn-promote-save').addEventListener('click', function () {
+    const text = document.getElementById('promote-text-input').value.trim();
+    if (!text) {
+      document.getElementById('promote-warn').textContent = '할 일 내용을 입력해주세요.';
+      return;
+    }
+    if (!repeatEditorTargetEvent && !promoteMode) {
+      document.getElementById('promote-warn').textContent = '반복 방식을 선택해주세요.';
+      return;
+    }
+    syncPromoteEditorToState();
+    attemptCloseRepeatEditor();
+  });
   // ── 기간 할 일 수정 ──────────────────────────────────────────
   let periodEditingId = null;
 
