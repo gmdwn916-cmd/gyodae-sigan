@@ -7192,7 +7192,12 @@
         const text = (item.text || '').trim();
         const dateStr = item.date || '';
         if (!text || !dateStr) return;
-        const newEv = { id: genId('e'), date: dateStr, endDate: dateStr, text: text, done: false };
+        // 위젯(네이티브)이 미리 만들어 넘긴 id가 있으면 그대로 씀(2026-10-04) —
+        // 앱을 열기 전에 위젯에서 이 항목을 체크했다면 그 체크가 이 id로
+        // 쌓여 있으므로(바로 다음 syncWidgetTodayToggles가 처리) 같은 id여야 함.
+        const wid = (item.id || '').trim();
+        const useId = wid && !state.events.some(function (e) { return e.id === wid; }) ? wid : genId('e');
+        const newEv = { id: useId, date: dateStr, endDate: dateStr, text: text, done: false };
         applyAutoTimeSlot(newEv);
         state.events.push(newEv);
       });
@@ -10766,8 +10771,9 @@
     openTour();
   }
   syncWidgetInboxItems();
-  syncWidgetDatedItems();
-  syncWidgetTodayToggles();
+  // 날짜 항목을 먼저 만든 뒤에 체크를 반영해야 함 — 위젯에서 앱 열기 전에
+  // 추가하고 바로 체크한 항목은 그 체크가 새로 만들어질 일정 id를 가리킴.
+  syncWidgetDatedItems().then(syncWidgetTodayToggles);
   pushAllWidgets();
   syncWidgetNavTarget();
   // 새 버전 안내(2026-09-06) — 설치 직후 첫 실행(튜토리얼·온보딩이 뜨는 상황)
@@ -10785,8 +10791,9 @@
     document.addEventListener('visibilitychange', function () {
       if (!document.hidden) {
         syncWidgetInboxItems();
-        syncWidgetDatedItems();
-        syncWidgetTodayToggles();
+        // 날짜 항목을 먼저 만든 뒤에 체크를 반영해야 함 — 위젯에서 앱 열기 전에
+        // 추가하고 바로 체크한 항목은 그 체크가 새로 만들어질 일정 id를 가리킴.
+        syncWidgetDatedItems().then(syncWidgetTodayToggles);
         pushAllWidgets();
         syncWidgetNavTarget();
         if (document.getElementById('inbox-overlay').classList.contains('open')) {

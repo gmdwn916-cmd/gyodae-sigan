@@ -121,6 +121,7 @@ public class WidgetBridgePlugin extends Plugin {
             for (int i = 0; i < arr.length(); i++) {
                 JSONObject it = arr.getJSONObject(i);
                 JSObject ji = new JSObject();
+                ji.put("id", it.optString("id", ""));
                 ji.put("text", it.optString("text", ""));
                 ji.put("date", it.optString("date", ""));
                 items.put(ji);

@@ -92,5 +92,7 @@ public class QuickAddActivity extends Activity {
         }
         arr.put(text);
         prefs.edit().putString(KEY_PENDING_ITEMS, arr.toString()).apply();
+        // 앱을 안 열어도 미배치 위젯에 바로 보이게(WidgetLiveUpdate 참고)
+        WidgetLiveUpdate.addInboxItem(this, text);
     }
 }

@@ -97,6 +97,9 @@ public class TodayQuickAddActivity extends Activity {
     }
 
     private void addPendingDatedItem(String text, String date) {
+        // id를 미리 만들어 둠 — 위젯 임시 항목과 앱이 만들 진짜 일정이 같은 id를
+        // 쓰게 하려고(WidgetLiveUpdate 참고)
+        String newId = WidgetLiveUpdate.genId("e");
         SharedPreferences prefs = getSharedPreferences(
             DayQuickViewActivity.PREFS_NAME, MODE_PRIVATE);
         String raw = prefs.getString(DayQuickViewActivity.KEY_PENDING_DATED_ITEMS, "[]");
@@ -108,6 +111,7 @@ public class TodayQuickAddActivity extends Activity {
         }
         try {
             JSONObject item = new JSONObject();
+            item.put("id", newId);
             item.put("text", text);
             item.put("date", date);
             arr.put(item);
@@ -115,5 +119,7 @@ public class TodayQuickAddActivity extends Activity {
             // 무시 — 이번 항목은 못 넘어갈 수 있지만 다음 시도는 정상 동작
         }
         prefs.edit().putString(DayQuickViewActivity.KEY_PENDING_DATED_ITEMS, arr.toString()).apply();
+        // 오늘 날짜면 오늘 할일 위젯에 바로 보이게(WidgetLiveUpdate 참고)
+        WidgetLiveUpdate.addTodayItem(this, newId, text, date);
     }
 }
