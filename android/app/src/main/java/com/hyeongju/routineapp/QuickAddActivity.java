@@ -70,7 +70,15 @@ public class QuickAddActivity extends Activity {
         });
     }
 
+    // 저장이 한 번만 되게 막는 표시(2026-10-05, 두 번 추가 버그 수정) — 일부
+    // 키보드(삼성 등)는 완료 키 한 번에 IME_ACTION_DONE과 엔터 키 이벤트를
+    // 둘 다 보내서 save()가 연달아 두 번 불리고, finish()는 즉시 화면을
+    // 닫지 않으므로 같은 항목이 두 번 저장됐음.
+    private boolean saved = false;
+
     private void save(EditText input) {
+        if (saved) return;
+        saved = true;
         String text = input.getText().toString().trim();
         if (TextUtils.isEmpty(text)) {
             finish();

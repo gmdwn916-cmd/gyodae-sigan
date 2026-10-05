@@ -182,7 +182,12 @@ public class DayQuickViewActivity extends Activity {
         finish();
     }
 
+    // 저장이 한 번만 되게 막는 표시(2026-10-05) — QuickAddActivity.saved와 같은 이유.
+    private boolean saved = false;
+
     private void save(EditText input) {
+        if (saved) return;
+        saved = true;
         String text = input.getText().toString().trim();
         if (TextUtils.isEmpty(text) || TextUtils.isEmpty(targetDate)) {
             finish();
