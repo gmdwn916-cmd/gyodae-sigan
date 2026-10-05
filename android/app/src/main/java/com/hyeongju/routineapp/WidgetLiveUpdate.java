@@ -98,4 +98,61 @@ final class WidgetLiveUpdate {
         }
         try { TodayWidgetProvider.refreshAll(context); } catch (Exception e) {}
     }
+
+    // 스케줄 위젯(ScheduleWidgetProvider) 캐시의 그 날짜 칸에 항목 추가 + 즉시
+    // 다시 그리기(2026-10-05 추가, 사용자 신고 — "스케줄 위젯으로 할 일을 추가하면
+    // 앱에는 보이는데 스케줄 위젯에는 안 보인다"). JS buildSchedulePayload()와 같은
+    // 모양({text:'• '+내용, done, important})으로 allTodos에 넣고, 칸에 그리는
+    // todos는 JS와 똑같이 allTodos 앞 3개로 다시 맞춤. 완료 항목(완료 표시를
+    // 켜둔 경우)은 항상 맨 아래라서 그 바로 앞에 끼움. 위젯이 보고 있던 주
+    // 위치(KEY_WEEK_START_INDEX)는 건드리지 않음.
+    static void addScheduleItem(Context context, String text, String date) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(
+                ScheduleWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
+            String raw = prefs.getString(ScheduleWidgetProvider.KEY_SCHEDULE_DATA, null);
+            if (raw == null || date == null) return;
+            JSONObject obj = new JSONObject(raw);
+            JSONArray weeks = obj.optJSONArray("weeks");
+            if (weeks == null) return;
+            boolean found = false;
+            for (int w = 0; w < weeks.length() && !found; w++) {
+                JSONObject week = weeks.optJSONObject(w);
+                JSONArray days = week == null ? null : week.optJSONArray("days");
+                if (days == null) continue;
+                for (int d = 0; d < days.length(); d++) {
+                    JSONObject day = days.optJSONObject(d);
+                    if (day == null || !date.equals(day.optString("date", ""))) continue;
+                    JSONArray all = day.optJSONArray("allTodos");
+                    if (all == null) all = new JSONArray();
+                    JSONObject it = new JSONObject();
+                    it.put("text", "\u2022 " + text);
+                    it.put("done", false);
+                    it.put("important", false);
+                    JSONArray next = new JSONArray();
+                    boolean inserted = false;
+                    for (int i = 0; i < all.length(); i++) {
+                        JSONObject cur = all.optJSONObject(i);
+                        if (!inserted && cur != null && cur.optBoolean("done", false)) {
+                            next.put(it);
+                            inserted = true;
+                        }
+                        if (cur != null) next.put(cur);
+                    }
+                    if (!inserted) next.put(it);
+                    JSONArray todos = new JSONArray();
+                    for (int i = 0; i < next.length() && i < 3; i++) todos.put(next.get(i));
+                    day.put("allTodos", next);
+                    day.put("todos", todos);
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) return; // 위젯이 들고 있는 범위 밖 날짜 — 앱을 열면 반영됨
+            prefs.edit().putString(ScheduleWidgetProvider.KEY_SCHEDULE_DATA, obj.toString()).apply();
+        } catch (Exception e) {
+            return;
+        }
+        try { ScheduleWidgetProvider.refreshAll(context); } catch (Exception e) {}
+    }
 }

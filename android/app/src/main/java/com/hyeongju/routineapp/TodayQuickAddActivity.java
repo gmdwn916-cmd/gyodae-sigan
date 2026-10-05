@@ -129,5 +129,7 @@ public class TodayQuickAddActivity extends Activity {
         prefs.edit().putString(DayQuickViewActivity.KEY_PENDING_DATED_ITEMS, arr.toString()).apply();
         // 오늘 날짜면 오늘 할일 위젯에 바로 보이게(WidgetLiveUpdate 참고)
         WidgetLiveUpdate.addTodayItem(this, newId, text, date);
+        // 스케줄 위젯의 그 날짜 칸에도 바로 보이게
+        WidgetLiveUpdate.addScheduleItem(this, text, date);
     }
 }
