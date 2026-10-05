@@ -136,6 +136,22 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
         return cellWidthDp * metrics.density;
     }
 
+    // 칸 폭에 들어가면 그대로, 안 들어가면 폭에 맞춰 잘라 끝에 "…"을 붙여 돌려줌
+    // (2026-10-05 추가). 한 글자도 못 넣을 만큼 좁으면 빈 문자열.
+    private static String fitTodoText(Context context, String text, float usableWidthPx) {
+        if (text == null || text.isEmpty()) return "";
+        if (todoTextFits(context, text, usableWidthPx)) return text;
+        DisplayMetrics metrics = context.getResources().getDisplayMetrics();
+        TextPaint paint = new TextPaint();
+        paint.setTextSize(TODO_TEXT_SIZE_SP * metrics.scaledDensity);
+        CharSequence cut = android.text.TextUtils.ellipsize(
+            text, paint, usableWidthPx, android.text.TextUtils.TruncateAt.END);
+        String result = cut == null ? "" : cut.toString();
+        // "• …"처럼 내용 글자가 하나도 안 남으면 의미가 없으므로 숨김 처리
+        String core = result.replace("\u2022", "").replace("\u2026", "").trim();
+        return core.isEmpty() ? "" : result;
+    }
+
     private static boolean todoTextFits(Context context, String text, float usableWidthPx) {
         if (text == null || text.isEmpty()) return true;
         DisplayMetrics metrics = context.getResources().getDisplayMetrics();
@@ -540,8 +556,15 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
                                     // 칸 폭에 안 들어가는(잘리는) 글씨는 보여주는 대신 그 줄
                                     // 자체를 숨김(2026-08-22 추가) — 위 todoCellUsableWidthPx/
                                     // todoTextFits 참고.
-                                    if (todoTextFits(context, text, usableTodoWidthPx)) {
-                                        views.setTextViewText(todoId, buildTodoText(text, done));
+                                    // **2026-10-05 변경**: 예전엔 안 들어가면 줄을 통째로
+                                    // 숨겼는데, 그러다 보니 긴 할 일만 있는 날은 위젯에 아무것도
+                                    // 안 보여서 "앱엔 있는데 위젯엔 없다"는 신고가 나옴. 이제는
+                                    // 칸 폭에 맞게 직접 잘라서 끝에 "…"을 붙여 보여줌(옆 칸으로
+                                    // 넘치지 않는 건 그대로 유지). 칸이 너무 좁아 한 글자도 못
+                                    // 넣는 경우만 예전처럼 숨김.
+                                    String shown = fitTodoText(context, text, usableTodoWidthPx);
+                                    if (!shown.isEmpty()) {
+                                        views.setTextViewText(todoId, buildTodoText(shown, done));
                                     } else {
                                         views.setViewVisibility(todoId, View.GONE);
                                     }
