@@ -157,6 +157,13 @@ public class InboxWidgetProvider extends AppWidgetProvider {
                 JSONObject obj = new JSONObject(raw);
                 int count = obj.optInt("count", 0);
                 views.setTextViewText(idFor(context, "inbox_count"), count > 0 ? String.valueOf(count) + "개" : "");
+                // 11개 이상이면 개수를 빨간색으로(2026-10-09 추가, 사용자 요청 —
+                // 미배치가 많이 쌓였다는 걸 한눈에 알아차리게). 빨강은 달력/스케줄
+                // 위젯의 일요일 머리글과 같은 #ff3b30. 10개 이하는 위에서 정한
+                // 평소 회색(secondaryText) 그대로.
+                if (count >= 11) {
+                    views.setTextColor(idFor(context, "inbox_count"), 0xFFFF3B30);
+                }
             } catch (Exception e) {
                 // 데이터가 깨져 있으면 위에서 이미 비워둔 빈 헤더로 둠
             }
