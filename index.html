@@ -4007,6 +4007,26 @@
     return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   }
 
+  // 할 일 앞에 !(또는 전각 ！)를 붙여 입력하면 '중요' 할 일로 만듦(2026-10-09
+  // 추가, 사용자 요청). 맨 앞의 느낌표(여러 개여도)를 떼어낸 나머지가 실제
+  // 내용 — 느낌표만 있고 내용이 없으면 그냥 원래 글자 그대로(중요 아님).
+  // 앱 하단 입력창·위젯 입력(미배치/날짜)·일괄 할 일 모두 이 함수를 거침.
+  // 중요 할 일은 주황 글씨(#ff9500)이고, 미배치 목록·날짜(같은 시간대 안)·
+  // 위젯 목록에서 맨 위로 정렬됨.
+  function parseImportantPrefix(raw) {
+    const t = (raw || '').trim();
+    if (/^[!！]/.test(t)) {
+      const rest = t.replace(/^[!！]+/, '').trim();
+      if (rest) return { text: rest, important: true };
+    }
+    return { text: t, important: false };
+  }
+
+  // 미배치 목록용 정렬 — 중요 할 일을 맨 위로(나머지 순서는 그대로, 안정 정렬).
+  function sortImportantFirst(list) {
+    return list.slice().sort(function (a, b) { return (a.important ? 0 : 1) - (b.important ? 0 : 1); });
+  }
+
   function buildEmptyDay(i) {
     return { dayIndex: i + 1, shiftType: { name: '' }, items: [], done: false };
   }
@@ -6451,14 +6471,17 @@
   });
 
   document.getElementById('btn-bulk-todo-apply').addEventListener('click', function () {
-    const text = document.getElementById('bulk-todo-input').value.trim();
+    const parsedBulk = parseImportantPrefix(document.getElementById('bulk-todo-input').value);
+    const text = parsedBulk.text;
     const warn = document.getElementById('bulk-todo-warn');
     if (!text) { warn.textContent = '내용을 입력해 주세요.'; return; }
     const dates = Array.from(bulkShiftSelectedDates).sort();
     const start = dates[0];
     const end = dates[dates.length - 1];
     if (!Array.isArray(state.events)) state.events = [];
-    state.events.push({ id: genId('ev'), text: text, date: start, endDate: end, color: bulkTodoSelectedColor, done: false });
+    const bulkEv = { id: genId('ev'), text: text, date: start, endDate: end, color: bulkTodoSelectedColor, done: false };
+    if (parsedBulk.important) bulkEv.important = true;
+    state.events.push(bulkEv);
     saveState();
     closeBulkTodoSheet();
     renderToday();
@@ -7180,9 +7203,11 @@
       if (!items.length) return;
       if (!Array.isArray(state.inbox)) state.inbox = [];
       items.forEach(function (text) {
-        const trimmed = (text || '').trim();
-        if (!trimmed) return;
-        state.inbox.push({ id: genId('i'), text: trimmed, createdAt: Date.now() });
+        const parsed = parseImportantPrefix(text);
+        if (!parsed.text) return;
+        const newItem = { id: genId('i'), text: parsed.text, createdAt: Date.now() };
+        if (parsed.important) newItem.important = true;
+        state.inbox.push(newItem);
       });
       saveState();
       renderInboxBadge();
@@ -7203,7 +7228,8 @@
       if (!items.length) return;
       if (!Array.isArray(state.events)) state.events = [];
       items.forEach(function (item) {
-        const text = (item.text || '').trim();
+        const parsedD = parseImportantPrefix(item.text);
+        const text = parsedD.text;
         const dateStr = item.date || '';
         if (!text || !dateStr) return;
         // 위젯(네이티브)이 미리 만들어 넘긴 id가 있으면 그대로 씀(2026-10-04) —
@@ -7214,6 +7240,7 @@
         if (wid && state.events.some(function (e) { return e.id === wid; })) return;
         const useId = wid || genId('e');
         const newEv = { id: useId, date: dateStr, endDate: dateStr, text: text, done: false };
+        if (parsedD.important) newEv.important = true;
         applyAutoTimeSlot(newEv);
         state.events.push(newEv);
       });
@@ -7576,8 +7603,8 @@
   // 탭하면 그냥 앱이 열림(어떤 항목을 눌렀는지는 구분 안 함).
   function buildInboxWidgetPayload() {
     const inbox = (state && Array.isArray(state.inbox)) ? state.inbox : [];
-    const items = inbox.filter(function (it) { return !it.targetMonth; })
-      .map(function (it) { return { id: it.id, text: it.text }; });
+    const items = sortImportantFirst(inbox.filter(function (it) { return !it.targetMonth; }))
+      .map(function (it) { return { id: it.id, text: it.text, important: !!it.important }; });
     return { count: items.length, items: items };
   }
 
@@ -8921,7 +8948,8 @@
   // 할 일 하나를 실제로 추가하는 부분만 따로 뺌(2026-07-18) — 쉼표로 여러 개를
   // 한 번에 이어 넣을 때(아래 comma 처리)도 이 함수를 그대로 재사용하기 위함.
   function addQuickAddItem(text) {
-    text = text.trim();
+    const parsedImp = parseImportantPrefix(text);
+    text = parsedImp.text;
     if (!text) return;
 
     // 미배치 목록 창이 열려있으면(#inbox-overlay가 이 바를 안 가리게 남겨둠,
@@ -8930,7 +8958,9 @@
     // 목록에 즉시 나타나야 자연스러움.
     if (document.getElementById('inbox-overlay').classList.contains('open')) {
       if (!Array.isArray(state.inbox)) state.inbox = [];
-      state.inbox.push({ id: genId('i'), text: text, createdAt: Date.now() });
+      const newInbox = { id: genId('i'), text: text, createdAt: Date.now() };
+      if (parsedImp.important) newInbox.important = true;
+      state.inbox.push(newInbox);
       saveState();
       renderInboxList();
       renderInboxBadge();
@@ -8946,6 +8976,7 @@
     if (targetDateStr) {
       if (!Array.isArray(state.events)) state.events = [];
       const newEv = { id: genId('e'), date: targetDateStr, endDate: targetDateStr, text: text };
+      if (parsedImp.important) newEv.important = true;
       applyAutoTimeSlot(newEv);
       state.events.push(newEv);
       saveState();
@@ -8956,7 +8987,9 @@
     }
 
     if (!Array.isArray(state.inbox)) state.inbox = [];
-    state.inbox.push({ id: genId('i'), text: text, createdAt: Date.now() });
+    const newInboxItem = { id: genId('i'), text: text, createdAt: Date.now() };
+    if (parsedImp.important) newInboxItem.important = true;
+    state.inbox.push(newInboxItem);
     saveState();
     renderInboxBadge();
   }
@@ -8998,7 +9031,9 @@
     const ev = state.events[idx];
     state.events.splice(idx, 1);
     if (!Array.isArray(state.inbox)) state.inbox = [];
-    state.inbox.push({ id: genId('i'), text: ev.text, createdAt: Date.now() });
+    const backItem = { id: genId('i'), text: ev.text, createdAt: Date.now() };
+    if (ev.important) backItem.important = true;
+    state.inbox.push(backItem);
     saveState();
     renderInboxBadge();
   }
@@ -9013,6 +9048,8 @@
     const text = document.createElement('span');
     text.className = 'inbox-item-text';
     text.textContent = item.text;
+    // 중요 할 일은 다른 화면과 같은 주황 글씨(2026-10-09)
+    if (item.important) text.style.color = '#ff9500';
     const del = document.createElement('button');
     del.className = 'inbox-item-del';
     del.textContent = '×';
@@ -9141,8 +9178,8 @@
 
     const onMonthTab = document.getElementById('tab-month').classList.contains('active');
     const viewMonthStr = onMonthTab ? formatYearMonth(calYear, calMonth) : null;
-    const thisMonthItems = viewMonthStr ? inbox.filter(function (it) { return it.targetMonth === viewMonthStr; }) : [];
-    const generalItems = inbox.filter(function (it) { return !it.targetMonth; });
+    const thisMonthItems = sortImportantFirst(viewMonthStr ? inbox.filter(function (it) { return it.targetMonth === viewMonthStr; }) : []);
+    const generalItems = sortImportantFirst(inbox.filter(function (it) { return !it.targetMonth; }));
 
     if (thisMonthItems.length === 0 && generalItems.length === 0) {
       el.innerHTML = '<div class="inbox-empty">미배치 항목이 없어요.</div>';
@@ -9229,6 +9266,7 @@
     state.inbox.splice(idx, 1);
     if (!Array.isArray(state.events)) state.events = [];
     const newEv = { id: genId('e'), date: dateStr, endDate: dateStr, text: item.text, done: false };
+    if (item.important) newEv.important = true;
     applyAutoTimeSlot(newEv);
     state.events.push(newEv);
     saveState();

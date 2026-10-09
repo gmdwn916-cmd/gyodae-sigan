@@ -28,6 +28,17 @@ import org.json.JSONObject;
 final class WidgetLiveUpdate {
     private WidgetLiveUpdate() {}
 
+    // 맨 앞 !(또는 전각 ！)는 '중요' 표시(2026-10-09, JS parseImportantPrefix와
+    // 같은 규칙) — [0]=느낌표 뗀 내용, [1]="1"이면 중요. 내용이 없으면 원문 그대로.
+    static String[] parseImportant(String raw) {
+        String t = raw == null ? "" : raw.trim();
+        if (t.startsWith("!") || t.startsWith("\uFF01")) {
+            String rest = t.replaceFirst("^[!\uFF01]+", "").trim();
+            if (!rest.isEmpty()) return new String[] { rest, "1" };
+        }
+        return new String[] { t, "0" };
+    }
+
     // JS genId()와 같은 모양(접두어 + 36진수 시각 + 무작위 4글자).
     static String genId(String prefix) {
         String rand = Long.toString((long) (Math.random() * 1679616L), 36);
@@ -46,10 +57,21 @@ final class WidgetLiveUpdate {
             catch (Exception e) { obj = new JSONObject(); }
             JSONArray items = obj.optJSONArray("items");
             if (items == null) items = new JSONArray();
+            String[] pi = parseImportant(text);
+            boolean imp = "1".equals(pi[1]);
             JSONObject it = new JSONObject();
             it.put("id", genId("i"));
-            it.put("text", text);
-            items.put(it); // JS도 state.inbox 끝에 push하므로 같은 위치
+            it.put("text", pi[0]);
+            it.put("important", imp);
+            if (imp) {
+                // 중요는 맨 위로(JS sortImportantFirst와 같은 결과)
+                JSONArray next = new JSONArray();
+                next.put(it);
+                for (int i = 0; i < items.length(); i++) next.put(items.get(i));
+                items = next;
+            } else {
+                items.put(it); // JS도 state.inbox 끝에 push하므로 같은 위치
+            }
             obj.put("items", items);
             obj.put("count", items.length());
             prefs.edit().putString(InboxWidgetProvider.KEY_INBOX_DATA, obj.toString()).apply();
@@ -72,16 +94,19 @@ final class WidgetLiveUpdate {
             if (date == null || !date.equals(obj.optString("date", ""))) return;
             JSONArray items = obj.optJSONArray("items");
             if (items == null) items = new JSONArray();
+            String[] pi = parseImportant(text);
+            boolean imp = "1".equals(pi[1]);
             JSONObject it = new JSONObject();
             it.put("id", id);
-            it.put("important", false);
-            it.put("text", text);
+            it.put("important", imp);
+            it.put("text", pi[0]);
             it.put("done", false);
             it.put("icon", "");
             it.put("type", "once");
             // 완료된 항목(완료 표시 켜둔 경우)은 항상 맨 아래라서, 그 바로 앞에 끼움.
             JSONArray next = new JSONArray();
             boolean inserted = false;
+            if (imp) { next.put(it); inserted = true; } // 중요는 맨 위로
             for (int i = 0; i < items.length(); i++) {
                 JSONObject cur = items.optJSONObject(i);
                 if (!inserted && cur != null && cur.optBoolean("done", false)) {
@@ -125,12 +150,15 @@ final class WidgetLiveUpdate {
                     if (day == null || !date.equals(day.optString("date", ""))) continue;
                     JSONArray all = day.optJSONArray("allTodos");
                     if (all == null) all = new JSONArray();
+                    String[] pi = parseImportant(text);
+                    boolean imp = "1".equals(pi[1]);
                     JSONObject it = new JSONObject();
-                    it.put("text", "\u2022 " + text);
+                    it.put("text", "\u2022 " + pi[0]);
                     it.put("done", false);
-                    it.put("important", false);
+                    it.put("important", imp);
                     JSONArray next = new JSONArray();
                     boolean inserted = false;
+                    if (imp) { next.put(it); inserted = true; } // 중요는 맨 위로
                     for (int i = 0; i < all.length(); i++) {
                         JSONObject cur = all.optJSONObject(i);
                         if (!inserted && cur != null && cur.optBoolean("done", false)) {

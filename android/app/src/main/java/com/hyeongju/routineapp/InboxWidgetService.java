@@ -31,6 +31,7 @@ public class InboxWidgetService extends RemoteViewsService {
         private final Context context;
         private final int appWidgetId;
         private List<String> texts = new ArrayList<>();
+        private List<Boolean> importants = new ArrayList<>();
 
         InboxRemoteViewsFactory(Context context, int appWidgetId) {
             this.context = context;
@@ -44,6 +45,7 @@ public class InboxWidgetService extends RemoteViewsService {
         @Override
         public void onDataSetChanged() {
             List<String> next = new ArrayList<>();
+            List<Boolean> nextImportant = new ArrayList<>();
             SharedPreferences prefs = context.getSharedPreferences(
                 InboxWidgetProvider.PREFS_NAME, Context.MODE_PRIVATE);
             String raw = prefs.getString(InboxWidgetProvider.KEY_INBOX_DATA, null);
@@ -53,7 +55,10 @@ public class InboxWidgetService extends RemoteViewsService {
                     if (arr != null) {
                         for (int i = 0; i < arr.length(); i++) {
                             JSONObject it = arr.optJSONObject(i);
-                            if (it != null) next.add(it.optString("text", ""));
+                            if (it != null) {
+                                next.add(it.optString("text", ""));
+                                nextImportant.add(it.optBoolean("important", false));
+                            }
                         }
                     }
                 } catch (Exception e) {
@@ -61,6 +66,7 @@ public class InboxWidgetService extends RemoteViewsService {
                 }
             }
             texts = next;
+            importants = nextImportant;
         }
 
         @Override
@@ -127,6 +133,11 @@ public class InboxWidgetService extends RemoteViewsService {
             // (WidgetThemeHelper.applyPrimaryText 주석 참고) — 여기서 직접
             // primaryTextColor()로 값을 심지 말 것.
             WidgetThemeHelper.applyPrimaryText(context, row, idFor("inbox_item_text"));
+            // 중요 할 일은 앱과 같은 주황(#ff9500)으로(2026-10-09 추가) — 위
+            // 평소 글자색을 먼저 칠한 뒤 덮어씀(재활용되는 줄도 매번 다시 정해짐).
+            if (!isFiller && position < importants.size() && importants.get(position)) {
+                row.setTextColor(idFor("inbox_item_text"), 0xFFFF9500);
+            }
             // 모든 줄이 항상 같은 동작(앱 열기)이라 특별한 값을 안 실은 빈
             // fillInIntent만 붙임 — 그래도 이게 있어야 탭에 반응함(RemoteViews
             // 컬렉션 위젯의 제약).
