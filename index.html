@@ -458,7 +458,7 @@
       list-style: none;
     }
 
-    .today-items li {
+    .today-items .today-item {
       display: flex;
       align-items: center;
       gap: 10px;
@@ -472,8 +472,8 @@
        그림 — li의 테두리는 wrap의 클리핑 경계와 서브픽셀 단위로 어긋날 수 있어
        카드마다 아래 선이 있다 없다 하는 문제가 있었음(자기 자신의 border는
        overflow:hidden에 안 잘리므로 이 방식이 항상 온전히 보임). */
-    .today-items > .swipe-delete-wrap { border-bottom: 1px solid var(--divider); }
-    .today-items > .swipe-delete-wrap:last-child { border-bottom: none; }
+    .today-items > .todo-card { border-bottom: 1px solid var(--divider); }
+    .today-items > .todo-card:last-child { border-bottom: none; }
 
     /* --todo-text-color는 JS가 li에 인라인으로 지정(반복/중요 여부에 따른
        텍스트 색, 2026-07-16 — 카테고리 기능 제거 후 카테고리 색 대신 씀). */
@@ -491,13 +491,13 @@
     #tab-today .today-hero.has-shift {
       background: color-mix(in srgb, var(--shift-color) var(--tint-weak), var(--surface));
     }
-    #tab-today .today-items li {
+    #tab-today .today-items .today-item {
       gap: 12px;
       padding: 10px 4px;
       color: var(--text-1);
     }
-    #tab-today .today-items > .swipe-delete-wrap { border-bottom: 1px solid var(--divider); }
-    #tab-today .today-items > .swipe-delete-wrap:last-child { border-bottom: none; }
+    #tab-today .today-items > .todo-card { border-bottom: 1px solid var(--divider); }
+    #tab-today .today-items > .todo-card:last-child { border-bottom: none; }
     #tab-today .item-check-btn {
       width: 18px;
       height: 18px;
@@ -509,28 +509,187 @@
       border-color: var(--accent);
     }
 
-    /* ── 오늘 탭 타임라인(미정/오전/오후/밤) ── */
-    .timeline-section { margin-bottom: 18px; }
-    .timeline-section:last-child { margin-bottom: 0; }
-    .timeline-section-label {
-      font-size: 11px;
-      font-weight: 600;
-      color: var(--text-2);
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 6px;
+    /* ── 할 일 카드(2026-11-17, "할 일 카드 통일" 개편) ──
+       날짜 있는 할 일·반복 할 일·미배치 모두 같은 카드. 탭하면 카드 바로
+       아래에 버튼 5개(날짜/반복/중요/수정/지우기)가 펼쳐지고, 롱 탭하면
+       달력(#cal-drag-overlay)이 떠서 끌어다 날짜에 놓음. 예전의 미정/오전/
+       오후/밤 시간대 칸은 없앰(timeSlot 데이터는 지우지 않고 무시만 함). */
+    .todo-card { list-style: none; }
+    .todo-card .today-item {
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-touch-callout: none;
+      cursor: pointer;
     }
-    .timeline-section-list.empty {
+    .todo-card input { -webkit-user-select: text; user-select: text; }
+    .todo-card .item-text { flex: 1; min-width: 0; }
+    .todo-card-panel {
+      display: flex;
+      gap: 6px;
+      padding: 2px 2px 10px;
+    }
+    .todo-card-btn {
+      flex: 1;
+      min-width: 0;
+      padding: 7px 0;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: inherit;
+      white-space: nowrap;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--surface-2);
+      color: var(--text-1);
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .todo-card-btn:active { opacity: 0.7; }
+    .todo-card-btn.is-on {
+      color: #ff9500;
+      border-color: #ff9500;
+      background: rgba(255,149,0,0.1);
+    }
+    .todo-card-btn.is-danger { color: #ff3b30; }
+    .card-date-panel { padding: 4px 2px 12px; }
+    .card-date-row {
       display: flex;
       align-items: center;
       justify-content: center;
-      min-height: 40px;
-      border: 1.5px dashed var(--line);
-      border-radius: 10px;
-      font-size: 12px;
-      color: var(--text-3);
+      gap: 5px;
+      font-size: 15px;
+      color: var(--text-1);
     }
-    .timeline-section-list.empty::before { content: '여기로 끌어다 놓기'; }
+    .card-date-input {
+      width: 2.6em;
+      padding: 7px 2px;
+      font: inherit;
+      font-size: 17px;
+      text-align: center;
+      color: var(--text-1);
+      background: var(--surface);
+      border: 1.5px solid var(--line);
+      border-radius: 8px;
+      outline: none;
+    }
+    .card-date-input.is-year { width: 3.6em; }
+    .card-date-input:focus { border-color: var(--accent-blue); }
+    .card-date-preview {
+      text-align: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      min-height: 18px;
+      margin: 8px 0 10px;
+    }
+    .card-date-preview.is-invalid { color: #ff3b30; }
+    .card-date-btns { display: flex; gap: 8px; }
+    .card-date-btns .btn { flex: 1; padding: 10px; font-size: 14px; }
+    .card-edit-save {
+      flex-shrink: 0;
+      white-space: nowrap;
+      padding: 4px 10px;
+      font: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent-blue);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    /* 롱 탭 → 끌어다 날짜에 놓는 달력 */
+    #cal-drag-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      z-index: 95;
+      background: rgba(0,0,0,0.4);
+      overflow-y: auto;
+      padding: 16px 0;
+    }
+    #cal-drag-overlay.open { display: block; }
+    #cal-drag-overlay.month-mode { background: transparent; }
+    #cal-drag-panel {
+      margin: 0 auto;
+      width: calc(100% - 24px);
+      max-width: 480px;
+      background: var(--bg);
+      border-radius: 16px;
+      padding: 12px 8px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    }
+    #cal-drag-overlay.month-mode #cal-drag-panel { display: none; }
+    .cal-drag-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 2px 4px 10px;
+    }
+    .cal-drag-title { font-size: 16px; font-weight: 700; color: var(--text-1); }
+    .cal-drag-nav {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-3);
+      padding: 4px 8px;
+      border-radius: 8px;
+      transition: background 0.15s, color 0.15s;
+    }
+    .cal-drag-nav.is-near { color: #fff; background: var(--accent-blue); }
+    .cal-drag-dow, .cal-drag-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+    }
+    .cal-drag-dow div {
+      text-align: center;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-2);
+      padding-bottom: 4px;
+    }
+    .cal-drag-cell {
+      min-height: 54px;
+      padding: 4px 1px;
+      border-radius: 8px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+    }
+    .cal-drag-cell.is-empty { visibility: hidden; }
+    .cal-drag-cell.is-today .cal-drag-num { color: var(--accent-blue); font-weight: 800; }
+    .cal-drag-cell.is-hover { background: rgba(0,122,255,0.18); outline: 2px solid var(--accent-blue); outline-offset: -2px; }
+    .cal-drag-num { font-size: 14px; font-weight: 600; color: var(--text-1); }
+    .cal-drag-shift {
+      font-size: 10px;
+      font-weight: 600;
+      border-radius: 4px;
+      padding: 0 4px;
+      max-width: 100%;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
+    }
+    #cal-drag-chip {
+      position: fixed;
+      z-index: 96;
+      left: 0;
+      top: 0;
+      display: none;
+      max-width: 60vw;
+      padding: 7px 12px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      background: var(--accent-blue);
+      border-radius: 16px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      pointer-events: none;
+      transform: translate(-50%, -150%);
+    }
 
     /* 이 팝업 목록 스타일(.cat-picker-menu/-item)은 원래 카테고리 고르기용으로
        만들었지만, 카테고리 기능이 지워진 뒤(2026-07-16)로는 할 일 줄을 눌렀을
@@ -3369,6 +3528,20 @@
   </div>
 </div>
 
+<!-- ── 할 일 카드 롱 탭 → 끌어서 날짜에 놓는 달력(2026-11-17) ── -->
+<div id="cal-drag-overlay">
+  <div id="cal-drag-panel">
+    <div class="cal-drag-head">
+      <span class="cal-drag-nav" id="cal-drag-prev"></span>
+      <span class="cal-drag-title" id="cal-drag-title"></span>
+      <span class="cal-drag-nav" id="cal-drag-next"></span>
+    </div>
+    <div class="cal-drag-dow" id="cal-drag-dow"></div>
+    <div class="cal-drag-grid" id="cal-drag-grid"></div>
+  </div>
+</div>
+<div id="cal-drag-chip"></div>
+
 <!-- ── 인박스(미배치) 오버레이 ── -->
 <div id="inbox-overlay">
   <div id="inbox-panel">
@@ -4445,20 +4618,13 @@
 
   // 아이폰처럼 왼쪽으로 쓸면 삭제 버튼이 나타나는 줄을 만든다.
   // rowEl을 감싼 wrap을 만들어 반환하므로, 호출하는 쪽은 rowEl 대신 이 wrap을 목록에 붙여야 한다.
-  // dragConfig(선택)를 주면 이 카드 자체를 꾹 눌러서 드래그하는 것도 같이 처리함
-  // (예전엔 별도의 작은 손잡이(≡)에만 붙어있던 드래그를 카드 전체로 옮긴 것,
-  // 2026-07-14) — 빠르게 움직이면(스와이프) 삭제, 가만히 500ms 누르고 있으면
-  // (롱프레스) 드래그로 갈리고, 둘 다 같은 wrap 위에서 동시에 판정하므로 하나의
-  // 상태 기계로 합쳐서 서로 안 부딪히게 함.
-  //   dragConfig: {
-  //     eventId: 이 카드가 드래그될 때 쓸 id,
-  //     refreshFn: 드래그(순서 변경/미배치 이동) 끝난 뒤 다시 그릴 함수,
-  //     enableInboxDrop: true면 하단 미배치 버튼 위에 놓았을 때 배치 해제,
-  //     rootEl: 있으면(오늘 탭·날짜 상세 둘 다 — 2026-07-19부터 같은 타임라인
-  //             렌더러(renderTodayTimeline)를 공유함) 그 안의
-  //             .timeline-section-list로도 놓을 수 있어 구역 이동/순서 변경까지
-  //             함께 처리.
-  //   }
+  // dragConfig(선택)를 주면 카드를 꾹 누르고 있을 때(롱 탭, 약 0.45초) 달력을
+  // 띄워 끌어다 날짜에 놓는 동작(startCardCalDrag)도 같이 처리함(2026-11-17
+  // "할 일 카드 통일" 개편 — 예전의 시간대 칸 사이 끌기·미배치 버튼으로 끌기는
+  // 이걸로 대체됨). 빠르게 옆으로 움직이면 스와이프, 가만히 누르고 있으면
+  // 달력 끌기로 갈리고, 둘 다 같은 wrap 위에서 하나의 상태 기계로 판정함.
+  //   dragConfig: startCardCalDrag에 그대로 넘기는 설정({ label, initialDate, onDrop, mode })
+  //   — 반복 할 일처럼 끌기 대상이 아니면 아예 안 줌(스와이프만).
   function wrapWithSwipeToDelete(rowEl, bgVar, onDelete, dragConfig) {
     const REVEAL = 72;
     const wrap = document.createElement('div');
@@ -4479,32 +4645,26 @@
 
     let open = false;
     let startX = 0, startY = 0, dx = 0;
-    let mode = null; // null(미정) | 'swipe' | 'drag' | 'none'
+    let mode = null; // null(미정) | 'swipe' | 'caldrag' | 'none'
     let longPressTimer = null;
-    let clone = null, cloneStartTop = 0, cloneStartLeft = 0;
-    let overInboxBtn = false;
-    const inboxBtn = (dragConfig && dragConfig.enableInboxDrop) ? document.getElementById('btn-inbox-open') : null;
+    let suppressClickUntil = 0;
 
     function setX(x) { rowEl.style.transform = 'translateX(' + x + 'px)'; }
 
     wrap.addEventListener('touchstart', function (e) {
+      if (e.target && e.target.tagName === 'INPUT') return; // 수정 중인 입력칸은 건드리지 않음
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
       mode = null;
       rowEl.style.transition = 'none';
 
-      if (dragConfig) {
+      if (dragConfig && !open) {
         longPressTimer = setTimeout(function () {
-          mode = 'drag';
-          const rect = wrap.getBoundingClientRect();
-          cloneStartTop = rect.top;
-          cloneStartLeft = rect.left;
-          clone = wrap.cloneNode(true);
-          clone.style.cssText += ';position:fixed;left:' + rect.left + 'px;top:' + rect.top + 'px;width:' + rect.width + 'px;z-index:999;box-shadow:0 6px 24px rgba(0,0,0,0.18);pointer-events:none;opacity:0.95;background:var(--surface);border-radius:10px;';
-          document.body.appendChild(clone);
-          wrap.style.opacity = '0.2';
+          if (mode !== null) return;
+          mode = 'caldrag';
           if (navigator.vibrate) navigator.vibrate(40);
-        }, 500);
+          startCardCalDrag(dragConfig, startX, startY);
+        }, 450);
       }
     }, { passive: true });
 
@@ -4513,8 +4673,14 @@
       const mdx = t.clientX - startX;
       const mdy = t.clientY - startY;
 
+      if (mode === 'caldrag') {
+        e.preventDefault();
+        updateCardCalDrag(t.clientX, t.clientY);
+        return;
+      }
+
       if (mode === null) {
-        if (Math.abs(mdx) < 6 && Math.abs(mdy) < 6) return; // 아직 판단 보류 — 롱프레스로 붙잡고 있는 중일 수 있음
+        if (Math.abs(mdx) < 6 && Math.abs(mdy) < 6) return; // 아직 판단 보류 — 롱 탭으로 붙잡고 있는 중일 수 있음
         clearTimeout(longPressTimer);
         mode = Math.abs(mdx) > Math.abs(mdy) ? 'swipe' : 'none';
         if (mode === 'swipe') delBtn.style.visibility = 'visible';
@@ -4526,39 +4692,10 @@
         x = Math.max(-REVEAL, Math.min(0, x));
         dx = x;
         setX(x);
-        return;
-      }
-
-      if (mode === 'drag') {
-        e.preventDefault();
-        clone.style.top = (cloneStartTop + t.clientY - startY) + 'px';
-        clone.style.left = cloneStartLeft + 'px';
-
-        const hovered = document.elementFromPoint(t.clientX, t.clientY);
-
-        if (inboxBtn) {
-          overInboxBtn = !!(hovered && inboxBtn.contains(hovered));
-          inboxBtn.classList.toggle('drop-hover', overInboxBtn);
-        }
-
-        if (dragConfig.rootEl) {
-          const list = hovered ? hovered.closest('.timeline-section-list') : null;
-          if (list && dragConfig.rootEl.contains(list)) {
-            const siblings = Array.from(list.children).filter(function (c) { return c !== wrap; });
-            let insertBefore = null;
-            for (let s = 0; s < siblings.length; s++) {
-              const sr = siblings[s].getBoundingClientRect();
-              if (t.clientY < sr.top + sr.height / 2) { insertBefore = siblings[s]; break; }
-            }
-            if (insertBefore) list.insertBefore(wrap, insertBefore);
-            else list.appendChild(wrap);
-            refreshTimelineEmptyStates(dragConfig.rootEl);
-          }
-        }
       }
     }, { passive: false });
 
-    function endGesture() {
+    function endGesture(e) {
       clearTimeout(longPressTimer);
 
       if (mode === 'swipe') {
@@ -4571,37 +4708,27 @@
           open = false;
           delBtn.style.visibility = 'hidden';
         }
-      } else if (mode === 'drag') {
-        wrap.style.opacity = '1';
-        if (clone && clone.parentNode) { document.body.removeChild(clone); clone = null; }
-        if (inboxBtn) inboxBtn.classList.remove('drop-hover');
-
-        if (overInboxBtn) {
-          unplaceEventToInbox(dragConfig.eventId);
-          dragConfig.refreshFn();
-        } else if (dragConfig.rootEl) {
-          const finalList = wrap.parentNode;
-          if (finalList && finalList.classList.contains('timeline-section-list')) {
-            const slotKey = finalList.dataset.slotList;
-            Array.from(finalList.children).forEach(function (w, i) {
-              const ev = (state.events || []).find(function (e) { return e.id === w.dataset.eventId; });
-              if (!ev) return;
-              ev.timelineOrder = i * 10;
-              if (slotKey === 'unset') delete ev.timeSlot;
-              else ev.timeSlot = slotKey;
-            });
-            saveState();
-          }
-          dragConfig.refreshFn();
-        }
+      } else if (mode === 'caldrag') {
+        // 롱 탭 끝에 브라우저가 만드는 가짜 click이 "탭 = 버튼 줄 열기"로 새지 않게 막음
+        if (e && e.cancelable) e.preventDefault();
+        suppressClickUntil = Date.now() + 500;
+        mode = null;
+        finishCardCalDrag(e && e.type === 'touchcancel');
+        return;
       }
       mode = null;
     }
-    wrap.addEventListener('touchend', endGesture, { passive: true });
-    wrap.addEventListener('touchcancel', endGesture, { passive: true });
+    wrap.addEventListener('touchend', endGesture, { passive: false });
+    wrap.addEventListener('touchcancel', endGesture, { passive: false });
+    wrap.addEventListener('contextmenu', function (e) { if (dragConfig) e.preventDefault(); });
 
     // 열려 있을 때 그 줄을 탭하면 원래 동작 대신 닫히기만 함
     rowEl.addEventListener('click', function (e) {
+      if (Date.now() < suppressClickUntil) {
+        e.preventDefault();
+        e.stopPropagation();
+        return;
+      }
       if (open) {
         e.preventDefault();
         e.stopPropagation();
@@ -4612,7 +4739,8 @@
       }
     }, true);
 
-    delBtn.addEventListener('click', function () {
+    delBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
       wrap.style.overflow = 'hidden';
       wrap.style.transition = 'max-height 0.18s ease, opacity 0.18s ease';
       wrap.style.maxHeight = wrap.offsetHeight + 'px';
@@ -5193,170 +5321,651 @@
     else if (name === 'routine') renderRoutine();
   }
 
-  // ── 루틴 항목 공유 렌더링 ────────────────────────────────
-  // items: 반복 할일(state.events, repeat 있는 것) 목록. id 기준으로 완료 기록.
-  // kind: 'repeat'(반복 할일) | 'onetime'(한 번짜리 할 일). 반복이든 아니든 결국 같은
-  // "할 일"이므로 완전히 같은 모양의 줄로 만든다. 다른 점은 각자에게만 있는 동작뿐
-  // (반복→ 완료는 done_log, 한번짜리→ ev.done / 기간이면 기간수정).
-  // 2026-07-14: 줄에 항상 붙어있던 반복 전환/중요 버튼과 드래그 손잡이를 없애고,
-  // 텍스트를 탭하면 (반복/중요/수정) 3개짜리 작은 메뉴가 뜨도록 바꿈 — 줄이
-  // 버튼들로 지저분해지지 않게. 텍스트를 눌러 바로 고치던 것도 이제 메뉴의
-  // "수정"을 거침. 드래그는 이제 줄(카드) 자체를 꾹 눌러서 하고, 이 함수 자체는
-  // 드래그를 다루지 않음(호출부에서 wrapWithSwipeToDelete에 dragConfig로 넘김).
-  function buildTodoRow(kind, item, dateStr, refreshFn) {
-    const isMulti = kind === 'onetime' && isMultiDay(item);
-    const isDone = kind === 'repeat' ? isRepeatDoneOn(item.id, dateStr) : isOnetimeDoneOnDate(item, dateStr);
+  // ── 할 일 카드(2026-11-17, "할 일 카드 통일" 개편) ─────────────────────
+  // 날짜 있는 할 일(onetime)·반복 할 일(repeat)·미배치(inbox)를 전부 같은
+  // 카드 하나로 그림 — 오늘 탭, 날짜 상세, 미배치 목록, 반복·중요 탭의 "중요"
+  // 목록 어디서든 조작이 같음. 데이터 구조(state.events / state.inbox / 반복
+  // 규칙)는 그대로이고, 조작 방식만 통일한 것.
+  //   탭        → 카드 바로 아래 버튼 5개(날짜/반복/중요/수정/지우기), 다시
+  //               탭하거나 빈 곳을 누르면 닫힘
+  //   롱 탭     → 달력이 뜨고 끌어서 날짜에 놓기(반복 할 일은 대상 아님)
+  //   왼쪽 밀기 → 지우기(미배치도)
+  //   동그라미  → 완료 체크(미배치에는 없음)
+  // 예전의 텍스트 탭 메뉴(반복/중요/수정, #todo-item-menu), 시간대(미정/오전/
+  // 오후/밤) 칸과 칸 사이 끌기, 미배치의 × 버튼·탭=배치 모드·롱 탭=수정은
+  // 전부 이걸로 대체됨 — 다시 만들지 말 것.
+  let cardUi = null; // { key, mode: 'buttons' | 'date', vals: { y, m, d } }
 
-    const li = document.createElement('li');
-    li.dataset.id = item.id;
-    li.className = 'today-item' + (isDone ? ' today-item--done' : '');
-    // 카테고리 기능이 지워지면서(2026-07-16) 할 일 텍스트 색은 더 이상
-    // 카테고리 색이 아니라 반복/중요 여부로 정해짐 — 중요가 반복보다 우선
-    // (중요는 "확 눈에 튀게", 반복은 "너무 튀지 않게" 요청받음): 중요 표시된
-    // 할 일은 주황(#ff9500), 그게 아니면서 반복 할일이면 차분한 초록
-    // (REPEAT_TEXT_COLOR — 처음엔 앱 기본 포인트색(var(--accent), 버튼 등에도
-    // 쓰는 쨍한 초록)을 재사용했는데 "너무 눈에 띈다"는 피드백으로 채도를
-    // 낮춘 전용 색으로 교체함, 2026-07-16 재조정 — 다시 var(--accent)로
-    // 되돌리지 말 것), 둘 다 아니면 평소 글씨색(var(--text-1), 라이트/다크에
-    // 따라 자동으로 검정/흰색).
-    li.style.setProperty('--todo-text-color', item.important ? '#ff9500' : (kind === 'repeat' ? REPEAT_TEXT_COLOR : 'var(--text-1)'));
+  function cardKey(scope, kind, item, dateStr) {
+    return scope + '|' + kind + '|' + item.id + '|' + (kind === 'repeat' ? (dateStr || '') : '');
+  }
+
+  // 카드 조작은 어느 화면에서 일어나든 다른 화면(달력·미배치 배지·연간의
+  // 중요 목록 등)에도 영향을 주므로, 지금 떠 있는 할 일 화면을 한꺼번에
+  // 다시 그림.
+  function refreshAllTodoViews() {
+    try { renderToday(); } catch (e) {}
+    try { renderGrid(); } catch (e) {}
+    try { if (detailDateStr !== null) renderDDTodos(); } catch (e) {}
+    try { if (document.getElementById('inbox-overlay').classList.contains('open')) renderInboxList(); } catch (e) {}
+    try { renderInboxBadge(); } catch (e) {}
+    try { if (document.getElementById('tab-routine').classList.contains('active')) renderRoutine(); } catch (e) {}
+    try { if (document.getElementById('tab-year').classList.contains('active')) renderYear(); } catch (e) {}
+  }
+
+  // 지우기(버튼·왼쪽 밀기 공통) — 확인 창·되돌리기·안내 문구 없이 바로.
+  // 반복 할 일은 예전 스와이프 삭제와 같이 "이 날짜만 빼기"(excludedDates) —
+  // 반복 자체를 통째로 지우는 건 여전히 반복·중요 탭에서만.
+  function deleteTodoCardItem(kind, item, dateStr) {
+    if (kind === 'inbox') {
+      state.inbox = (state.inbox || []).filter(function (it) { return it.id !== item.id; });
+    } else if (kind === 'repeat') {
+      if (!Array.isArray(item.excludedDates)) item.excludedDates = [];
+      if (item.excludedDates.indexOf(dateStr) === -1) item.excludedDates.push(dateStr);
+    } else {
+      state.events = (state.events || []).filter(function (e) { return e.id !== item.id; });
+    }
+    saveState();
+  }
+
+  // 날짜 칸 "확인"·롱 탭 끌기 공통 — 할 일을 그 날짜로 옮김.
+  //   미배치 → 그 날짜로 배치(placeInboxItem)
+  //   날짜 있는 할 일 → 날짜만 바꿈(기간 할 일은 길이 그대로 통째로 이동)
+  //   반복 할 일 → 그 회차만 옮김: 원래 날짜는 반복에서 빼고(excludedDates),
+  //                새 날짜에 같은 이름의 한 번짜리 할 일을 만듦(반복 규칙은 그대로)
+  function moveTodoCardItemToDate(kind, item, fromDateStr, toDateStr) {
+    if (kind === 'inbox') {
+      placeInboxItem(item.id, toDateStr);
+      return;
+    }
+    if (kind === 'onetime') {
+      if (item.date === toDateStr) return;
+      const delta = Math.round((parseLocalDate(toDateStr) - parseLocalDate(item.date)) / 86400000);
+      const oldEnd = item.endDate || item.date;
+      item.date = toDateStr;
+      item.endDate = addDaysStr(oldEnd, delta);
+      if (item.doneThroughDate) item.doneThroughDate = addDaysStr(item.doneThroughDate, delta);
+      saveState();
+      return;
+    }
+    if (kind === 'repeat') {
+      if (!fromDateStr || fromDateStr === toDateStr) return;
+      if (!Array.isArray(item.excludedDates)) item.excludedDates = [];
+      if (item.excludedDates.indexOf(fromDateStr) === -1) item.excludedDates.push(fromDateStr);
+      if (!Array.isArray(state.events)) state.events = [];
+      const newEv = { id: genId('e'), date: toDateStr, endDate: toDateStr, text: item.text, done: false };
+      if (item.important) newEv.important = true;
+      state.events.push(newEv);
+      saveState();
+    }
+  }
+
+  function cardDefaultDate(kind, item, dateStr) {
+    if (kind === 'onetime') return item.date;
+    if (kind === 'repeat' && dateStr) return dateStr;
+    return formatDateStr(todayMidnight());
+  }
+
+  // 날짜 칸 값 → "YYYY-MM-DD"(없는 날짜면 null)
+  function parseCardDateVals(v) {
+    if (!/^\d{4}$/.test(v.y) || !/^\d{1,2}$/.test(v.m) || !/^\d{1,2}$/.test(v.d)) return null;
+    const y = parseInt(v.y, 10), m = parseInt(v.m, 10), d = parseInt(v.d, 10);
+    if (m < 1 || m > 12 || d < 1) return null;
+    const dt = new Date(y, m - 1, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m - 1 || dt.getDate() !== d) return null;
+    return formatDateStr(dt);
+  }
+
+  function closeCardPanel() {
+    cardUi = null;
+    document.querySelectorAll('.todo-card-panel').forEach(function (p) { p.remove(); });
+  }
+
+  function replaceCardPanel(ctx) {
+    const old = ctx.cardEl.querySelector('.todo-card-panel');
+    if (old) old.remove();
+    ctx.cardEl.appendChild(buildCardPanel(ctx));
+  }
+
+  function toggleCardPanel(ctx) {
+    if (cardUi && cardUi.key === ctx.key) { closeCardPanel(); return; }
+    closeCardPanel();
+    cardUi = { key: ctx.key, mode: 'buttons' };
+    ctx.cardEl.appendChild(buildCardPanel(ctx));
+  }
+
+  // 빈 곳을 누르면 버튼 줄(또는 날짜 칸)이 닫힘
+  document.addEventListener('click', function (e) {
+    if (!cardUi) return;
+    const card = e.target && e.target.closest ? e.target.closest('.todo-card') : null;
+    if (card && card.dataset.key === cardUi.key) return;
+    closeCardPanel();
+  });
+
+  function buildCardPanel(ctx) {
+    const panel = document.createElement('div');
+    panel.className = 'todo-card-panel';
+    // 패널 안을 누른 것이 위 "빈 곳 누르면 닫기"로 새지 않게 막음(버튼이
+    // 화면을 다시 그리면서 눌린 요소가 카드 밖으로 떨어져 나가는 경우까지)
+    panel.addEventListener('click', function (e) { e.stopPropagation(); });
+    if (cardUi && cardUi.mode === 'date') {
+      panel.classList.add('card-date-panel');
+      panel.style.display = 'block';
+      fillCardDatePanel(panel, ctx);
+      return panel;
+    }
+
+    const kind = ctx.kind, item = ctx.item;
+    function addBtn(label, extraClass, onClick) {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.className = 'todo-card-btn' + (extraClass ? ' ' + extraClass : '');
+      b.textContent = label;
+      b.addEventListener('click', onClick);
+      panel.appendChild(b);
+      return b;
+    }
+
+    addBtn('날짜', '', function () {
+      const ds = cardDefaultDate(kind, item, ctx.dateStr);
+      const p = ds.split('-');
+      // 칸에 실제 날짜 숫자를 미리 채워 넣음(새 할 일·미배치=오늘, 날짜 있는
+      // 할 일=원래 날짜, 2026-11-17 시안 확정) — 칸을 누르면 전체 선택돼서
+      // 바로 덮어쓰기.
+      cardUi = { key: ctx.key, mode: 'date', vals: { y: p[0], m: String(parseInt(p[1], 10)), d: String(parseInt(p[2], 10)) } };
+      replaceCardPanel(ctx);
+    });
+    addBtn('반복', '', function () {
+      closeCardPanel();
+      if (kind === 'repeat') openRepeatEditor({ editEvent: item });
+      else if (kind === 'inbox') openRepeatEditor({ sourceInbox: item });
+      else openRepeatEditor({ sourceEvent: item });
+    });
+    // 중요: 버튼 줄은 그대로 두고 켜기/끄기만(켜지면 버튼·글씨 주황 + 목록 맨 위)
+    addBtn('중요', item.important ? 'is-on' : '', function () {
+      if (item.important) delete item.important;
+      else item.important = true;
+      saveState();
+      refreshAllTodoViews();
+    });
+    addBtn('수정', '', function () {
+      closeCardPanel();
+      startCardEdit(ctx);
+    });
+    addBtn('지우기', 'is-danger', function () {
+      cardUi = null;
+      deleteTodoCardItem(kind, item, ctx.dateStr);
+      refreshAllTodoViews();
+    });
+    return panel;
+  }
+
+  // 날짜 칸: [년] 년 [월] 월 [일] 일 + 요일·근무 미리보기 + [미루기][확인]
+  function fillCardDatePanel(panel, ctx) {
+    const vals = cardUi.vals;
+    const row = document.createElement('div');
+    row.className = 'card-date-row';
+
+    function makeInput(field, maxLen, unit) {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.setAttribute('inputmode', 'numeric');
+      inp.setAttribute('pattern', '[0-9]*');
+      inp.setAttribute('autocomplete', 'off');
+      inp.maxLength = maxLen;
+      inp.className = 'card-date-input' + (field === 'y' ? ' is-year' : '');
+      inp.value = vals[field];
+      // 칸을 누르면 전체 선택 → 바로 덮어쓰기
+      inp.addEventListener('focus', function () {
+        setTimeout(function () { try { inp.select(); } catch (e) {} }, 0);
+      });
+      inp.addEventListener('mouseup', function (e) { e.preventDefault(); });
+      row.appendChild(inp);
+      const u = document.createElement('span');
+      u.textContent = unit;
+      row.appendChild(u);
+      return inp;
+    }
+    const yIn = makeInput('y', 4, '년');
+    const mIn = makeInput('m', 2, '월');
+    const dIn = makeInput('d', 2, '일');
+    panel.appendChild(row);
+
+    const preview = document.createElement('div');
+    preview.className = 'card-date-preview';
+    panel.appendChild(preview);
+
+    const btns = document.createElement('div');
+    btns.className = 'card-date-btns';
+    if (ctx.kind === 'onetime') {
+      const laterBtn = document.createElement('button');
+      laterBtn.type = 'button';
+      laterBtn.className = 'btn btn-secondary';
+      laterBtn.textContent = '미루기';
+      laterBtn.addEventListener('click', function () {
+        cardUi = null;
+        unplaceEventToInbox(ctx.item.id);
+        refreshAllTodoViews();
+      });
+      btns.appendChild(laterBtn);
+    }
+    const okBtn = document.createElement('button');
+    okBtn.type = 'button';
+    okBtn.className = 'btn btn-primary';
+    okBtn.textContent = '확인';
+    btns.appendChild(okBtn);
+    panel.appendChild(btns);
+
+    const DOW_FULL = ['일요일', '월요일', '화요일', '수요일', '목요일', '금요일', '토요일'];
+    function update() {
+      const ds = parseCardDateVals(vals);
+      preview.innerHTML = '';
+      preview.classList.toggle('is-invalid', !ds);
+      okBtn.disabled = !ds;
+      okBtn.style.opacity = ds ? '' : '0.4';
+      if (!ds) { preview.textContent = '없는 날짜예요'; return; }
+      const wd = parseLocalDate(ds).getDay();
+      const dowSpan = document.createElement('span');
+      dowSpan.textContent = DOW_FULL[wd];
+      dowSpan.style.color = wd === 6 ? 'var(--accent-blue)' : (wd === 0 ? '#ff3b30' : 'var(--text-1)');
+      preview.appendChild(dowSpan);
+      const idx0 = dayIndex0ForDate(ds);
+      const shiftName = (idx0 !== null && !state.noShiftMode) ? getEffectiveShiftName(ds, idx0).name : '';
+      if (shiftName) {
+        preview.appendChild(document.createTextNode(' · '));
+        const sh = document.createElement('span');
+        sh.textContent = shiftName;
+        sh.style.color = getShiftColor(shiftName) || 'var(--text-1)';
+        preview.appendChild(sh);
+      }
+    }
+
+    function bind(inp, field, nextInp, fullLen) {
+      inp.addEventListener('input', function () {
+        const clean = inp.value.replace(/\D/g, '');
+        if (clean !== inp.value) inp.value = clean;
+        vals[field] = clean;
+        update();
+        if (nextInp && clean.length >= fullLen) nextInp.focus();
+      });
+      inp.addEventListener('keydown', function (e) {
+        if (e.key === 'Enter') { e.preventDefault(); if (!okBtn.disabled) okBtn.click(); }
+      });
+    }
+    bind(yIn, 'y', mIn, 4);
+    bind(mIn, 'm', dIn, 2);
+    bind(dIn, 'd', null, 2);
+
+    okBtn.addEventListener('click', function () {
+      const ds = parseCardDateVals(vals);
+      if (!ds) return;
+      cardUi = null;
+      moveTodoCardItemToDate(ctx.kind, ctx.item, ctx.dateStr, ds);
+      refreshAllTodoViews();
+    });
+    update();
+  }
+
+  // 수정: 카드 글자 자리가 바로 입력칸으로(별도 창 없음). 원래 글자 그대로
+  // (중요면 앞에 "!"까지), 선택 상태 아님·커서는 맨 앞. 저장은 엔터 또는 옆
+  // 저장 버튼 — 새로 넣을 때와 같은 규칙(parseImportantPrefix)으로 읽어서
+  // "!"가 있으면 중요 켬, 없으면 끔.
+  function startCardEdit(ctx) {
+    const textEl = ctx.cardEl.querySelector('.item-text');
+    if (!textEl) return;
+    const item = ctx.item;
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'inline-edit-input';
+    input.maxLength = 60;
+    input.value = (item.important ? '!' : '') + item.text;
+    const saveBtn = document.createElement('button');
+    saveBtn.type = 'button';
+    saveBtn.className = 'card-edit-save';
+    saveBtn.textContent = '저장';
+    textEl.replaceWith(input);
+    input.after(saveBtn);
+    input.addEventListener('click', function (e) { e.stopPropagation(); });
+    input.focus();
+    try { input.setSelectionRange(0, 0); } catch (e) {}
+
+    let done = false;
+    function commit() {
+      if (done) return;
+      done = true;
+      const parsed = parseImportantPrefix(input.value);
+      if (parsed.text) {
+        item.text = parsed.text;
+        if (parsed.important) item.important = true;
+        else delete item.important;
+        if (ctx.kind === 'onetime') applyAutoTimeSlot(item);
+        saveState();
+      }
+      refreshAllTodoViews();
+    }
+    function cancel() {
+      if (done) return;
+      done = true;
+      refreshAllTodoViews();
+    }
+    input.addEventListener('blur', commit);
+    input.addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') { e.preventDefault(); commit(); }
+      else if (e.key === 'Escape') cancel();
+    });
+    // 저장 버튼을 누르는 순간 입력칸 blur가 먼저 일어나지 않게 막고 직접 저장
+    saveBtn.addEventListener('mousedown', function (e) { e.preventDefault(); });
+    saveBtn.addEventListener('click', function (e) { e.stopPropagation(); commit(); });
+  }
+
+  // opts: { kind, item, dateStr, scope, bg }
+  function buildTodoCard(opts) {
+    const kind = opts.kind, item = opts.item, dateStr = opts.dateStr || null;
+    const key = cardKey(opts.scope || '', kind, item, dateStr);
+    const isDone = kind === 'repeat' ? isRepeatDoneOn(item.id, dateStr)
+      : (kind === 'onetime' ? isOnetimeDoneOnDate(item, dateStr) : false);
+
+    const card = document.createElement('li');
+    card.className = 'todo-card';
+    card.dataset.key = key;
+
+    const row = document.createElement('div');
+    row.className = 'today-item' + (isDone ? ' today-item--done' : '');
+    // 글씨색: 중요=주황 > 반복=차분한 초록 > 평소 글씨색
+    row.style.setProperty('--todo-text-color', item.important ? '#ff9500' : (kind === 'repeat' ? REPEAT_TEXT_COLOR : 'var(--text-1)'));
 
     const textEl = document.createElement('span');
     textEl.className = 'item-text';
     textEl.textContent = kind === 'onetime' ? eventDisplayText(item) : item.text;
-    textEl.style.cursor = 'pointer';
-    textEl.addEventListener('click', function (e) {
-      e.stopPropagation();
-      openTodoItemMenu(textEl, kind, item, isMulti, refreshFn);
-    });
-    li.appendChild(textEl);
+    row.appendChild(textEl);
 
-    const checkBtn = document.createElement('button');
-    checkBtn.className = 'item-check-btn';
-    checkBtn.setAttribute('aria-label', isDone ? '완료 취소' : '완료');
-    if (isDone) {
-      checkBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-    }
-    checkBtn.addEventListener('click', function () {
-      if (kind === 'repeat') {
-        if (!Array.isArray(state.done_log)) state.done_log = [];
-        const idx = state.done_log.findIndex(function (d) { return d.date === dateStr && d.id === item.id; });
-        if (idx === -1) {
-          state.done_log.push({ date: dateStr, id: item.id });
-        } else {
-          state.done_log.splice(idx, 1);
-        }
-      } else {
-        toggleOnetimeDone(item, dateStr);
+    if (kind !== 'inbox') {
+      const checkBtn = document.createElement('button');
+      checkBtn.className = 'item-check-btn';
+      checkBtn.setAttribute('aria-label', isDone ? '완료 취소' : '완료');
+      if (isDone) {
+        checkBtn.innerHTML = '<svg width="10" height="10" viewBox="0 0 14 14" fill="none"><polyline points="2,7 5.5,11 12,3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
       }
-      saveState();
-      refreshFn();
-    });
-    li.appendChild(checkBtn);
-
-    return li;
-  }
-
-  // 할 일 줄의 텍스트를 탭하면 뜨는 작은 메뉴(반복/중요/수정) — 취소 버튼 없이
-  // 바깥을 탭하면 닫힘(카테고리 고르기 팝업(cat-picker-menu)과 같은 방식 재사용).
-  function openTodoItemMenu(anchorEl, kind, item, isMulti, refreshFn) {
-    const menu = document.getElementById('todo-item-menu');
-    menu.innerHTML = '';
-
-    if (kind === 'onetime' && !isMulti) {
-      const repeatItem = document.createElement('button');
-      repeatItem.type = 'button';
-      repeatItem.className = 'cat-picker-menu-item';
-      repeatItem.textContent = '반복';
-      repeatItem.addEventListener('click', function () {
-        menu.classList.remove('open');
-        openRepeatEditor({ sourceEvent: item });
+      checkBtn.addEventListener('click', function (e) {
+        e.stopPropagation();
+        if (kind === 'repeat') {
+          if (!Array.isArray(state.done_log)) state.done_log = [];
+          const idx = state.done_log.findIndex(function (d) { return d.date === dateStr && d.id === item.id; });
+          if (idx === -1) state.done_log.push({ date: dateStr, id: item.id });
+          else state.done_log.splice(idx, 1);
+        } else {
+          toggleOnetimeDone(item, dateStr);
+        }
+        saveState();
+        refreshAllTodoViews();
       });
-      menu.appendChild(repeatItem);
-    } else if (kind === 'repeat') {
-      // 이미 반복으로 설정된 할일도 여기서 바로 그 반복 규칙(언제마다
-      // 반복되는지)을 고칠 수 있게 함(2026-07-16, 사용자 요청) — "반복 할일"
-      // 탭에서 카드를 눌렀을 때(buildRoutineCard)와 완전히 같은 방식으로
-      // openRepeatEditor({ editEvent: item })를 그대로 재사용.
-      const repeatItem = document.createElement('button');
-      repeatItem.type = 'button';
-      repeatItem.className = 'cat-picker-menu-item';
-      repeatItem.textContent = '반복';
-      repeatItem.addEventListener('click', function () {
-        menu.classList.remove('open');
-        openRepeatEditor({ editEvent: item });
-      });
-      menu.appendChild(repeatItem);
+      row.appendChild(checkBtn);
     }
 
-    const impItem = document.createElement('button');
-    impItem.type = 'button';
-    impItem.className = 'cat-picker-menu-item';
-    impItem.textContent = item.important ? '★ 중요 해제' : '☆ 중요 표시';
-    impItem.addEventListener('click', function () {
-      item.important = !item.important;
-      saveState();
-      // 다른 메뉴 항목(반복/수정)과 달리 "중요"는 눌러도 메뉴를 안 닫음
-      // (2026-07-16, 사용자 요청) — 대신 버튼 글자만 바로 갱신해서 눌린
-      // 결과가 그 자리에서 보이게 함. 바깥을 탭하면 여전히 닫힘.
-      impItem.textContent = item.important ? '★ 중요 해제' : '☆ 중요 표시';
-      refreshFn();
+    const ctx = { kind: kind, item: item, dateStr: dateStr, key: key, cardEl: card };
+    row.addEventListener('click', function (e) {
+      if (e.target && e.target.closest && e.target.closest('input, .card-edit-save')) return;
+      toggleCardPanel(ctx);
     });
-    menu.appendChild(impItem);
 
-    const editItem = document.createElement('button');
-    editItem.type = 'button';
-    editItem.className = 'cat-picker-menu-item';
-    editItem.textContent = '수정';
-    editItem.addEventListener('click', function () {
-      menu.classList.remove('open');
-      if (isMulti) openPeriodEdit(item);
-      else startInlineTextEdit(anchorEl, item, refreshFn);
-    });
-    menu.appendChild(editItem);
+    // 롱 탭 끌기 — 반복 할 일은 대상 아님(설정 자체를 안 줌)
+    const dragConfig = kind === 'repeat' ? null : {
+      label: item.text,
+      initialDate: kind === 'onetime' ? item.date : null,
+      monthTagItem: kind === 'inbox' ? item : null,
+      onDrop: function (toDateStr) {
+        cardUi = null;
+        moveTodoCardItemToDate(kind, item, dateStr, toDateStr);
+        refreshAllTodoViews();
+      },
+    };
+    const wrap = wrapWithSwipeToDelete(row, opts.bg || 'var(--surface)', function () {
+      if (cardUi && cardUi.key === key) cardUi = null;
+      deleteTodoCardItem(kind, item, dateStr);
+      refreshAllTodoViews();
+    }, dragConfig);
+    card.appendChild(wrap);
 
-    const rect = anchorEl.getBoundingClientRect();
-    menu.style.left = Math.min(rect.left, window.innerWidth - 160) + 'px';
-    menu.style.top = (rect.bottom + 6) + 'px';
-    menu.style.right = 'auto';
-    menu.style.bottom = 'auto';
-    menu.classList.add('open');
+    if (cardUi && cardUi.key === key) card.appendChild(buildCardPanel(ctx));
+    return card;
   }
 
-  document.addEventListener('click', function (e) {
-    const menu = document.getElementById('todo-item-menu');
-    if (menu && menu.classList.contains('open') && !menu.contains(e.target)) {
-      menu.classList.remove('open');
+  // ── 롱 탭 → 달력 끌기 ───────────────────────────────────────
+  // 롱 탭하면 그 할 일 날짜(없으면 오늘)가 든 달 달력이 뜨고(날짜마다 근무
+  // 표시), 손가락을 따라 할 일 이름 칩이 움직임. 날짜 위에서 떼면 그 날로
+  // 옮기고, 달력 밖에서 떼면 취소. 화면 왼쪽·오른쪽 끝(34px)에 0.6초 머물면
+  // 전/다음 달(계속 머물면 계속 넘어감), 달력이 화면보다 길면 위·아래 끝에
+  // 머무는 동안 스크롤.
+  // **예외 — 연간 탭의 "달만 정하기"는 이번 개편 범위 밖이라 그대로 둠**:
+  // 연간 탭을 보면서 미배치 항목을 롱 탭하면 달력 대신 예전처럼 미배치 창이
+  // 사라지고 연간 화면의 "○월" 글씨 위에 놓으면 그 달로 태그(targetMonth).
+  const CAL_DRAG_EDGE_PX = 34;
+  const CAL_DRAG_NEAR_PX = 70;
+  const CAL_DRAG_PAGE_MS = 600;
+  let calDrag = null;
+
+  function startCardCalDrag(cfg, x, y) {
+    closeCardPanel();
+    const onYearTab = !!cfg.monthTagItem && document.getElementById('tab-year').classList.contains('active');
+    const init = parseLocalDate(cfg.initialDate || formatDateStr(todayMidnight()));
+    calDrag = {
+      cfg: cfg,
+      mode: onYearTab ? 'month' : 'date',
+      year: init.getFullYear(),
+      month: init.getMonth(),
+      x: x, y: y,
+      edgeSide: 0, edgeSince: 0,
+      hoverEl: null,
+      timer: null,
+    };
+    const overlay = document.getElementById('cal-drag-overlay');
+    overlay.classList.toggle('month-mode', calDrag.mode === 'month');
+    overlay.classList.add('open');
+    overlay.scrollTop = 0;
+    if (calDrag.mode === 'month') closeInbox();
+    else renderCalDragGrid();
+
+    const chip = document.getElementById('cal-drag-chip');
+    chip.textContent = cfg.label || '';
+    chip.style.display = 'block';
+    updateCardCalDrag(x, y);
+    calDrag.timer = setInterval(calDragTick, 50);
+  }
+
+  function renderCalDragGrid() {
+    const y = calDrag.year, m = calDrag.month;
+    const prev = new Date(y, m - 1, 1), next = new Date(y, m + 1, 1);
+    document.getElementById('cal-drag-title').textContent = y + '년 ' + (m + 1) + '월';
+    document.getElementById('cal-drag-prev').textContent = '‹ ' + (prev.getMonth() + 1) + '월';
+    document.getElementById('cal-drag-next').textContent = (next.getMonth() + 1) + '월 ›';
+
+    const weekStart = (state && state.weekStart === 1) ? 1 : 0; // renderGrid와 같은 기준(1=일요일 시작)
+    const headers = weekStart === 1
+      ? ['일', '월', '화', '수', '목', '금', '토']
+      : ['월', '화', '수', '목', '금', '토', '일'];
+    const dowEl = document.getElementById('cal-drag-dow');
+    dowEl.innerHTML = '';
+    headers.forEach(function (h) {
+      const c = document.createElement('div');
+      c.textContent = h;
+      if (h === '토') c.style.color = 'var(--accent-blue)';
+      if (h === '일') c.style.color = '#ff3b30';
+      dowEl.appendChild(c);
+    });
+
+    const grid = document.getElementById('cal-drag-grid');
+    grid.innerHTML = '';
+    const first = new Date(y, m, 1);
+    const lead = weekStart === 1 ? first.getDay() : (first.getDay() + 6) % 7;
+    const daysInMonth = new Date(y, m + 1, 0).getDate();
+    const todayStr = formatDateStr(todayMidnight());
+    for (let i = 0; i < lead; i++) {
+      const empty = document.createElement('div');
+      empty.className = 'cal-drag-cell is-empty';
+      grid.appendChild(empty);
     }
-  });
+    for (let d = 1; d <= daysInMonth; d++) {
+      const ds = formatDateStr(new Date(y, m, d));
+      const cell = document.createElement('div');
+      cell.className = 'cal-drag-cell' + (ds === todayStr ? ' is-today' : '');
+      cell.dataset.date = ds;
+      const num = document.createElement('div');
+      num.className = 'cal-drag-num';
+      num.textContent = d;
+      const wd = new Date(y, m, d).getDay();
+      const holiday = getKoreanHoliday(ds);
+      if (holiday) num.style.color = 'var(--holiday-color)';
+      else if (wd === 6) num.style.color = 'var(--accent-blue)';
+      else if (wd === 0) num.style.color = '#ff3b30';
+      cell.appendChild(num);
+      const idx0 = dayIndex0ForDate(ds);
+      const shiftName = idx0 !== null ? getEffectiveShiftName(ds, idx0).name : '';
+      if (shiftName) {
+        const sh = document.createElement('div');
+        sh.className = 'cal-drag-shift';
+        sh.textContent = shiftName;
+        applyShiftBadgeColor(sh, shiftName);
+        cell.appendChild(sh);
+      }
+      grid.appendChild(cell);
+    }
+  }
 
-  // ── 오늘 탭 타임라인(미정/오전/오후/밤) ──────────────────────
-  // 2026-07-19부터 날짜 상세(renderDDTodos)도 이 함수를 그대로 씀 — 예전엔
-  // 날짜 상세 전용 flat 목록 렌더러(renderTodoList)가 따로 있었는데, 삭제됨.
-  // 시간대(timeSlot)·순서(timelineOrder)는 그 할 일 자체에 저장되는 정보라
-  // (카테고리처럼) 반복 할일이면 매번 같은 시간대·자리에 나타난다.
-  const TIMELINE_SLOTS = [
-    { key: 'unset', label: '미정' },
-    { key: 'morning', label: '오전' },
-    { key: 'afternoon', label: '오후' },
-    { key: 'night', label: '밤' },
-  ];
+  function calDragFindTarget() {
+    const el = document.elementFromPoint(calDrag.x, calDrag.y);
+    if (!el) return null;
+    if (calDrag.mode === 'month') {
+      const label = el.closest('.year-month-label');
+      return label ? label.closest('.year-month-box[data-month]') : null;
+    }
+    return el.closest('.cal-drag-cell[data-date]');
+  }
 
-  // 맨 앞 숫자로 시각 자동 인식(2026-07-16, 사용자 요청) — "1800청소"→18:00,
-  // "18청소"→18:00(분은 0), "1630머리"→16:30. **정확히 2자리 또는 4자리일
-  // 때만** 인식하고(뒤에 숫자가 더 붙어 있으면 그 자리수 매칭 자체가 안 됨),
-  // 3자리 등 다른 자리수·범위를 벗어난 값(시 24 이상, 분 60 이상)은 시각이
-  // 아닌 그냥 일반 텍스트로 봄. 화면에 보이는 글자는 그대로 두고(숫자를
-  // 지우지 않음) 배치(timeSlot)·정렬(timelineOrder) 계산에만 씀.
+  function calDragUpdateHover() {
+    const target = calDragFindTarget();
+    if (target === calDrag.hoverEl) return;
+    const cls = calDrag.mode === 'month' ? 'inbox-drop-hover' : 'is-hover';
+    if (calDrag.hoverEl) calDrag.hoverEl.classList.remove(cls);
+    calDrag.hoverEl = target;
+    if (target) target.classList.add(cls);
+  }
+
+  function updateCardCalDrag(x, y) {
+    if (!calDrag) return;
+    calDrag.x = x;
+    calDrag.y = y;
+    const chip = document.getElementById('cal-drag-chip');
+    chip.style.left = x + 'px';
+    chip.style.top = y + 'px';
+    if (calDrag.mode === 'date') {
+      document.getElementById('cal-drag-prev').classList.toggle('is-near', x <= CAL_DRAG_NEAR_PX);
+      document.getElementById('cal-drag-next').classList.toggle('is-near', x >= window.innerWidth - CAL_DRAG_NEAR_PX);
+    }
+    calDragUpdateHover();
+  }
+
+  // 손가락이 가만히 있어도 끝에 머무는 시간을 재야 해서 짧은 주기로 확인
+  function calDragTick() {
+    if (!calDrag || calDrag.mode !== 'date') return;
+    const now = Date.now();
+    const side = calDrag.x <= CAL_DRAG_EDGE_PX ? -1 : (calDrag.x >= window.innerWidth - CAL_DRAG_EDGE_PX ? 1 : 0);
+    if (side !== calDrag.edgeSide) {
+      calDrag.edgeSide = side;
+      calDrag.edgeSince = now;
+    } else if (side !== 0 && now - calDrag.edgeSince >= CAL_DRAG_PAGE_MS) {
+      const nd = new Date(calDrag.year, calDrag.month + side, 1);
+      calDrag.year = nd.getFullYear();
+      calDrag.month = nd.getMonth();
+      calDrag.edgeSince = now;
+      calDrag.hoverEl = null;
+      renderCalDragGrid();
+      calDragUpdateHover();
+      if (navigator.vibrate) navigator.vibrate(15);
+    }
+    const overlay = document.getElementById('cal-drag-overlay');
+    if (overlay.scrollHeight > overlay.clientHeight + 1) {
+      const zone = 60;
+      if (calDrag.y < zone) { overlay.scrollTop -= 14; calDragUpdateHover(); }
+      else if (calDrag.y > window.innerHeight - zone) { overlay.scrollTop += 14; calDragUpdateHover(); }
+    }
+  }
+
+  function finishCardCalDrag(cancelled) {
+    if (!calDrag) return;
+    const d = calDrag;
+    calDrag = null;
+    clearInterval(d.timer);
+    const target = cancelled ? null : d.hoverEl;
+    if (d.hoverEl) d.hoverEl.classList.remove(d.mode === 'month' ? 'inbox-drop-hover' : 'is-hover');
+    const overlay = document.getElementById('cal-drag-overlay');
+    overlay.classList.remove('open');
+    overlay.classList.remove('month-mode');
+    document.getElementById('cal-drag-chip').style.display = 'none';
+    document.getElementById('cal-drag-prev').classList.remove('is-near');
+    document.getElementById('cal-drag-next').classList.remove('is-near');
+
+    if (d.mode === 'month') {
+      if (!target) { openInbox(); return; }
+      d.cfg.monthTagItem.targetMonth = formatYearMonth(yearViewYear, parseInt(target.dataset.month, 10));
+      saveState();
+      renderInboxBadge();
+      renderInboxList();
+      return;
+    }
+    if (target) d.cfg.onDrop(target.dataset.date);
+  }
+
+  // ── 할 일 정렬(2026-11-17, 시간대 칸 제거와 함께 새 기준) ─────────
+  // 1) 중요 → 2) 글 앞에 숫자(시간)가 있는 할 일, 시간순 → 3) 숫자 없는 할 일,
+  // 넣은 순서. 오늘 탭·날짜 상세·미배치 목록·달력 칸·위젯(오늘/스케줄/미배치)
+  // 전부 이 함수 하나를 씀. 예전 timeSlot/timelineOrder(시간대 칸·끌기 순서)
+  // 데이터는 지우지 않고 무시만 함.
+  // "넣은 순서" = state.events(또는 state.inbox) 배열 안의 위치(추가할 때마다
+  // 맨 뒤에 push하므로 곧 넣은 순서).
+  function sortTodosForDisplay(list, getItem) {
+    getItem = getItem || function (x) { return x; };
+    const eventPos = {};
+    (state.events || []).forEach(function (e, i) { eventPos[e.id] = i; });
+    const inboxPos = {};
+    (state.inbox || []).forEach(function (e, i) { inboxPos[e.id] = i; });
+    return list.map(function (x, i) {
+      const it = getItem(x);
+      const t = parseLeadingTimeFromText(it.text);
+      let pos = eventPos[it.id];
+      if (pos === undefined) pos = inboxPos[it.id];
+      if (pos === undefined) pos = 1e9 + i;
+      return { x: x, imp: it.important ? 0 : 1, hasTime: t ? 0 : 1, time: t ? t.hh * 60 + t.mm : 0, pos: pos };
+    }).sort(function (a, b) {
+      return (a.imp - b.imp) || (a.hasTime - b.hasTime) || (a.time - b.time) || (a.pos - b.pos);
+    }).map(function (o) { return o.x; });
+  }
+
+  // 맨 앞 숫자로 시각 인식 — "1800청소"→18:00, "18청소"→18:00, "1630머리"
+  // →16:30(정확히 2자리 또는 4자리일 때만), 그리고 2026-11-17부터 "9시 병원"
+  // →9:00, "14시 30분 회의"→14:30, "9시반"→9:30, "9:30 회의"→9:30도 인식.
+  // 범위를 벗어난 값(시 24 이상, 분 60 이상)은 시각이 아닌 일반 텍스트로 봄.
+  // 화면 글자는 그대로 두고 정렬에만 씀.
   function parseLeadingTimeFromText(text) {
     if (!text) return null;
-    const m4 = text.match(/^(\d{4})(?!\d)/);
+    const s = String(text).trim();
+    let m = s.match(/^(\d{1,2}):(\d{2})(?!\d)/);
+    if (m) {
+      const hh = parseInt(m[1], 10), mm = parseInt(m[2], 10);
+      return (hh <= 23 && mm <= 59) ? { hh: hh, mm: mm } : null;
+    }
+    m = s.match(/^(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분|\s*(반))?/);
+    if (m) {
+      const hh = parseInt(m[1], 10);
+      const mm = m[2] ? parseInt(m[2], 10) : (m[3] ? 30 : 0);
+      return (hh <= 23 && mm <= 59) ? { hh: hh, mm: mm } : null;
+    }
+    const m4 = s.match(/^(\d{4})(?!\d)/);
     if (m4) {
       const hh = parseInt(m4[1].slice(0, 2), 10);
       const mm = parseInt(m4[1].slice(2, 4), 10);
       return (hh <= 23 && mm <= 59) ? { hh: hh, mm: mm } : null;
     }
-    const m2 = text.match(/^(\d{2})(?!\d)/);
+    const m2 = s.match(/^(\d{2})(?!\d)/);
     if (m2) {
       const hh = parseInt(m2[1], 10);
       return (hh <= 23) ? { hh: hh, mm: 0 } : null;
@@ -5364,62 +5973,9 @@
     return null;
   }
 
-  // 맨 앞 숫자로 시각이 인식되는 항목끼리는 이른 시각순으로, 인식 안 되는
-  // 항목은 원래 순서 그대로 뒤에 이어붙임 — 달력 탭 날짜 칸
-  // (appendEventIndicators)에서 그날 하루짜리 할 일들을 나열할 때 씀
-  // (2026-07-17 추가). 날짜 상세는 2026-07-19부터 이 방식 대신 오늘 탭과
-  // 같은 timeSlot/timelineOrder 저장값 기반 정렬(renderTodayTimeline)을
-  // 씀 — 서로 다른 화면이니 혼동하지 말 것.
-  // timeSlot/timelineOrder가 저장돼 있으면 그 값을, 없으면(주로 반복 할일)
-  // 텍스트 맨 앞 숫자로 즉석 계산 — renderTodayTimeline(오늘 탭·날짜 상세)과
-  // 위젯 payload 빌더(스케줄 위젯·오늘 위젯) 전부 이 함수 하나로 통일해서
-  // 정렬 기준이 서로 어긋나지 않게 함(2026-07-20 추가, "날짜마다 시간순으로
-  // 배열해둔 순서 그대로 위젯에도 보여달라" 요청) — 예전엔 오늘 위젯만
-  // (timeSlot/timelineOrder 저장값만 보고, 텍스트 즉석 인식 폴백 없이)
-  // 부분적으로 정렬했고 스케줄 위젯은 정렬 자체가 없었음.
-  const TIMELINE_SLOT_RANK = {};
-  TIMELINE_SLOTS.forEach(function (s, i) { TIMELINE_SLOT_RANK[s.key] = i; });
-
-  function getTimelineSlotOrder(item) {
-    let slot = item.timeSlot;
-    let order = typeof item.timelineOrder === 'number' ? item.timelineOrder : null;
-    if (!slot || order === null) {
-      const t = parseLeadingTimeFromText(item.text);
-      if (t) {
-        if (!slot) slot = t.hh < 12 ? 'morning' : (t.hh < 19 ? 'afternoon' : 'night');
-        if (order === null) order = t.hh * 60 + t.mm;
-      }
-    }
-    return { slot: slot || 'unset', order: order || 0 };
-  }
-
-  function compareByTimeline(itemA, itemB) {
-    const a = getTimelineSlotOrder(itemA), b = getTimelineSlotOrder(itemB);
-    const sr = TIMELINE_SLOT_RANK[a.slot] - TIMELINE_SLOT_RANK[b.slot];
-    return sr !== 0 ? sr : a.order - b.order;
-  }
-
-  function sortByLeadingTime(list) {
-    return list.slice().sort(function (a, b) {
-      const ta = parseLeadingTimeFromText(a.text);
-      const tb = parseLeadingTimeFromText(b.text);
-      const va = ta ? ta.hh * 60 + ta.mm : null;
-      const vb = tb ? tb.hh * 60 + tb.mm : null;
-      if (va === null && vb === null) return 0;
-      if (va === null) return 1;
-      if (vb === null) return -1;
-      return va - vb;
-    });
-  }
-
-  // 할 일이 날짜를 얻는 순간(배치)이나 텍스트를 고치는 순간마다 불러서,
-  // 맨 앞 숫자가 시각으로 읽히면 그 시각에 맞는 오늘 탭 구역(timeSlot)과
-  // 구역 안 정렬 순서(timelineOrder, 자정부터의 분 수)를 자동으로 채움 —
-  // 미배치 상태(날짜도 반복도 없음)인 항목은 아직 대상이 아니므로 건드리지
-  // 않음. 반복 할일(텍스트를 타이핑할 때마다 바로 저장되는 화면이라, 타이핑
-  // 도중에도 계속 이 함수가 불리면 "타이핑할 때는 인식하지 말아달라"는
-  // 요청과 어긋남)은 일부러 대상에서 뺌 — 반복 할일의 시간대는 지금처럼
-  // 계속 손으로 드래그해서 정함.
+  // (예전 시간대 칸용) 할 일이 날짜를 얻거나 글자가 바뀔 때 timeSlot/
+  // timelineOrder를 채우던 함수 — 2026-11-17부터 화면은 이 값을 안 보지만,
+  // 예전 데이터 형식과 맞춰두려고 그대로 남겨둠(지워도 동작에는 영향 없음).
   function applyAutoTimeSlot(ev) {
     if (!ev || !ev.date) return;
     const t = parseLeadingTimeFromText(ev.text);
@@ -5428,87 +5984,18 @@
     ev.timelineOrder = t.hh * 60 + t.mm;
   }
 
-  function refreshTimelineEmptyStates(rootEl) {
-    rootEl.querySelectorAll('.timeline-section-list').forEach(function (ul) {
-      ul.classList.toggle('empty', ul.children.length === 0);
-    });
-  }
-
-  function renderTodayTimeline(containerEl, repeatItems, oneTimeItems, dateStr, refreshFn) {
+  // 오늘 탭·날짜 상세 공용 — 반복 할 일 + 한 번짜리 할 일을 한 줄 목록으로
+  // (예전 renderTodayTimeline은 미정/오전/오후/밤 칸으로 나눠 그렸음).
+  function renderTodoCardList(containerEl, repeatItems, oneTimeItems, dateStr, scope) {
     containerEl.innerHTML = '';
-
     const all = repeatItems.map(function (it) { return { kind: 'repeat', item: it }; })
       .concat(oneTimeItems.map(function (it) { return { kind: 'onetime', item: it }; }));
-
-    // timeSlot/timelineOrder가 아직 저장돼 있지 않으면(한 번도 손으로 안
-    // 옮겼고, applyAutoTimeSlot도 못 지나간 경우) 맨 앞 숫자를 읽어 즉석에서
-    // 계산함(2026-07-19 추가) — **반복 할일을 위한 것**: 반복 할일은
-    // 편집 화면(openRepeatEditor)이 타이핑마다 바로 저장하는 구조라
-    // applyAutoTimeSlot을 걸 "커밋 시점" 자체가 없어서 이 필드가 절대 안
-    // 채워짐(위 관련 주석 참고) — 예전 날짜 상세 전용 flat 목록(이제 삭제된
-    // renderTodoList)은 이 문제가 없었는데(구역이 없어 매번 텍스트로만
-    // 정렬했음), 이 함수로 통합하면서 반복 할일의 "맨 앞 숫자로 시간 읽기"가
-    // 조용히 빠졌던 것 — 사용자가 "시간을 읽는 기능을 날짜 상세에도
-    // 적용해줘"라고 다시 요청해서 여기(공용 함수)에 되살림. **한 번짜리
-    // 할 일에는 사실상 영향 없음** — applyAutoTimeSlot이 배치/수정 시점에
-    // 이미 timeSlot을 채워두므로(인식 안 되면 그냥 비워둠=미정 그대로),
-    // 이 폴백은 그 값이 존재하는 한 안 쓰임 — 즉 손으로 옮긴 자리를 다시
-    // 텍스트로 덮어쓰는 일은 없음(store된 값이 항상 우선). **2026-07-20:
-    // 이 슬롯/순서 계산 로직은 이제 getTimelineSlotOrder() 공용 함수로 옮김**
-    // (스케줄·오늘 위젯 payload 빌더도 같은 함수를 씀 — 위 정의 참고).
-    function slotOf(item) { return getTimelineSlotOrder(item).slot; }
-    function orderOf(item) { return getTimelineSlotOrder(item).order; }
-
-    TIMELINE_SLOTS.forEach(function (slotDef) {
-      const itemsInSlot = all.filter(function (t) { return slotOf(t.item) === slotDef.key; });
-      itemsInSlot.sort(function (a, b) { return orderOf(a.item) - orderOf(b.item); });
-      // 중요 표시된 항목은 그 구역 안에서 맨 위로(2026-08-22 추가, 사용자
-      // 요청) — 시간순 정렬은 유지한 채(Array.sort는 안정 정렬) 중요
-      // 여부만 한 번 더 정렬.
-      itemsInSlot.sort(function (a, b) { return (a.item.important ? 0 : 1) - (b.item.important ? 0 : 1); });
-
-      const section = document.createElement('div');
-      section.className = 'timeline-section';
-      section.dataset.slot = slotDef.key;
-
-      const label = document.createElement('div');
-      label.className = 'timeline-section-label';
-      label.textContent = slotDef.label;
-      section.appendChild(label);
-
-      const ul = document.createElement('ul');
-      ul.className = 'today-items timeline-section-list';
-      ul.dataset.slotList = slotDef.key;
-
-      itemsInSlot.forEach(function (t) {
-        const li = buildTodoRow(t.kind, t.item, dateStr, refreshFn);
-        const wrap = wrapWithSwipeToDelete(li, 'var(--surface)', function () {
-          if (t.kind === 'repeat') {
-            if (!Array.isArray(t.item.excludedDates)) t.item.excludedDates = [];
-            if (t.item.excludedDates.indexOf(dateStr) === -1) t.item.excludedDates.push(dateStr);
-          } else {
-            state.events = state.events.filter(function (e) { return e !== t.item; });
-          }
-          saveState();
-          refreshFn();
-        }, {
-          eventId: t.item.id,
-          refreshFn: refreshFn,
-          // 반복 할일은 애초에 특정 날짜에 "배치"된 게 아니라서(매번 규칙으로
-          // 계산됨) 미배치 버튼 위에 놓아도 아무 반응 없음 — 한 번짜리(날짜
-          // 지정) 할일만 대상. 시간대 구역 사이 순서 변경(rootEl)은 두 종류 다 됨.
-          enableInboxDrop: t.kind === 'onetime',
-          rootEl: containerEl,
-        });
-        wrap.dataset.eventId = t.item.id;
-        ul.appendChild(wrap);
-      });
-
-      section.appendChild(ul);
-      containerEl.appendChild(section);
+    const ul = document.createElement('ul');
+    ul.className = 'today-items';
+    sortTodosForDisplay(all, function (t) { return t.item; }).forEach(function (t) {
+      ul.appendChild(buildTodoCard({ kind: t.kind, item: t.item, dateStr: dateStr, scope: scope }));
     });
-
-    refreshTimelineEmptyStates(containerEl);
+    containerEl.appendChild(ul);
   }
 
   // ── 오늘 탭 날씨(2026-07-19 추가, 같은 날 위치 권한 기반으로 재구성) ──
@@ -5896,10 +6383,7 @@
         : '완료한 할 일만 있어요.';
       eventsEl.appendChild(msg);
     } else {
-      renderTodayTimeline(eventsEl, visibleRepeat, visibleOneTime, todayDateStr, function () {
-        renderToday();
-        renderGrid();
-      });
+      renderTodoCardList(eventsEl, visibleRepeat, visibleOneTime, todayDateStr, 'today');
     }
 
   }
@@ -5952,7 +6436,7 @@
     }
 
     if (singleEvents.length > 0) {
-      const sortedSingle = sortByLeadingTime(singleEvents);
+      const sortedSingle = sortTodosForDisplay(singleEvents);
       // 중요 표시된 항목은 맨 위로(2026-08-22 추가, 사용자 요청) — 시간순
       // 정렬은 유지한 채(안정 정렬) 중요 여부만 한 번 더 정렬. 아래 완료
       // 정렬이 더 나중(더 우선순위 높음)이라, 완료된 항목은 중요 여부와
@@ -7456,10 +7940,9 @@
         // 배열해둔 순서 그대로 위젯에도 보여달라" 요청) — 예전엔 반복 할일을
         // 앞에, 그다음 한 번짜리를 순서 그대로 이어붙이기만 해서 시간순이
         // 전혀 아니었음.
-        combinedTodos.sort(function (a, b) { return compareByTimeline(a.ev, b.ev); });
-        // 중요 표시된 항목은 맨 위로(2026-08-22 추가, 사용자 요청 — 앱뿐
-        // 아니라 위젯도 적용해달라는 요청) — 안정 정렬로 시간순은 유지.
-        combinedTodos.sort(function (a, b) { return (a.ev.important ? 0 : 1) - (b.ev.important ? 0 : 1); });
+        // 2026-11-17: 앱 화면과 같은 새 정렬(중요 → 시간 있는 것 시간순 →
+        // 나머지 넣은 순서, sortTodosForDisplay)로 통일.
+        combinedTodos = sortTodosForDisplay(combinedTodos, function (t) { return t.ev; });
         // 완료된 항목은 항상 맨 아래로(2026-07-22 추가) — 시간순 정렬은
         // 유지한 채(Array.sort는 안정 정렬이라 위 정렬 순서가 그대로
         // 보존됨), 완료 여부만 기준으로 한 번 더 정렬해서 미완료가 전부
@@ -7562,10 +8045,8 @@
     // 반복 할일의 텍스트 즉석 인식 폴백 포함)을 씀 — 예전엔 이 위젯만 저장된
     // timeSlot/timelineOrder만 보고 정렬해서, 아직 손으로 안 옮긴 반복
     // 할일은 앱 화면과 다른 순서로 보일 수 있었음.
-    all.sort(function (a, b) { return compareByTimeline(a.item, b.item); });
-    // 중요 표시된 항목은 맨 위로(2026-08-22 추가, 사용자 요청) — 안정
-    // 정렬로 시간순은 유지.
-    all.sort(function (a, b) { return (a.item.important ? 0 : 1) - (b.item.important ? 0 : 1); });
+    // 2026-11-17: 앱 화면과 같은 새 정렬(sortTodosForDisplay)로 통일.
+    all = sortTodosForDisplay(all, function (t) { return t.item; });
     // 완료된 항목은 항상 맨 아래로(2026-07-22 추가) — 스케줄 위젯과 같은
     // 이유(안정 정렬로 시간순은 유지한 채 완료 여부만 한 번 더 정렬).
     all.sort(function (a, b) { return (a.done ? 1 : 0) - (b.done ? 1 : 0); });
@@ -7603,7 +8084,7 @@
   // 탭하면 그냥 앱이 열림(어떤 항목을 눌렀는지는 구분 안 함).
   function buildInboxWidgetPayload() {
     const inbox = (state && Array.isArray(state.inbox)) ? state.inbox : [];
-    const items = sortImportantFirst(inbox.filter(function (it) { return !it.targetMonth; }))
+    const items = sortTodosForDisplay(inbox.filter(function (it) { return !it.targetMonth; }))
       .map(function (it) { return { id: it.id, text: it.text, important: !!it.important }; });
     return { count: items.length, items: items };
   }
@@ -8503,11 +8984,7 @@
         : '완료한 할 일만 있어요';
       el.appendChild(empty);
     } else {
-      renderTodayTimeline(el, visibleRepeat, visibleEvents, detailDateStr, function () {
-        renderDDTodos();
-        renderGrid();
-        renderToday();
-      });
+      renderTodoCardList(el, visibleRepeat, visibleEvents, detailDateStr, 'dd');
     }
   }
 
@@ -9042,135 +9519,6 @@
     return year + '-' + String(month0 + 1).padStart(2, '0');
   }
 
-  function buildInboxRow(item) {
-    const row = document.createElement('div');
-    row.className = 'inbox-item-row';
-    const text = document.createElement('span');
-    text.className = 'inbox-item-text';
-    text.textContent = item.text;
-    // 중요 할 일은 다른 화면과 같은 주황 글씨(2026-10-09)
-    if (item.important) text.style.color = '#ff9500';
-    const del = document.createElement('button');
-    del.className = 'inbox-item-del';
-    del.textContent = '×';
-    del.setAttribute('aria-label', '삭제');
-    del.addEventListener('click', function (e) {
-      e.stopPropagation();
-      state.inbox = state.inbox.filter(function (it) { return it.id !== item.id; });
-      saveState();
-      renderInboxList();
-      renderInboxBadge();
-    });
-    row.appendChild(text);
-    row.appendChild(del);
-    // 수정 중(입력칸으로 바뀐 상태)에 입력칸을 탭한 것까지 배치 모드 진입으로
-    // 새는 것을 막음 — startInlineTextEdit가 text를 <input>으로 갈아끼우므로
-    // 그 입력칸을 눌러 커서를 옮기는 것도 이 row의 클릭으로 버블링됨.
-    row.addEventListener('click', function (e) {
-      if (e.target.tagName === 'INPUT') return;
-      startInboxPlacement(item.id);
-    });
-    setupInboxItemDrag(row, item);
-    return row;
-  }
-
-  // 미배치 항목을 꾹 누르고 있다가: 움직이면 드래그(창이 사라지고 뒤의 연간/
-  // 달력 화면이 드러남 — 연간 탭 월 박스에 놓으면 그 달로 태그(대략 배치),
-  // 달력 탭 날짜 칸에 놓으면 그 날로 확정 배치), 움직이지 않고 떼면 그 자리에서
-  // 바로 내용 수정(startInlineTextEdit, 반복 할일 텍스트 수정과 같은 함수
-  // 재사용). 짧게 탭하면(500ms 안에 뗌) 위 row의 click 리스너가 배치 모드로
-  // 들어감(startInboxPlacement) — 셋이 하나의 상태 기계로 안 부딪히게 나뉨.
-  function setupInboxItemDrag(row, item) {
-    let timer = null;
-    let activated = false;
-    let dragStarted = false;
-    let startX = 0, startY = 0;
-    let hoverEl = null;
-
-    function clearHover() {
-      if (hoverEl) { hoverEl.classList.remove('inbox-drop-hover'); hoverEl = null; }
-    }
-
-    function onMove(e) {
-      const t = e.touches[0];
-      if (!activated) {
-        if (Math.abs(t.clientX - startX) > 8 || Math.abs(t.clientY - startY) > 8) clearTimeout(timer);
-        return;
-      }
-      if (!dragStarted) {
-        if (Math.abs(t.clientX - startX) > 8 || Math.abs(t.clientY - startY) > 8) {
-          dragStarted = true;
-          closeInbox();
-        } else {
-          return;
-        }
-      }
-      e.preventDefault();
-      const el = document.elementFromPoint(t.clientX, t.clientY);
-      // 판정을 손가락이 정확히 "1월" 글씨(월 라벨) / 날짜 숫자 위에 있을 때로만 좁힘
-      const monthLabel = el ? el.closest('.year-month-label') : null;
-      const dateNum = el ? el.closest('.cell-date') : null;
-      const target = monthLabel
-        ? monthLabel.closest('.year-month-box[data-month]')
-        : (dateNum ? dateNum.closest('.grid-cell[data-date-str]') : null);
-      if (target !== hoverEl) {
-        clearHover();
-        if (target) { target.classList.add('inbox-drop-hover'); hoverEl = target; }
-      }
-    }
-
-    function onEnd(e) {
-      clearTimeout(timer);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('touchend', onEnd);
-      document.removeEventListener('touchcancel', onEnd);
-      if (!activated) return;
-      // 꾹 누르는 동안 우리가 이미 처리(수정 또는 드래그)했으니, 뒤이어
-      // 브라우저가 만드는 가짜 click까지 겹쳐서 배치 모드로 새는 것을 막음.
-      if (e.cancelable) e.preventDefault();
-      activated = false;
-
-      if (!dragStarted) {
-        // 움직이지 않고 꾹 눌렀다 뗌 → 내용 수정
-        const textEl = row.querySelector('.inbox-item-text');
-        if (textEl) startInlineTextEdit(textEl, item, renderInboxList);
-        return;
-      }
-      dragStarted = false;
-      const target = hoverEl;
-      clearHover();
-
-      if (target && target.classList.contains('year-month-box')) {
-        item.targetMonth = formatYearMonth(yearViewYear, parseInt(target.dataset.month, 10));
-        saveState();
-        renderInboxBadge();
-      } else if (target && target.classList.contains('grid-cell')) {
-        placeInboxItem(item.id, target.dataset.dateStr);
-        return; // placeInboxItem이 자체적으로 다시 그림
-      } else {
-        // 놓을 곳이 없으면 취소 — 미배치 창을 다시 연다
-        openInbox();
-        return;
-      }
-      renderInboxList();
-    }
-
-    row.addEventListener('touchstart', function (e) {
-      const t = e.touches[0];
-      startX = t.clientX;
-      startY = t.clientY;
-      activated = false;
-      dragStarted = false;
-      timer = setTimeout(function () {
-        activated = true;
-        if (navigator.vibrate) navigator.vibrate(40);
-      }, 500);
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('touchend', onEnd, { passive: false });
-      document.addEventListener('touchcancel', onEnd, { passive: false });
-    }, { passive: true });
-  }
-
   function renderInboxList() {
     const el = document.getElementById('inbox-list');
     el.innerHTML = '';
@@ -9178,8 +9526,18 @@
 
     const onMonthTab = document.getElementById('tab-month').classList.contains('active');
     const viewMonthStr = onMonthTab ? formatYearMonth(calYear, calMonth) : null;
-    const thisMonthItems = sortImportantFirst(viewMonthStr ? inbox.filter(function (it) { return it.targetMonth === viewMonthStr; }) : []);
-    const generalItems = sortImportantFirst(inbox.filter(function (it) { return !it.targetMonth; }));
+    const thisMonthItems = sortTodosForDisplay(viewMonthStr ? inbox.filter(function (it) { return it.targetMonth === viewMonthStr; }) : []);
+    const generalItems = sortTodosForDisplay(inbox.filter(function (it) { return !it.targetMonth; }));
+    // 미배치도 다른 화면과 같은 할 일 카드(2026-11-17) — 탭=버튼 5개,
+    // 롱 탭=달력 끌기, 왼쪽 밀기=지우기. ×버튼·탭=배치 모드·롱 탭=수정은 없앰.
+    function appendInboxCards(items) {
+      const ul = document.createElement('ul');
+      ul.className = 'today-items';
+      items.forEach(function (item) {
+        ul.appendChild(buildTodoCard({ kind: 'inbox', item: item, scope: 'inbox', bg: 'var(--bg)' }));
+      });
+      el.appendChild(ul);
+    }
 
     if (thisMonthItems.length === 0 && generalItems.length === 0) {
       el.innerHTML = '<div class="inbox-empty">미배치 항목이 없어요.</div>';
@@ -9191,7 +9549,7 @@
       label.className = 'section-label';
       label.textContent = (calMonth + 1) + '월로 넣어둔 항목';
       el.appendChild(label);
-      thisMonthItems.forEach(function (item) { el.appendChild(buildInboxRow(item)); });
+      appendInboxCards(thisMonthItems);
 
       const label2 = document.createElement('div');
       label2.className = 'section-label';
@@ -9206,7 +9564,7 @@
       empty.textContent = '그 밖의 미배치 항목이 없어요.';
       el.appendChild(empty);
     } else {
-      generalItems.forEach(function (item) { el.appendChild(buildInboxRow(item)); });
+      appendInboxCards(generalItems);
     }
   }
 
@@ -9234,21 +9592,6 @@
   // 그 날로 확정 배치됨.
   let pendingPlaceInboxId = null;
   let pendingPlaceMode = null; // 'month' | 'date'
-
-  function startInboxPlacement(inboxId) {
-    if (!state || !state.cycleDays || !state.baseDate) {
-      alert('먼저 설정 탭에서 "내 근무"를 설정해 주세요.');
-      return;
-    }
-    const onYearTab = document.getElementById('tab-year').classList.contains('active');
-    pendingPlaceInboxId = inboxId;
-    pendingPlaceMode = onYearTab ? 'month' : 'date';
-    closeInbox();
-    if (pendingPlaceMode === 'date') switchTab('month');
-    document.getElementById('placement-hint-text').textContent =
-      pendingPlaceMode === 'month' ? '넣을 달을 선택하세요' : '넣을 날짜를 선택하세요';
-    document.getElementById('placement-hint-bar').style.display = 'flex';
-  }
 
   function cancelPlacementMode() {
     if (!pendingPlaceMode) return;
@@ -9279,7 +9622,13 @@
 
   // ── 반복 할 일 만들기 / 전환 / 편집 (공용 시트) ─────────────────
   let repeatEditorTargetEvent = null; // 편집 중인 기존 반복 할일 (없으면 새로 만들기/전환)
-  let repeatEditorSourceEvent = null; // 반복으로 전환 중인 원래 한 번짜리 할 일 (확정 시 삭제됨)
+  let repeatEditorSourceEvent = null; // 반복으로 전환 중인 원래 한 번짜리 할 일 (지우지 않고 그대로 둠)
+  // 미배치 카드의 "반복" 버튼으로 연 경우 그 미배치 항목(2026-11-17) — 반복
+  // 할 일이 실제로 만들어지는 순간 미배치 목록에서 빠지고, 이 창 안에서 반복을
+  // 그만두면 다시 미배치로 돌아감.
+  let repeatEditorSourceInbox = null;
+  // 이번에 창을 연 뒤 새로 만들어진 반복 할 일인지(그만둘 때 동작이 다름)
+  let repeatEditorCreatedThisSession = false;
   let promoteMode = null;
   let promoteIntervalSubMode = 'interval'; // '기간' 안의 하위 선택: 'interval'(기간) | 'lunar'(음력)
   let promoteIntervalValues = { years: 0, months: 0, days: 0 };
@@ -9527,6 +9876,8 @@
     opts = opts || {};
     repeatEditorTargetEvent = opts.editEvent || null;
     repeatEditorSourceEvent = opts.sourceEvent || null;
+    repeatEditorSourceInbox = opts.sourceInbox || null;
+    repeatEditorCreatedThisSession = false;
     promoteMode = null;
     promoteIntervalSubMode = 'interval';
     promoteIntervalValues = { years: 0, months: 0, days: 0 };
@@ -9535,10 +9886,14 @@
     promoteLunarValues = originLunar ? { month: originLunar.month, day: originLunar.day } : { month: 1, day: 1 };
 
     const existing = repeatEditorTargetEvent;
-    const initialText = existing ? existing.text : (repeatEditorSourceEvent ? repeatEditorSourceEvent.text : (opts.presetText || ''));
+    const initialText = existing ? existing.text
+      : (repeatEditorSourceEvent ? repeatEditorSourceEvent.text
+        : (repeatEditorSourceInbox ? repeatEditorSourceInbox.text : (opts.presetText || '')));
     const initialCategory = existing ? existing.category : 'etc';
     const initialRule = existing ? existing.repeat : null;
-    promoteImportant = existing ? !!existing.important : (repeatEditorSourceEvent ? !!repeatEditorSourceEvent.important : false);
+    promoteImportant = existing ? !!existing.important
+      : (repeatEditorSourceEvent ? !!repeatEditorSourceEvent.important
+        : (repeatEditorSourceInbox ? !!repeatEditorSourceInbox.important : false));
 
     document.getElementById('promote-title').textContent =
       existing ? '반복 할 일 편집' : (repeatEditorSourceEvent ? '반복으로 전환' : '반복 할 일 만들기');
@@ -9608,6 +9963,8 @@
     document.getElementById('promote-overlay').classList.remove('open');
     repeatEditorTargetEvent = null;
     repeatEditorSourceEvent = null;
+    repeatEditorSourceInbox = null;
+    repeatEditorCreatedThisSession = false;
   }
 
   // "근무·요일" 반복 중복 합치기 확인 — 칸을 하나 고르자마자 바로 묻지 않고
@@ -9708,6 +10065,13 @@
       }
       if (!Array.isArray(state.events)) state.events = [];
       state.events.push(repeatEditorTargetEvent);
+      repeatEditorCreatedThisSession = true;
+      // 미배치에서 반복으로 바꾼 경우 그 미배치 항목은 이제 반복 할 일이 됐으니 목록에서 뺌
+      if (repeatEditorSourceInbox) {
+        state.inbox = (state.inbox || []).filter(function (it) { return it !== repeatEditorSourceInbox; });
+        renderInboxBadge();
+        if (document.getElementById('inbox-overlay').classList.contains('open')) renderInboxList();
+      }
     } else {
       repeatEditorTargetEvent.text = text;
       repeatEditorTargetEvent.category = category;
@@ -9735,16 +10099,39 @@
     setPromoteMode(null);
     syncPromoteEditorToState();
   }
+  // 반복을 그만두기(켜진 방식 버튼을 한 번 더 누름) — 2026-11-17부터 삭제가
+  // 아니라 "미배치로"(사용자 요청: "반복을 그만두면 그 할 일은 미배치로 간다,
+  // 삭제하지 않음").
+  //   - 이번에 이 창에서 새로 만든 반복이면: 만든 것만 되돌리고 창은 그대로
+  //     (원래 날짜 있는 할 일에서 전환 중이었으면 그 할 일은 원래 자리에 그대로
+  //     남아 있고, 미배치에서 왔으면 다시 미배치로 돌아감) — 다른 방식을 이어서
+  //     고를 수 있게.
+  //   - 원래 있던 반복 할 일을 편집 중이면: 반복 규칙이 없어지므로 확인 후
+  //     그 할 일을 미배치로 옮기고 창을 닫음.
   function confirmDeleteEditingRepeatEvent() {
-    if (!confirm('반복 방식을 선택 해제하면 이 반복 할일이 삭제돼요. 삭제할까요?')) return;
     const ev = repeatEditorTargetEvent;
+    if (repeatEditorCreatedThisSession) {
+      state.events = state.events.filter(function (e) { return e.id !== ev.id; });
+      if (repeatEditorSourceInbox) {
+        if (!Array.isArray(state.inbox)) state.inbox = [];
+        if (state.inbox.indexOf(repeatEditorSourceInbox) === -1) state.inbox.push(repeatEditorSourceInbox);
+      }
+      repeatEditorTargetEvent = null;
+      repeatEditorCreatedThisSession = false;
+      setPromoteMode(null);
+      saveState();
+      refreshAllTodoViews();
+      return;
+    }
+    if (!confirm('반복을 그만두면 이 할 일은 미배치로 옮겨져요. 옮길까요?')) return;
     state.events = state.events.filter(function (e) { return e.id !== ev.id; });
+    if (!Array.isArray(state.inbox)) state.inbox = [];
+    const back = { id: genId('i'), text: ev.text, createdAt: Date.now() };
+    if (ev.important) back.important = true;
+    state.inbox.push(back);
     saveState();
     closeRepeatEditor();
-    renderRoutine();
-    renderGrid();
-    renderToday();
-    if (detailDateStr !== null) { renderDDTodos(); }
+    refreshAllTodoViews();
   }
   document.getElementById('btn-promote-mode-interval').addEventListener('click', function () {
     if (promoteMode === 'interval') {
@@ -10734,16 +11121,7 @@
     const ul = document.createElement('ul');
     ul.className = 'today-items';
     items.forEach(function (ev) {
-      const li = buildTodoRow('onetime', ev, ev.date, renderRoutine);
-      const wrap = wrapWithSwipeToDelete(li, 'var(--bg)', function () {
-        state.events = state.events.filter(function (e) { return e.id !== ev.id; });
-        saveState();
-        renderRoutine();
-        renderGrid();
-        renderToday();
-        if (detailDateStr !== null) { renderDDTodos(); }
-      });
-      ul.appendChild(wrap);
+      ul.appendChild(buildTodoCard({ kind: 'onetime', item: ev, dateStr: ev.date, scope: 'routine', bg: 'var(--bg)' }));
     });
     list.appendChild(ul);
   }
