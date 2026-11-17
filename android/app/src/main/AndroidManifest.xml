@@ -190,6 +190,21 @@
         <receiver
             android:name=".ShiftAlarmReceiver"
             android:exported="false" />
+        <!-- 날짜가 바뀌면 앱을 안 열어도 위젯을 새 날짜로 넘김(2026-11-17,
+             WidgetDayRollover 참고) — 자정 알람(앱 안에서 보내는 명시적 인텐트)과
+             시스템의 시간·시간대 변경, 재부팅, 앱 업데이트 방송을 받음. 시스템
+             방송을 받으려면 exported=true여야 함(전부 시스템만 보낼 수 있는
+             보호된 방송이라 외부 앱이 흉내 낼 수 없음). -->
+        <receiver
+            android:name=".WidgetDayRolloverReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+            </intent-filter>
+        </receiver>
         <!-- 알람이 울릴 때 화면 전체에 뜨는 화면(끄기/다시 울리기 버튼) -->
         <activity
             android:name=".ShiftAlarmActivity"
@@ -209,6 +224,8 @@
          같은 원리) -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- 재부팅 뒤 위젯 자정 넘김 알람을 다시 예약하려고(2026-11-17) -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <!-- 오늘 탭 날씨(2026-07-19 추가) — @capacitor/geolocation이 필요로 함.
          GPS 하드웨어를 강제하는 <uses-feature>는 일부러 안 넣음(없어도 대략
          위치는 잡히고, 넣으면 GPS 없는 기기에는 설치 자체가 막히므로). -->

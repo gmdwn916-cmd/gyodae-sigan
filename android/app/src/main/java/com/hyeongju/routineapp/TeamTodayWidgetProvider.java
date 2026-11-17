@@ -60,6 +60,8 @@ public class TeamTodayWidgetProvider extends AppWidgetProvider {
     }
 
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        // 날짜가 바뀌었으면 먼저 새 날짜로 넘김(WidgetDayRollover, 2026-11-17)
+        WidgetDayRollover.ensureToday(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_team_today);
 
         // 위젯을 탭하면 "다른 팀 근무 확인" 화면으로 바로 이동(다른 위젯들과

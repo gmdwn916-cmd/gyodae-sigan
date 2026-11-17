@@ -44,6 +44,12 @@ public class TodayWidgetProvider extends AppWidgetProvider {
     @Override
     public void onReceive(Context context, Intent intent) {
         String action = intent.getAction();
+        // 자정을 넘긴 뒤 처음 누른 거면(2026-11-17) 그 탭은 어제 목록을 보고 누른
+        // 것이므로 반영하지 않고, 위젯 전체를 새 날짜로 다시 그리기만 함.
+        if (ACTION_TOGGLE.equals(action) && WidgetDayRollover.ensureToday(context)) {
+            WidgetDayRollover.rollover(context);
+            return;
+        }
         if (ACTION_TOGGLE.equals(action)) {
             if (intent.getBooleanExtra(EXTRA_OPEN_APP, false)) {
                 openAppToToday(context);
@@ -210,6 +216,8 @@ public class TodayWidgetProvider extends AppWidgetProvider {
     // 높이를 정하는 이번 방식은 그 문제를 피해간 게 아니라 다른 모습으로
     // 다시 겪은 것뿐이었음, 같은 방식으로 재시도하지 말 것.
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        // 날짜가 바뀌었으면 먼저 새 날짜로 넘김(WidgetDayRollover, 2026-11-17)
+        WidgetDayRollover.ensureToday(context);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_today);
 
         Intent openIntent = new Intent(context, MainActivity.class);

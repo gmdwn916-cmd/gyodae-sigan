@@ -352,6 +352,8 @@ public class ScheduleWidgetProvider extends AppWidgetProvider {
     // 작게 강제로 눌러버릴 위험이 있음 — 위 SizeF 2단계 방식은 상한 없이도
     // 이미 안전하므로 굳이 리사이즈 상한을 건드릴 필요가 없다고 판단.
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        // 날짜가 바뀌었으면 먼저 새 날짜로 넘김(WidgetDayRollover, 2026-11-17)
+        WidgetDayRollover.ensureToday(context);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             Map<SizeF, RemoteViews> variants = new HashMap<>();
             variants.put(new SizeF(VARIANT_WIDTH_DP, 40f), buildViewsForWeeks(context, appWidgetId, 1));

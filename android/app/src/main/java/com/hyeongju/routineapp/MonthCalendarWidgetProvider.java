@@ -223,6 +223,8 @@ public class MonthCalendarWidgetProvider extends AppWidgetProvider {
     }
 
     private static void updateOne(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        // 날짜가 바뀌었으면 먼저 새 날짜로 넘김(WidgetDayRollover, 2026-11-17)
+        WidgetDayRollover.ensureToday(context);
         boolean showSixthRow = shouldShowSixthRow(context, appWidgetId);
         RemoteViews views = buildViews(context, showSixthRow ? 6 : 5);
         views.setViewVisibility(idFor(context, "week_row_5"), showSixthRow ? View.VISIBLE : View.GONE);
