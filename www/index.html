@@ -3547,9 +3547,8 @@
   <div id="inbox-panel">
     <h2>미배치</h2>
     <div id="inbox-list"></div>
-    <div class="btn-row" style="padding-top:4px">
-      <button class="btn btn-secondary" id="btn-inbox-close">닫기</button>
-    </div>
+    <!-- 닫기 버튼은 없앰(2026-11-18 사용자 요청) — 목록 바깥 빈 곳을 누르거나
+         미배치 버튼을 한 번 더 누르면 닫힘. -->
   </div>
 </div>
 
@@ -9614,8 +9613,11 @@
     document.getElementById('inbox-overlay').classList.remove('open');
   }
 
-  document.getElementById('btn-inbox-open').addEventListener('click', openInbox);
-  document.getElementById('btn-inbox-close').addEventListener('click', closeInbox);
+  // 미배치 버튼은 열기/닫기 겸용(2026-11-18, 닫기 버튼을 없애면서).
+  document.getElementById('btn-inbox-open').addEventListener('click', function () {
+    if (document.getElementById('inbox-overlay').classList.contains('open')) closeInbox();
+    else openInbox();
+  });
   document.getElementById('inbox-overlay').addEventListener('click', function (e) {
     if (e.target === this) closeInbox();
   });
